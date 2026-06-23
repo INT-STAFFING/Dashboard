@@ -11,7 +11,7 @@ manuali.
 - **Next.js 14** (App Router) + **TypeScript**
 - **Tailwind CSS** + variabili CSS della palette originale (`--petrol`, `--gold`, …)
 - **xlsx** (SheetJS) per la lettura Excel lato server
-- **Drizzle ORM** + **Vercel Postgres** (con fallback in-memory a zero config)
+- **Drizzle ORM** + **Neon** (serverless Postgres, driver `@neondatabase/serverless`), con fallback in-memory a zero config
 
 ## Avvio locale
 
@@ -20,15 +20,21 @@ npm install
 npm run dev          # http://localhost:3000 → /dashboard
 ```
 
-Senza `POSTGRES_URL` l'app usa automaticamente un **seed in memoria** (24
+Senza `DATABASE_URL` l'app usa automaticamente un **seed in memoria** (24
 interventi, estratti dalla dashboard originale): build e demo funzionano subito.
-Con `POSTGRES_URL` configurato usa Vercel Postgres in modo persistente.
+Con un connection string **Neon** in `DATABASE_URL` usa Postgres in modo persistente.
 
 ```bash
-cp .env.example .env.local        # imposta POSTGRES_URL e UPLOAD_SECRET
+cp .env.example .env.local        # imposta DATABASE_URL (Neon) e UPLOAD_SECRET
 npm run db:push                   # crea le tabelle (Drizzle)
 npm run db:seed                   # popola con il portafoglio baseline
 ```
+
+### Neon su Vercel
+
+Aggiungi un database **Neon** dal Vercel Marketplace (Storage → Neon): l'integrazione
+imposta automaticamente `DATABASE_URL` (e `POSTGRES_URL`) negli env del progetto.
+In locale copia la connection string dalla dashboard Neon.
 
 ## Struttura
 
@@ -79,4 +85,5 @@ components/
 ## Deploy su Vercel
 
 Zero-config (`vercel.json` → framework `nextjs`). Per la persistenza aggiungere
-una Vercel Postgres / Neon e impostare `POSTGRES_URL` e `UPLOAD_SECRET`.
+un database **Neon** (Vercel Marketplace) e impostare `UPLOAD_SECRET`
+(`DATABASE_URL` viene iniettata dall'integrazione Neon).

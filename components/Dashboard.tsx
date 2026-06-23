@@ -1,9 +1,11 @@
 'use client';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
-import type { DashboardData, Intervento, InterventoInput, RtiConfig } from '@/lib/types';
+import type { DashboardData, Intervento, InterventoInput, RtiConfig, SafeUser } from '@/lib/types';
+import { ROLE_LABEL } from '@/lib/auth/permissions';
 import { filterInterventi, type Filters } from '@/lib/queries';
 import FilterBar from './FilterBar';
+import LogoutButton from './LogoutButton';
 import OverviewPanel from './panels/OverviewPanel';
 import RTIPanel from './panels/RTIPanel';
 import TimelinePanel from './panels/TimelinePanel';
@@ -16,7 +18,17 @@ import EditDrawer from './editing/EditDrawer';
 const TABS = ['Overview', 'Quote RTI', 'Timeline', 'Distribuzione', 'Modalità fornitura', 'Stato IF / BO', 'Operativo'];
 const REGISTRO_TAB = 6;
 
-export default function Dashboard({ initial }: { initial: DashboardData }) {
+export default function Dashboard({
+  initial,
+  user,
+  canEdit,
+  isAdmin,
+}: {
+  initial: DashboardData;
+  user: SafeUser;
+  canEdit: boolean;
+  isAdmin: boolean;
+}) {
   const [interventi, setInterventi] = useState<Intervento[]>(initial.interventi);
   const [rti, setRti] = useState<RtiConfig>(initial.rti);
   const [quotaVal, setQuotaVal] = useState<Record<string, number>>(initial.quota_val);
@@ -215,13 +227,27 @@ export default function Dashboard({ initial }: { initial: DashboardData }) {
               CIG <b>{initial.meta.cig}</b> · agg.{' '}
               <b>{new Date(initial.meta.generato).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}</b>
             </div>
+            <div className="userchip">
+              <span className="uname">{user.name || user.email}</span>
+              <span className="rolepill" title={ROLE_LABEL[user.role]}>{user.role}</span>
+            </div>
             <div className="exp">
-              <button className={editMode ? '' : 'ghost'} onClick={() => setEditMode((v) => !v)}>
-                {editMode ? '🔓 Modalità modifica attiva' : '🔒 Abilita modifica'}
-              </button>
-              <Link href="/upload" className="hdr-link">
-                ⤴ Carica dati
-              </Link>
+              {canEdit && (
+                <button className={editMode ? '' : 'ghost'} onClick={() => setEditMode((v) => !v)}>
+                  {editMode ? '🔓 Modalità modifica attiva' : '🔒 Abilita modifica'}
+                </button>
+              )}
+              {canEdit && (
+                <Link href="/upload" className="hdr-link">
+                  ⤴ Carica dati
+                </Link>
+              )}
+              {isAdmin && (
+                <Link href="/admin/users" className="hdr-link">
+                  👥 Utenti
+                </Link>
+              )}
+              <LogoutButton className="logout" label="Esci" />
             </div>
           </div>
         </div>
@@ -274,6 +300,7 @@ export default function Dashboard({ initial }: { initial: DashboardData }) {
         {tab === 6 && (
           <RegistroPanel
             IFs={IFs}
+            canEdit={canEdit}
             onSaveField={onSaveField}
             onOpenEdit={(i) => setDrawer({ open: true, mode: 'edit', initial: i })}
             onOpenNew={() => setDrawer({ open: true, mode: 'new', initial: null })}

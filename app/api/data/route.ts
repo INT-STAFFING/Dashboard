@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { listInterventi } from '@/lib/store';
+import { getSessionUser, canView } from '@/lib/auth';
 import { getRtiConfig, getQuotaVal, META } from '@/lib/config';
 import { getSeniority, getModalita, getTimeline } from '@/lib/portfolio';
 import { SEED_FORNITORI } from '@/lib/seed';
@@ -13,8 +14,12 @@ import {
 } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
+  if (!canView(await getSessionUser())) {
+    return NextResponse.json({ ok: false, error: 'Non autorizzato' }, { status: 403 });
+  }
   const { searchParams } = new URL(req.url);
   const filters: Filters = {
     forn: searchParams.get('fornitore') || undefined,

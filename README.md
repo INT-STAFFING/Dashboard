@@ -58,6 +58,33 @@ components/
   editing/       EditDrawer · InlineField · StatusSelect · NotePreview
 ```
 
+## Autenticazione & ruoli
+
+L'app è protetta da login. Le pagine e le API richiedono una sessione valida
+(cookie firmato HMAC, verificato anche dal middleware Edge).
+
+| Ruolo      | Registrazione | Accesso                | Permessi                          |
+| ---------- | ------------- | ---------------------- | --------------------------------- |
+| `ADMIN`    | — (seed)      | sempre attivo          | tutto + gestione utenti           |
+| `USERPLUS` | sì            | dopo approvazione ADMIN| visualizzazione **e modifica**    |
+| `USER`     | sì            | dopo approvazione ADMIN| **sola visualizzazione**          |
+
+- **ADMIN**: account iniziale creato in automatico al primo avvio da
+  `ADMIN_EMAIL` / `ADMIN_PASSWORD` (default `admin@dashboard.local` / `admin`).
+  Non è eliminabile e ha sempre accesso a tutto, inclusa la pagina
+  **Gestione utenti** (`/admin/users`) per approvare/rifiutare le registrazioni,
+  cambiare ruolo ed eliminare account.
+- **USER / USERPLUS**: si registrano da `/register` e restano in stato
+  `pending` finché un ADMIN non li approva. USER vede i dati in sola lettura;
+  USERPLUS può anche modificare/creare/eliminare e caricare Excel.
+
+Pagine: `/login` · `/register` · `/admin/users` (solo ADMIN).
+API: `POST /api/auth/{register,login,logout}` · `GET /api/me` ·
+`GET/PATCH/DELETE /api/admin/users[/:id]`.
+
+> Con `DATABASE_URL` configurato esegui `npm run db:push` per creare anche la
+> tabella `users`. Senza DB gli utenti vivono nello store in-memory (solo demo).
+
 ## Pannelli
 
 1. **Overview & KPI** — KPI card, revenue mensile (barre + cumulato), indicatori

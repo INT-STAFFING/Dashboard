@@ -1,0 +1,541 @@
+{
+  "id": "ff3340f9-edf4-444b-9514-38437d7f970d",
+  "prevId": "d7b1bf38-3364-4b0d-a180-0f727e6d04db",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.bef_records": {
+      "name": "bef_records",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "num_bdo": {
+          "name": "num_bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descrizione": {
+          "name": "descrizione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "periodo_competenza": {
+          "name": "periodo_competenza",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore_reale": {
+          "name": "fornitore_reale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "importo_ricezione": {
+          "name": "importo_ricezione",
+          "type": "numeric(15, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "num_fattura": {
+          "name": "num_fattura",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_fattura": {
+          "name": "data_fattura",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_pagamento": {
+          "name": "data_pagamento",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.config_rti": {
+      "name": "config_rti",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "massimale_totale": {
+          "name": "massimale_totale",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quota_intellera_pct": {
+          "name": "quota_intellera_pct",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quota_deloitte_pct": {
+          "name": "quota_deloitte_pct",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "partners": {
+          "name": "partners",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cig": {
+          "name": "cig",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contratto_ref": {
+          "name": "contratto_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.interventi": {
+      "name": "interventi",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "numero_if": {
+          "name": "numero_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bdo": {
+          "name": "bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "titolo": {
+          "name": "titolo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ambito": {
+          "name": "ambito",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore": {
+          "name": "fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ref_aria": {
+          "name": "ref_aria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ref_fornitore": {
+          "name": "ref_fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "importo": {
+          "name": "importo",
+          "type": "numeric(15, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revenue_2026": {
+          "name": "revenue_2026",
+          "type": "numeric(15, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rev_mesi": {
+          "name": "rev_mesi",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modalita_if": {
+          "name": "modalita_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attivazione": {
+          "name": "attivazione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stato": {
+          "name": "stato",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_bo": {
+          "name": "has_bo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "pdc": {
+          "name": "pdc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "v_apertura": {
+          "name": "v_apertura",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "v_sal": {
+          "name": "v_sal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bef_status": {
+          "name": "bef_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subappalto": {
+          "name": "subappalto",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "subappaltatore": {
+          "name": "subappaltatore",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "costo_subappalto": {
+          "name": "costo_subappalto",
+          "type": "numeric(15, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_assegnazione": {
+          "name": "data_assegnazione",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_inizio": {
+          "name": "data_inizio",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_fine": {
+          "name": "data_fine",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "azione": {
+          "name": "azione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note_operative": {
+          "name": "note_operative",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "edited_manually": {
+          "name": "edited_manually",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "last_edited_by": {
+          "name": "last_edited_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_edited_at": {
+          "name": "last_edited_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "interventi_numero_if_unique": {
+          "name": "interventi_numero_if_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "numero_if"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tariffe": {
+      "name": "tariffe",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "figura": {
+          "name": "figura",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sigla": {
+          "name": "sigla",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gg": {
+          "name": "gg",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tariffa_giornaliera": {
+          "name": "tariffa_giornaliera",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tariffa_oraria": {
+          "name": "tariffa_oraria",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'USER'"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verbali_chiusura": {
+      "name": "verbali_chiusura",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "num_bdo": {
+          "name": "num_bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descrizione": {
+          "name": "descrizione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stato_verbale": {
+          "name": "stato_verbale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore": {
+          "name": "fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roi": {
+          "name": "roi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_firma_roi": {
+          "name": "data_firma_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

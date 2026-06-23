@@ -1,0 +1,2930 @@
+{
+ "meta": {
+  "cig": "B313D0710B",
+  "contratto": "SISS L2 - ctr 7/26",
+  "odag": "2026330007",
+  "generato": "2026-06-18",
+  "contract_date": "2026-02-11",
+  "valid_to": "2029-02-10",
+  "months": 36
+ },
+ "fornitori_filter": [
+  "Intellera",
+  "Deloitte",
+  "Gellify",
+  "PGMD",
+  "Accenture"
+ ],
+ "rti": {
+  "ceiling": 24608534.75,
+  "partners": [
+   {
+    "name": "Intellera",
+    "pct": 0.65,
+    "quota": 15995547.59,
+    "impegnato": 3436113.72
+   },
+   {
+    "name": "Deloitte",
+    "pct": 0.2,
+    "quota": 4921706.95,
+    "impegnato": 444999.9
+   },
+   {
+    "name": "PGMD",
+    "pct": 0.04,
+    "quota": 984341.39,
+    "impegnato": 0.0
+   },
+   {
+    "name": "Accenture",
+    "pct": 0.1,
+    "quota": 2460853.48,
+    "impegnato": 0.0
+   },
+   {
+    "name": "Gellify",
+    "pct": 0.01,
+    "quota": 246085.35,
+    "impegnato": 0.0
+   }
+  ],
+  "tot_impegnato": 3881113.62,
+  "erosione_2026": 3869005.02
+ },
+ "quota_val": {
+  "Intellera": 15995547.59,
+  "Deloitte": 4921706.95,
+  "PGMD": 984341.39,
+  "Accenture": 2460853.48,
+  "Gellify": 246085.35
+ },
+ "timeline": {
+  "mesi": [
+   "Gen",
+   "Feb",
+   "Mar",
+   "Apr",
+   "Mag",
+   "Giu",
+   "Lug",
+   "Ago",
+   "Set",
+   "Ott",
+   "Nov",
+   "Dic"
+  ],
+  "revenue_2026": [
+   64877.35,
+   64877.35,
+   64877.35,
+   429412.97,
+   439405.59,
+   462857.73,
+   376481.65,
+   319185.55,
+   319185.55,
+   331876.55,
+   331876.55,
+   664090.85
+  ],
+  "consuntivazione_2026": [
+   64877.35,
+   64877.35,
+   64877.35,
+   278643.01,
+   293460.65,
+   707356.1,
+   305728.98,
+   210767.72,
+   531831.19,
+   210767.72,
+   210767.72,
+   925049.91
+  ],
+  "anno": 2026
+ },
+ "interventi": [
+  {
+   "numero_if": "20260330",
+   "titolo": "SIMM_L4_4.1.2.6-Prevenzione a tutela della persona e negli Ambienti di Lavoro",
+   "bdo": "2026330508",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 615487.95,
+   "revenue_2026": 615487.95,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    68387.55,
+    68387.55,
+    68387.55,
+    68387.55,
+    68387.55,
+    68387.55,
+    68387.55,
+    68387.55,
+    68387.55
+   ],
+   "data_assegnazione": "2026-02-26",
+   "data_inizio": "2026-04-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Alessandro Camino",
+   "ref_fornitore": "Mattia Stefano",
+   "ambito": "Prevenzione",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "SI",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260323",
+   "titolo": "SIMM_L2_4.1.2.2-Accreditamento e anagrafi socio sanitaria e delle strutture ",
+   "bdo": "2026330515",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 370655.94,
+   "revenue_2026": 370655.94,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    41183.99,
+    41183.99,
+    41183.99,
+    41183.99,
+    41183.99,
+    41183.99,
+    41183.99,
+    41183.99,
+    41183.99
+   ],
+   "data_assegnazione": "2026-02-26",
+   "data_inizio": "2026-03-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Mazzola Maria Elena",
+   "ref_fornitore": "Mattia Stefano",
+   "ambito": "Anagrafe Sanitaria",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "SI",
+   "pdc": "ko",
+   "v_apertura": "prog",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260321",
+   "titolo": "SIMM_L2_4.1.2.4-Domanda socio-sanitaria",
+   "bdo": "2026330513",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 341253.67,
+   "revenue_2026": 341253.67,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    37917.07,
+    37917.07,
+    37917.07,
+    37917.07,
+    37917.07,
+    37917.07,
+    37917.07,
+    37917.07,
+    37917.07
+   ],
+   "data_assegnazione": "2026-02-26",
+   "data_inizio": "2026-03-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Renzo Parravicini",
+   "ref_fornitore": "Mattia Stefano",
+   "ambito": "Domanda socio-sanitaria",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "SI",
+   "pdc": "ko",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260307",
+   "titolo": "SIMM_L2_4.1.2.5-Economico Finanziario, Entrate e Tributi",
+   "bdo": "2026330505",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 332214.37,
+   "revenue_2026": 0.0,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": "2026-02-26",
+   "data_inizio": "2026-03-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Emanuela Manfredi",
+   "ref_fornitore": "Alessio Saccullo",
+   "ambito": "Altro",
+   "fornitore": "Deloitte",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "SI",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260533",
+   "titolo": "Supporto al Demand Management - Servizi al Welfare Territoriale",
+   "bdo": "2025330722",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 272630.07,
+   "revenue_2026": 272630.08,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    30292.23,
+    30292.23,
+    30292.23,
+    30292.23,
+    30292.23,
+    30292.23,
+    30292.23,
+    30292.23,
+    30292.23
+   ],
+   "data_assegnazione": "2026-03-23",
+   "data_inizio": "2026-04-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Paola Palmieri",
+   "ref_fornitore": "Simona Bassini",
+   "ambito": "Domanda socio-sanitaria",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A consumo",
+   "attivazione": "NO",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "prog",
+   "bef": "ok",
+   "azione": null
+  },
+  {
+   "numero_if": "20260978",
+   "titolo": "Analisi dati e reportistica di monitoraggio – Servizi RRP",
+   "bdo": null,
+   "has_bo": false,
+   "stato": "non elaborato",
+   "importo": 258724.13,
+   "revenue_2026": 0.0,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": "2026-05-29",
+   "data_inizio": "2026-06-15",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Agnese Ciancio",
+   "ref_fornitore": "Elisa Schenone",
+   "ambito": "Accoglienza, Servizi al cittadino, RRP e CCR",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": null,
+   "attivazione": null,
+   "pdc": "nd",
+   "v_apertura": "nd",
+   "v_sal": "nd",
+   "bef": "nd",
+   "azione": null
+  },
+  {
+   "numero_if": "20260695",
+   "titolo": "Supporto al demand management nell'evoluzione digitale delle reti di patologia",
+   "bdo": null,
+   "has_bo": false,
+   "stato": "non elaborato",
+   "importo": 253511.09,
+   "revenue_2026": 253511.09,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    53599.54,
+    25032.08,
+    25032.08,
+    25004.58,
+    25004.58,
+    25004.58,
+    24944.55,
+    24944.55,
+    24944.55
+   ],
+   "data_assegnazione": "2026-04-10",
+   "data_inizio": "2026-04-16",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Claudia Marchiselli",
+   "ref_fornitore": "Riccardo Santolisier",
+   "ambito": "Servizi clinici generalisti e specialistici",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": null,
+   "attivazione": "NO",
+   "pdc": "nd",
+   "v_apertura": "nd",
+   "v_sal": "nd",
+   "bef": "nd",
+   "azione": "rifare e ricaricare nuova IF a corpo. shiftare i costi sostenuti e ristrutturare le milestone."
+  },
+  {
+   "numero_if": "20260489",
+   "titolo": "Supporto alla definizione del Piano Strategico di Sanità Digitale",
+   "bdo": "2026330710",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 182600.48,
+   "revenue_2026": 182600.48,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    30433.41,
+    30433.41,
+    30433.41,
+    15216.71,
+    15216.71,
+    15216.71,
+    15216.71,
+    15216.71,
+    15216.71
+   ],
+   "data_assegnazione": "2026-04-01",
+   "data_inizio": "2026-04-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Elisa Ivana Giunti",
+   "ref_fornitore": "Marco Corbella",
+   "ambito": "Linee guida per l'indirizzo dei sistemi informativi degli Enti SSR",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A corpo",
+   "attivazione": "NO",
+   "pdc": "ko",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260532",
+   "titolo": "HERM Lomb Piattaforma regionale per la gestione del rischio clinico e audit, supporto alle attività di Gestione e alle attività di evolutiva funzionale",
+   "bdo": "2026330782",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 172196.81,
+   "revenue_2026": 172196.81,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    19175.06,
+    19175.06,
+    19175.06,
+    19175.06,
+    19175.06,
+    19175.06,
+    19048.81,
+    19048.81,
+    19048.81
+   ],
+   "data_assegnazione": "2026-03-23",
+   "data_inizio": "2026-04-15",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Emanuela Manfredi",
+   "ref_fornitore": "Valeria Montinari",
+   "ambito": "Prevenzione",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone + A corpo",
+   "attivazione": "NO",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "ok",
+   "bef": "ok",
+   "azione": null
+  },
+  {
+   "numero_if": "20260487",
+   "titolo": "Supporto alla Conservazione Digitale a Norma",
+   "bdo": "2026330779",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 165018.32,
+   "revenue_2026": 152909.8,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    18335.37,
+    18335.37,
+    16605.58,
+    16605.58,
+    16605.58,
+    16605.58,
+    16605.58,
+    16605.58,
+    16605.58
+   ],
+   "data_assegnazione": "2026-03-17",
+   "data_inizio": "2026-04-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Andrea Corsini",
+   "ref_fornitore": "Mattia Stefano",
+   "ambito": "Dematerializzazione prescrizioni e certificati",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "NO",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "prog",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260716",
+   "titolo": "Affidamento di servizi specialistici per l’analisi e il monitoraggio delle performance dei servizi di pagamento e ciclo passivo integrato",
+   "bdo": "2026330843",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 145913.3,
+   "revenue_2026": 145913.3,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    48462.05,
+    12115.51,
+    12115.51,
+    12115.51,
+    12115.51,
+    12115.51,
+    12291.23,
+    12291.23,
+    12291.23
+   ],
+   "data_assegnazione": "2026-04-14",
+   "data_inizio": "2026-04-20",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Emanuela Manfredi",
+   "ref_fornitore": "Carla Zedda",
+   "ambito": "Economico Finanziario, Entrate e Tributi",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A corpo",
+   "attivazione": "NO",
+   "pdc": "prog",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260801",
+   "titolo": "PNRR M6 C2 1.3.2 | M6C2 I1.3.2 Infrastruttura tecnologica del Ministero della salute e analisi dei dati, modello predittivo per la vigilanza LEA. Flussi SIAP e SIOC: servizi di supporto strategico e governance per la qualità e il potenziamento il livello di interoperabilità dei dati in ottica FSE 2.0 (PNRR M6 C2 1.3.1 FSE 2.0) | CUP E81H21000040006",
+   "bdo": "2026330968",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 142689.0,
+   "revenue_2026": 142689.0,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    47563.0,
+    47563.0,
+    47563.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": "2026-04-24",
+   "data_inizio": "2026-04-27",
+   "data_fine": "2026-06-30",
+   "ref_aria": "Elena Parisi",
+   "ref_fornitore": "Carla Maria Zedda",
+   "ambito": "FSE e Presa in Carico",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A corpo",
+   "attivazione": "NO",
+   "pdc": "ko",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260488",
+   "titolo": "Supporto nella stesura delle Linee Guida per la gestione dei processi interni degli Enti Sanitari in caso di disservizi dei sistemi informativi aziendali",
+   "bdo": "2026330708",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 121553.26,
+   "revenue_2026": 121553.26,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    20575.91,
+    20575.91,
+    7054.81,
+    7054.81,
+    7054.81,
+    7054.81,
+    17394.07,
+    17394.07,
+    17394.07
+   ],
+   "data_assegnazione": "2026-04-01",
+   "data_inizio": "2026-04-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Elisa Ivana Giunti",
+   "ref_fornitore": "Marco Corbella",
+   "ambito": "Linee guida per l'indirizzo dei sistemi informativi degli Enti SSR",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A corpo",
+   "attivazione": "NO",
+   "pdc": "ko",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260318",
+   "titolo": "Supporto eLegere Welfare e Analisi della Gestione Fase Esecutiva PECP",
+   "bdo": "2026330715",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 96261.03,
+   "revenue_2026": 96261.03,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    10695.67,
+    10695.67,
+    10695.67,
+    10695.67,
+    10695.67,
+    10695.67,
+    10695.67,
+    10695.67,
+    10695.67
+   ],
+   "data_assegnazione": "2026-02-26",
+   "data_inizio": "2026-04-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Cristina Pinciroli",
+   "ref_fornitore": "Mattia Stefano",
+   "ambito": "Supporto per gare",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "NO",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260977",
+   "titolo": "Supporto Attività di Business Analysis e Design - Servizi RRP",
+   "bdo": null,
+   "has_bo": false,
+   "stato": "non elaborato",
+   "importo": 68049.31,
+   "revenue_2026": 0.0,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": "2026-05-29",
+   "data_inizio": "2026-06-15",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Agnese Ciancio",
+   "ref_fornitore": "Filippo Bellingeri",
+   "ambito": "Accoglienza, Servizi al cittadino, RRP e CCR",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": null,
+   "attivazione": null,
+   "pdc": "nd",
+   "v_apertura": "nd",
+   "v_sal": "nd",
+   "bef": "nd",
+   "azione": null
+  },
+  {
+   "numero_if": "20260787",
+   "titolo": "Supporto nella progettazione, sviluppo e diffusione del sistema per la gestione digitale del processo di certificazione di idoneità sportiva agonistica",
+   "bdo": "2026331053",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 65157.06,
+   "revenue_2026": 65157.06,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    32578.53,
+    32578.53,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": null,
+   "data_inizio": "2026-05-11",
+   "data_fine": "2026-06-30",
+   "ref_aria": "Simone Schiatti",
+   "ref_fornitore": "Giulia Galimberti",
+   "ambito": "Prevenzione",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A corpo",
+   "attivazione": "NO",
+   "pdc": "ko",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260874",
+   "titolo": "Supporto in ambito sanitario alle attività del Ciclo Passivo Integrato (CPI)",
+   "bdo": "2026331026",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 58892.82,
+   "revenue_2026": 0.0,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": "2026-05-08",
+   "data_inizio": "2026-05-15",
+   "data_fine": "2026-07-31",
+   "ref_aria": "Emanuela Manfredi",
+   "ref_fornitore": "Alessio Saccullo",
+   "ambito": "Altro",
+   "fornitore": "Deloitte",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "NO",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260786",
+   "titolo": "Supporto operativo all'area SISTEMA DI GESTIONE DEL PERSONALE DEL SSR REGIONALE",
+   "bdo": "2026330957",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 55965.0,
+   "revenue_2026": 55965.0,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    6995.62,
+    6995.62,
+    6995.62,
+    6995.62,
+    6995.62,
+    6995.62,
+    6995.62,
+    6995.62
+   ],
+   "data_assegnazione": "2026-04-24",
+   "data_inizio": "2026-05-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Marco D'Amico",
+   "ref_fornitore": "Maria Carla Zedda",
+   "ambito": "Formazione, Organizzazione e Personale",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "NO",
+   "pdc": "ko",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260319",
+   "titolo": "SIMM_L2_4.1.2.3-Dematerializzazione prescrizioni e certificati ",
+   "bdo": "2026330502",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 43870.9,
+   "revenue_2026": 43870.9,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    4874.55,
+    4874.55,
+    4874.55,
+    4874.55,
+    4874.55,
+    4874.55,
+    4874.55,
+    4874.55,
+    4874.55
+   ],
+   "data_assegnazione": "2026-02-26",
+   "data_inizio": "2026-04-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Giuseppina Caruso",
+   "ref_fornitore": "Mattia Stefano",
+   "ambito": "Dematerializzazione prescrizioni e certificati",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "SI",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "prog",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260709",
+   "titolo": "Analisi, Inserimento e Coordinamento Dati per l’alimentazione della Piattaforma tecnologica dell’Osservatorio Nazionale Autismo",
+   "bdo": "2026330841",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 31494.37,
+   "revenue_2026": 31494.37,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    10498.12,
+    10498.12,
+    10498.12,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": "2026-04-15",
+   "data_inizio": "2026-04-20",
+   "data_fine": "2026-06-30",
+   "ref_aria": "Elena Parisi",
+   "ref_fornitore": "Maria Carla Zedda",
+   "ambito": "Domanda socio-sanitaria",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A corpo",
+   "attivazione": "NO",
+   "pdc": "ko",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260834",
+   "titolo": "Supporto all'adozione delle Linee Guida sulla Cartella Sociale Informatizzata presso gli Enti del territorio",
+   "bdo": "2026331003",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 29986.22,
+   "revenue_2026": 0.0,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": "2026-05-04",
+   "data_inizio": "2026-05-08",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Emanuela Manfredi",
+   "ref_fornitore": "Ilaria Pacini",
+   "ambito": "Altro",
+   "fornitore": "Deloitte",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A corpo",
+   "attivazione": "NO",
+   "pdc": "ko",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260490",
+   "titolo": "Supporto alla stesura e aggiornamento della documentazione relativa agli scenari di integrazione (DC-SCEN) ed alle Linee Guida (DC)",
+   "bdo": "2026330924",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 27795.03,
+   "revenue_2026": 55590.06,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    18530.02,
+    18530.02,
+    18530.02,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": "2026-04-01",
+   "data_inizio": "2026-04-10",
+   "data_fine": "2026-06-30",
+   "ref_aria": "Elisa Ivana Giunti",
+   "ref_fornitore": "Marco Corbella",
+   "ambito": "Linee guida per l'indirizzo dei sistemi informativi degli Enti SSR",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A consumo",
+   "attivazione": "NO",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260873",
+   "titolo": "Supporto all’adozione e diffusione negli Enti del territorio lombardo delle evoluzioni del Portale Pagamenti di Regione Lombardia",
+   "bdo": "2026331030",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 23906.49,
+   "revenue_2026": 0.0,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "data_assegnazione": "2026-05-08",
+   "data_inizio": "2026-05-15",
+   "data_fine": "2026-06-30",
+   "ref_aria": "Emanuela Manfredi",
+   "ref_fornitore": "Alessio Saccullo",
+   "ambito": "Altro",
+   "fornitore": "Deloitte",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "NO",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "ko",
+   "bef": "ko",
+   "azione": null
+  },
+  {
+   "numero_if": "20260543",
+   "titolo": "Progetto SHIELD: supporto per il periodo aprile 2026 – dicembre 2026",
+   "bdo": "2026330766",
+   "has_bo": true,
+   "stato": "approvato",
+   "importo": 5287.0,
+   "revenue_2026": 5287.0,
+   "rev_mesi": [
+    0.0,
+    0.0,
+    0.0,
+    587.44,
+    587.44,
+    587.44,
+    587.44,
+    587.44,
+    587.44,
+    587.44,
+    587.44,
+    587.44
+   ],
+   "data_assegnazione": "2026-03-25",
+   "data_inizio": "2026-04-01",
+   "data_fine": "2026-12-31",
+   "ref_aria": "Paolo Tacchino",
+   "ref_fornitore": "Sara Yacoub",
+   "ambito": "Prevenzione",
+   "fornitore": "Intellera",
+   "subappalto": false,
+   "subappaltatore": [],
+   "costo_subappalto": 0.0,
+   "modalita_if": "A canone",
+   "attivazione": "NO",
+   "pdc": "ok",
+   "v_apertura": "ok",
+   "v_sal": "ok",
+   "bef": "ok",
+   "azione": null
+  }
+ ],
+ "milestones": [
+  {
+   "if": "20260978",
+   "costo": 14338.82,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260978",
+   "costo": 39749.3,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260978",
+   "costo": 33316.67,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260978",
+   "costo": 66986.65,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260978",
+   "costo": 31208.02,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260978",
+   "costo": 73124.67,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260977",
+   "costo": 21242.2,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260977",
+   "costo": 21874.79,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260977",
+   "costo": 24932.32,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260695",
+   "costo": 46364.76,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260695",
+   "costo": 46282.25,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260695",
+   "costo": 46628.34,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260695",
+   "costo": 19504.92,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260695",
+   "costo": 19504.92,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260695",
+   "costo": 19504.92,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260695",
+   "costo": 9226.56,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260695",
+   "costo": 9226.56,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260695",
+   "costo": 8700.4,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260695",
+   "costo": 19504.92,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260695",
+   "costo": 9062.54,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260787",
+   "costo": 65157.06,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260873",
+   "costo": 23906.49,
+   "forn": "Deloitte",
+   "mod": "A_canone",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260874",
+   "costo": 58892.82,
+   "forn": "Deloitte",
+   "mod": "A_canone",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260834",
+   "costo": 29986.22,
+   "forn": "Deloitte",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260801",
+   "costo": 42119.0,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260801",
+   "costo": 100570.0,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260490",
+   "costo": 4744.44,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260490",
+   "costo": 9344.43,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260490",
+   "costo": 13706.16,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260716",
+   "costo": 36346.54,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260716",
+   "costo": 36346.54,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260716",
+   "costo": 36346.54,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260716",
+   "costo": 36873.7,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260532",
+   "costo": 59954.32,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260532",
+   "costo": 30428.99,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260532",
+   "costo": 41225.04,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260532",
+   "costo": 13655.74,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260532",
+   "costo": 13655.74,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260532",
+   "costo": 13276.98,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260533",
+   "costo": 11386.71,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260533",
+   "costo": 66422.48,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260533",
+   "costo": 37377.72,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260533",
+   "costo": 40492.53,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260533",
+   "costo": 41513.85,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260533",
+   "costo": 35583.3,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260533",
+   "costo": 39853.49,
+   "forn": "Intellera",
+   "mod": "A_consumo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260489",
+   "costo": 91300.24,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260489",
+   "costo": 45650.12,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260489",
+   "costo": 45650.12,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260488",
+   "costo": 41151.82,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260488",
+   "costo": 28219.24,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q3"
+  },
+  {
+   "if": "20260488",
+   "costo": 52182.2,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260323",
+   "costo": 370655.94,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260321",
+   "costo": 341253.67,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260319",
+   "costo": 27265.37,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260319",
+   "costo": 16605.54,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260786",
+   "costo": 55965.0,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260709",
+   "costo": 15574.14,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260709",
+   "costo": 15920.23,
+   "forn": "Intellera",
+   "mod": "A_corpo",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260318",
+   "costo": 41699.97,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260318",
+   "costo": 30838.86,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260318",
+   "costo": 23722.2,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260487",
+   "costo": 66422.52,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260487",
+   "costo": 83027.7,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260487",
+   "costo": 3459.58,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q2"
+  },
+  {
+   "if": "20260543",
+   "costo": 2883.82,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": null
+  },
+  {
+   "if": "20260543",
+   "costo": 2403.18,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": null
+  },
+  {
+   "if": "20260330",
+   "costo": 205162.65,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260330",
+   "costo": 410325.3,
+   "forn": "Intellera",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260307",
+   "costo": 149143.41,
+   "forn": "Deloitte",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260307",
+   "costo": 16963.74,
+   "forn": "Deloitte",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  },
+  {
+   "if": "20260307",
+   "costo": 166107.15,
+   "forn": "Deloitte",
+   "mod": "A_canone",
+   "quarter": "2026-Q4"
+  }
+ ],
+ "effort_rows": [
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 20.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 14.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 5.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 15.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 15.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 20.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 20.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 20.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 20.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 20.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 54.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 25.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 5.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 18.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 18.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 23.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 23.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 55.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 55.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 55.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 47.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 27.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 5.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 14.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 14.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 30.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 31.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 62.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 62.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 62.0,
+   "if": "20260978",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 2.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 15.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 15.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 20.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 18.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 1.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 15.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 15.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 22.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 20.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 2.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 15.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 15.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 26.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 26.0,
+   "if": "20260977",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 53.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 40.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 12.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 27.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 27.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 54.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 40.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 12.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 27.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 26.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 53.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 40.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 13.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 27.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 27.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 37.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 37.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 37.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 2.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 16.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 10.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 2.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 16.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 10.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 1.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 16.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 10.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 37.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 1.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 14.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 14.0,
+   "if": "20260695",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 52.0,
+   "if": "20260787",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 52.0,
+   "if": "20260787",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 52.0,
+   "if": "20260787",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 42.0,
+   "if": "20260787",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 12.0,
+   "if": "20260787",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 51.0,
+   "if": "20260873",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 22.0,
+   "if": "20260873",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 12.0,
+   "if": "20260873",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Project Manager",
+   "gg": 5.0,
+   "if": "20260873",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 5.0,
+   "if": "20260873",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 80.0,
+   "if": "20260874",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 50.0,
+   "if": "20260874",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 43.0,
+   "if": "20260874",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Project Manager",
+   "gg": 25.0,
+   "if": "20260874",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 12.0,
+   "if": "20260874",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 11.0,
+   "if": "20260874",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 17.5,
+   "if": "20260834",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 28.0,
+   "if": "20260834",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 49.0,
+   "if": "20260834",
+   "forn": "Deloitte"
+  },
+  {
+   "figura": "S1 Team mix Supporto Strategico",
+   "gg": 154.0,
+   "if": "20260801",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "S4 Team mix Governance",
+   "gg": 356.0,
+   "if": "20260801",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 27.0,
+   "if": "20260490",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 52.0,
+   "if": "20260490",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 9.0,
+   "if": "20260490",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 30.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 33.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 30.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 3.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 30.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 33.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 30.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 3.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 30.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 33.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 30.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 3.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 30.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 33.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 30.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 4.0,
+   "if": "20260716",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 123.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 127.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 45.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 50.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 54.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 54.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 27.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 18.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 24.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 16.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 6.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 8.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 24.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 16.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 6.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 8.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 25.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "gg": 17.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 4.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 8.0,
+   "if": "20260532",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 157.5001,
+   "if": "20260487",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 157.5,
+   "if": "20260487",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 78.7501,
+   "if": "20260487",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 27.0,
+   "if": "20260533",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 157.5,
+   "if": "20260533",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 108.0,
+   "if": "20260533",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 117.0,
+   "if": "20260533",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 157.5,
+   "if": "20260533",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 135.0,
+   "if": "20260533",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 94.5,
+   "if": "20260533",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 10.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 36.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 60.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 76.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 152.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 5.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 18.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 30.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 38.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 76.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 5.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 18.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 30.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 38.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 76.0,
+   "if": "20260489",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 4.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 16.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 48.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 34.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 34.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 6.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 8.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 20.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 32.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 32.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 8.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Manager",
+   "gg": 12.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 44.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Junior",
+   "gg": 60.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "gg": 60.0,
+   "if": "20260488",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 76.5,
+   "if": "20260319",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Program Manager",
+   "gg": 63.0,
+   "if": "20260319",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 162.0,
+   "if": "20260786",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 45.0,
+   "if": "20260709",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Health Care Consultant Senior",
+   "gg": 46.0,
+   "if": "20260709",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "gg": 117.0,
+   "if": "20260318",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Program Manager",
+   "gg": 117.0,
+   "if": "20260318",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Strategy Consultant",
+   "gg": 45.0,
+   "if": "20260318",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Analista TBR Senior",
+   "gg": 5.0,
+   "if": "20260543",
+   "forn": "Intellera"
+  },
+  {
+   "figura": "Analista TBR Senior",
+   "gg": 5.0,
+   "if": "20260307",
+   "forn": "Deloitte"
+  }
+ ],
+ "controlli": [
+  {
+   "sev": "WARN",
+   "tipo": "Costo riga incoerente",
+   "if": "20260532",
+   "dett": "Linea 2: Q(8,5) x CU(3.579,88) = 30.428,98 <> Costo Complessivo 30.428,99"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "Costo riga incoerente",
+   "if": "20260532",
+   "dett": "Linea 3: Q(8,5) x CU(4.850,00) = 41.225,00 <> Costo Complessivo 41.225,04"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "Importo IF <> somma fornitura",
+   "if": "20260487",
+   "dett": "Importo Intervento 165.018,32 | Somma Costi Complessivi 152.909,80 | Delta 12.108,53"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "Importo IF <> somma fornitura",
+   "if": "20260307",
+   "dett": "Importo Intervento 332.214,37 | Somma Costi Complessivi 332.214,30 | Delta 0,07"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260695",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260787",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260873",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260874",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260834",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260801",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260490",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260716",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260532",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260487",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260533",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260489",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260488",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260323",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260321",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260330",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260319",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260786",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260709",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  },
+  {
+   "sev": "WARN",
+   "tipo": "GG/Uomo non numerico",
+   "if": "20260318",
+   "dett": "Risorsa 'Fine': valore 'Data fine'"
+  }
+ ],
+ "seniority": [
+  {
+   "figura": "Health-Care Consultant Junior",
+   "code": "HCJ",
+   "gg": 1570,
+   "tariffa": 263.58
+  },
+  {
+   "figura": "Health-Care Consultant Senior",
+   "code": "HCS",
+   "gg": 1284,
+   "tariffa": 346.09
+  },
+  {
+   "figura": "Business Consultant Junior",
+   "code": "BCJ",
+   "gg": 1144,
+   "tariffa": 197.69
+  },
+  {
+   "figura": "Health-Care Consultant Manager",
+   "code": "HCM",
+   "gg": 1071,
+   "tariffa": 421.73
+  },
+  {
+   "figura": "Strategy Consultant",
+   "code": "SC",
+   "gg": 472,
+   "tariffa": 527.16
+  },
+  {
+   "figura": "Business Consultant Manager",
+   "code": "BCM",
+   "gg": 416,
+   "tariffa": 356.41
+  },
+  {
+   "figura": "S4 Team mix Governance",
+   "code": "S4 Team mix Governance",
+   "gg": 356,
+   "tariffa": null
+  },
+  {
+   "figura": "Business Consultant Senior",
+   "code": "BCS",
+   "gg": 355,
+   "tariffa": 267.02
+  },
+  {
+   "figura": "Program Manager",
+   "code": "PROM",
+   "gg": 180,
+   "tariffa": 263.58
+  },
+  {
+   "figura": "S1 Team mix Supporto Strategico",
+   "code": "S1 Team mix Supporto Strategico",
+   "gg": 154,
+   "tariffa": null
+  },
+  {
+   "figura": "Project Manager",
+   "code": "PRJM",
+   "gg": 30,
+   "tariffa": 207.43
+  },
+  {
+   "figura": "Analista TBR Senior",
+   "code": "Analista TBR Senior",
+   "gg": 10,
+   "tariffa": null
+  }
+ ],
+ "modalita": [
+  {
+   "mod": "A_corpo",
+   "n": 39,
+   "costo": 1340266.68
+  },
+  {
+   "mod": "A_canone",
+   "n": 18,
+   "costo": 1890811.95
+  },
+  {
+   "mod": "A_consumo",
+   "n": 10,
+   "costo": 300425.1
+  }
+ ]
+}

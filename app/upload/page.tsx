@@ -1,6 +1,7 @@
 'use client';
 import React, { useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 function detectKind(name: string): string {
   const n = name.toLowerCase();
@@ -24,6 +25,7 @@ type Result = {
 };
 
 export default function UploadPage() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [token, setToken] = useState('');
   const [force, setForce] = useState(false);
@@ -80,6 +82,10 @@ export default function UploadPage() {
       const data: Result = await res.json();
       setResult(data);
       setProgress(100);
+      // The dashboard renders from SSR data and never refetches on its own;
+      // invalidate the Next.js Router Cache so navigating back to it shows the
+      // freshly-uploaded values instead of a cached (stale) render.
+      if (data.ok) router.refresh();
     } catch {
       setResult({ ok: false, error: 'Errore di rete durante l’upload' });
     } finally {
@@ -208,7 +214,12 @@ export default function UploadPage() {
                 </div>
               ))}
               <div style={{ marginTop: 12 }}>
-                <Link href="/dashboard" className="hdr-link" style={{ color: 'var(--petrol-d)' }}>
+                <Link
+                  href="/dashboard"
+                  className="hdr-link"
+                  style={{ color: 'var(--petrol-d)' }}
+                  onClick={() => router.refresh()}
+                >
                   → Vai alla Dashboard aggiornata
                 </Link>
               </div>

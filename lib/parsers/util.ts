@@ -3,8 +3,11 @@ import type { DocStatus } from '../types';
 
 export type Workbook = XLSX.WorkBook;
 
-export function readWorkbook(buf: ArrayBuffer | Buffer): Workbook {
-  return XLSX.read(buf, { type: 'buffer', cellDates: true });
+export function readWorkbook(buf: ArrayBuffer | Buffer | Uint8Array): Workbook {
+  // Normalize to a byte array and read with type 'array' so the same code path
+  // works both server-side (Buffer) and in the browser (ArrayBuffer/Uint8Array).
+  const data = buf instanceof Uint8Array ? buf : new Uint8Array(buf as ArrayBuffer);
+  return XLSX.read(data, { type: 'array', cellDates: true });
 }
 
 // Read a sheet as an array of row-objects keyed by the header row.

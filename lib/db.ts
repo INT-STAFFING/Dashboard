@@ -5,10 +5,10 @@ import * as schema from './schema';
 // Neon serverless Postgres connection string. The Vercel ⇄ Neon integration
 // exposes it as DATABASE_URL (and POSTGRES_URL for backwards compatibility).
 export const connectionString =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.DATABASE_URL_UNPOOLED ||
-  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.DASH_DATABASE_URL ||
+  process.env.DASH_POSTGRES_URL ||
+  process.env.DASH_DATABASE_URL_UNPOOLED ||
+  process.env.DASH_POSTGRES_URL_NON_POOLING ||
   '';
 
 // Two modes:

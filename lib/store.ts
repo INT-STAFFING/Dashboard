@@ -289,9 +289,17 @@ export async function upsertInterventiFromUpload(
     } else if (existing.edited_manually && !force) {
       skipped += 1;
     } else {
+      // IF_ARIA / Aggregatore files don't carry the monthly revenue profile
+      // (it comes from a separate "cruscotto revenue"), so the parsers emit
+      // zeros. Don't let an upload wipe revenue that's already on record:
+      // keep the existing values when the incoming record has none.
+      const incHasRevenue =
+        inc.revenue_2026 > 0 || (inc.rev_mesi && inc.rev_mesi.some((v) => v > 0));
       // preserve manual-edit flag metadata when not forcing
       await rawUpdate(inc.numero_if, {
         ...inc,
+        revenue_2026: incHasRevenue ? inc.revenue_2026 : existing.revenue_2026,
+        rev_mesi: incHasRevenue ? inc.rev_mesi : existing.rev_mesi,
         edited_manually: force ? false : existing.edited_manually,
         last_edited_at: existing.last_edited_at,
         last_edited_by: existing.last_edited_by,

@@ -39,15 +39,43 @@ export default function UploadPage() {
     if (!file) return;
     setBusy(true);
     setResult(null);
-    setProgress(15);
+    setProgress(10);
     try {
-      const fd = new FormData();
-      fd.append('file', file);
+      // Parse the spreadsheet in the browser and send only the extracted
+      // records as JSON. This keeps the request tiny and sidesteps the
+      // serverless request-body size limit (~4.5MB) that rejects large files.
+      const { parseFile } = await import('@/lib/parsers');
+      setProgress(30);
+      const ab = await file.arrayBuffer();
+      let parsed;
+      try {
+        parsed = parseFile(file.name, ab);
+      } catch {
+        setResult({ ok: false, error: 'File non leggibile: assicurati che sia un Excel valido (.xlsx/.xlsm).' });
+        return;
+      }
+      if (parsed.kind === 'unknown') {
+        setResult({
+          ok: false,
+          error:
+            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore.',
+        });
+        return;
+      }
+      setProgress(55);
       const qs = new URLSearchParams();
       if (token) qs.set('token', token);
       if (force) qs.set('force', 'true');
-      setProgress(45);
-      const res = await fetch('/api/upload?' + qs.toString(), { method: 'POST', body: fd });
+      const res = await fetch('/api/upload?' + qs.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: parsed.kind,
+          interventi: parsed.interventi,
+          seniority: parsed.seniority,
+          filename: file.name,
+        }),
+      });
       setProgress(85);
       const data: Result = await res.json();
       setResult(data);

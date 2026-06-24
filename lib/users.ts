@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { getDb, hasDB } from './db';
+import { getDb, hasDB, ensureSchema } from './db';
 import { users as usersTable } from './schema';
 import { hashPassword } from './auth/password';
 import type { Role, SafeUser, UserStatus } from './types';
@@ -82,6 +82,9 @@ let seedPromise: Promise<void> | null = null;
 async function doSeed(): Promise<void> {
   const nowIso = new Date().toISOString();
   if (hasDB) {
+    // Make sure the tables exist before touching them (fresh Neon DB, no
+    // manual migration). Without this every auth call would 500.
+    await ensureSchema();
     const existing = await getDb()
       .select()
       .from(usersTable)

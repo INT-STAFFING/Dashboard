@@ -50,6 +50,8 @@ export default function Dashboard({
 
   const IFs = useMemo(() => filterInterventi(interventi, filters), [interventi, filters]);
   const viewTot = IFs.reduce((s, i) => s + i.importo, 0);
+  // RTI quota panels are meaningful only for a single fornitore in scope.
+  const singleForn = filters.forn?.length === 1 ? filters.forn[0] : undefined;
 
   const showToast = useCallback((msg: string, bad = false) => {
     setToast({ msg, bad });
@@ -274,13 +276,13 @@ export default function Dashboard({
       />
 
       <main className="wrap">
-        {tab === 0 && <OverviewPanel IFs={IFs} rti={rti} quotaVal={quotaVal} filtersForn={filters.forn} />}
+        {tab === 0 && <OverviewPanel IFs={IFs} rti={rti} quotaVal={quotaVal} filtersForn={singleForn} />}
         {tab === 1 && (
           <RTIPanel
             IFs={IFs}
             rti={rti}
             quotaVal={quotaVal}
-            filtersForn={filters.forn}
+            filtersForn={singleForn}
             rtiSel={rtiSel}
             setRtiSel={setRtiSel}
             editMode={editMode}
@@ -296,7 +298,7 @@ export default function Dashboard({
             onDrillMod={(m) => drillTo({ mod: m })}
           />
         )}
-        {tab === 5 && <StatoPanel IFs={IFs} onDrillStato={(s) => drillTo({ stato: s })} />}
+        {tab === 5 && <StatoPanel IFs={IFs} onDrillStato={(s) => drillTo({ stato: [s] })} />}
         {tab === 6 && (
           <RegistroPanel
             IFs={IFs}

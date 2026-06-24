@@ -21,18 +21,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: 'Non autorizzato' }, { status: 403 });
   }
   const { searchParams } = new URL(req.url);
+  // Multi-select dimensions accept repeated/comma-separated query params.
+  const multi = (key: string): string[] | undefined => {
+    const all = searchParams.getAll(key).flatMap((v) => v.split(',')).map((v) => v.trim()).filter(Boolean);
+    return all.length ? all : undefined;
+  };
   const filters: Filters = {
-    forn: searchParams.get('fornitore') || undefined,
-    ref: searchParams.get('ref_aria') || undefined,
-    refint: searchParams.get('ref_fornitore') || undefined,
-    amb: searchParams.get('ambito') || undefined,
+    forn: multi('fornitore'),
+    ref: multi('ref_aria'),
+    refint: multi('ref_fornitore'),
+    amb: multi('ambito'),
+    stato: multi('stato_bo') || multi('stato'),
     att: searchParams.get('attivazione') || undefined,
     mod: searchParams.get('modalita') || undefined,
-    stato: searchParams.get('stato_bo') || searchParams.get('stato') || undefined,
   };
 
   const all = await listInterventi();
-  const hasFilter = Object.values(filters).some(Boolean);
+  const hasFilter = Object.values(filters).some((v) => (Array.isArray(v) ? v.length : Boolean(v)));
   const view = hasFilter ? filterInterventi(all, filters) : all;
   const rti = getRtiConfig();
 

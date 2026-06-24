@@ -1,0 +1,52 @@
+/* Filter Bar — horizontal live-filtering bar (loaded after globals.css, so
+   these rules win over the legacy .filterbar .wrap layout). */
+.filterbar .fbar{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.fbar-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.fbar-spacer{flex:1 1 auto}
+/* dropdown trigger */
+.fdd{position:relative}
+.fdd-trig{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);border:1px solid var(--line);background:#fff;padding:7px 11px;border-radius:9px;cursor:pointer}
+.fdd-trig:hover{border-color:var(--petrol-l)}
+.fdd-trig:focus-visible{outline:2px solid var(--petrol-l);outline-offset:1px}
+.fdd-trig.on{border-color:var(--petrol);background:var(--petrol-bg)}
+.fdd-trig.on .fdd-lab{font-weight:800;color:var(--petrol-d)}
+.fdd-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;font-size:11px;font-weight:800;color:#fff;background:var(--petrol);border-radius:9px}
+.fdd-caret{font-size:10px;color:var(--muted)}
+/* dropdown popover */
+.fdd-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:230px;max-width:320px;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 16px 40px -16px rgba(10,74,67,.45);padding:8px}
+.fdd-search{width:100%;font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin-bottom:6px;color:var(--ink)}
+.fdd-search:focus{outline:2px solid var(--petrol-l);outline-offset:-1px}
+.fdd-list{max-height:280px;overflow-y:auto;display:flex;flex-direction:column}
+.fdd-opt{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--ink)}
+.fdd-opt:hover{background:var(--line-2)}
+.fdd-opt input{accent-color:var(--petrol);cursor:pointer;width:15px;height:15px;flex:0 0 auto}
+.fdd-optlab{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fdd-optcount{font-size:11px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.fdd-opt.dis{opacity:.42;cursor:not-allowed}
+.fdd-opt.dis:hover{background:none}
+.fdd-none{padding:10px 8px;font-size:12.5px;color:var(--muted)}
+/* inline boolean toggle */
+.ftgl{display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--muted);border:1px solid var(--line);background:#fff;padding:6px 11px 6px 9px;border-radius:9px;cursor:pointer}
+.ftgl:focus-visible{outline:2px solid var(--petrol-l);outline-offset:1px}
+.ftgl-track{position:relative;width:32px;height:18px;border-radius:9px;background:var(--line);transition:background .15s}
+.ftgl-knob{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.ftgl.on{border-color:var(--petrol);color:var(--petrol-d)}
+.ftgl.on .ftgl-track{background:var(--petrol)}
+.ftgl.on .ftgl-knob{transform:translateX(14px)}
+/* more filters */
+.fmore{font-family:inherit;font-size:12.5px;font-weight:600;color:var(--muted);border:1px dashed var(--line);background:#fff;padding:7px 11px;border-radius:9px;cursor:pointer}
+.fmore:hover,.fmore.on{border-color:var(--petrol-l);color:var(--petrol-d)}
+/* live result count */
+.fcount{font-size:13px;color:var(--muted);white-space:nowrap}
+.fcount b{color:var(--petrol-d);font-size:15px}
+/* clear all */
+.fclear{font-family:inherit;font-size:12.5px;font-weight:700;color:var(--bad);border:1px solid var(--line);background:#fff;padding:7px 11px;border-radius:9px;cursor:pointer}
+.fclear:hover{border-color:var(--bad);background:#fdf1ee}
+/* applied-filter pills */
+.fpills{display:flex;flex-wrap:wrap;gap:7px}
+.fpill{display:inline-flex;align-items:center;gap:7px;font-family:inherit;font-size:12px;font-weight:600;color:var(--petrol-d);background:var(--petrol-bg);border:1px solid var(--petrol-l);padding:4px 6px 4px 10px;border-radius:20px;cursor:pointer}
+.fpill:hover{background:#d8ebe7}
+.fpill-x{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--petrol);color:#fff;font-size:13px;line-height:1}
+/* empty state */
+.fempty{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted);background:#fff;border:1px dashed var(--line);border-radius:11px;padding:12px 16px}
+.flink{font-family:inherit;font-size:13px;font-weight:700;color:var(--petrol-d);background:none;border:none;text-decoration:underline;cursor:pointer;padding:0}

@@ -6,9 +6,9 @@ export default {
   dialect: 'postgresql',
   dbCredentials: {
     url:
-      process.env.DATABASE_URL ||
-      process.env.POSTGRES_URL ||
-      process.env.DATABASE_URL_UNPOOLED ||
+      process.env.DASH_DATABASE_URL ||
+      process.env.DASH_POSTGRES_URL ||
+      process.env.DASH_DATABASE_URL_UNPOOLED ||
       '',
   },
 } satisfies Config;

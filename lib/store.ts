@@ -1,5 +1,5 @@
 import { eq, isNull } from 'drizzle-orm';
-import { getDb, hasDB } from './db';
+import { getDb, hasDB, ensureSchema } from './db';
 import { interventi as interventiTable } from './schema';
 import { SEED_INTERVENTI } from './seed';
 import type { DocStatus, Intervento, InterventoInput } from './types';
@@ -142,11 +142,36 @@ const DEFAULTS: Omit<Intervento, 'numero_if' | 'titolo'> = {
   last_edited_by: null,
 };
 
+// On a fresh Neon database the tables are created on first access and the
+// baseline portfolio is loaded once, so the dashboard is never empty after
+// switching from the in-memory store to a persistent DB. Cached per instance.
+let dbReadyPromise: Promise<void> | null = null;
+
+async function ensureDbReady(): Promise<void> {
+  if (!hasDB) return;
+  if (!dbReadyPromise) {
+    dbReadyPromise = (async () => {
+      await ensureSchema();
+      const existing = await getDb().select({ id: interventiTable.id }).from(interventiTable).limit(1);
+      if (existing.length === 0) {
+        for (const i of SEED_INTERVENTI) {
+          await getDb().insert(interventiTable).values(interventoToRow(i)).onConflictDoNothing();
+        }
+      }
+    })().catch((e) => {
+      dbReadyPromise = null; // allow retry on next call
+      throw e;
+    });
+  }
+  return dbReadyPromise;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 export async function listInterventi(): Promise<Intervento[]> {
   if (hasDB) {
+    await ensureDbReady();
     const rows = await getDb()
       .select()
       .from(interventiTable)

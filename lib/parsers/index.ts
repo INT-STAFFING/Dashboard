@@ -3,11 +3,14 @@ import { parseIF } from './parseIF';
 import { parseBEF } from './parseBEF';
 import { parseChiusura } from './parseChiusura';
 import { parseAggregatore } from './parseAggregatore';
+import { parseDashboard } from './parseDashboard';
+import { readWorkbook } from './util';
 
-export type FileKind = 'if' | 'bef' | 'chiusura' | 'aggregatore' | 'unknown';
+export type FileKind = 'if' | 'bef' | 'chiusura' | 'aggregatore' | 'dashboard' | 'unknown';
 
 export function detectKind(filename: string): FileKind {
   const n = filename.toLowerCase();
+  if (n.includes('dashboard')) return 'dashboard';
   if (n.includes('aggregatore')) return 'aggregatore';
   if (n.includes('chiusura')) return 'chiusura';
   if (n.includes('bef')) return 'bef';
@@ -37,9 +40,26 @@ export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOut
       const { seniority, interventi } = parseAggregatore(buf);
       return { kind, seniority, interventi };
     }
-    default:
+    case 'dashboard': {
+      const { seniority, interventi } = parseDashboard(buf);
+      return { kind, seniority, interventi };
+    }
+    default: {
+      // Fall back to content sniffing: the master Dashboard workbook is
+      // identified by its data sheets regardless of how the file is named.
+      try {
+        const wb = readWorkbook(buf);
+        const has = (name: string) => wb.SheetNames.some((s) => s === name);
+        if (has('TIMELINE_REVENUE') && has('DATI')) {
+          const { seniority, interventi } = parseDashboard(wb);
+          return { kind: 'dashboard', seniority, interventi };
+        }
+      } catch {
+        // not a spreadsheet we can read -> report as unknown below
+      }
       return { kind: 'unknown' };
+    }
   }
 }
 
-export { parseIF, parseBEF, parseChiusura, parseAggregatore };
+export { parseIF, parseBEF, parseChiusura, parseAggregatore, parseDashboard };

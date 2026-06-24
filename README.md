@@ -50,7 +50,7 @@ app/
     config/rti/route.ts  PUT parametri RTI
 lib/
   schema.ts  db.ts  store.ts   Drizzle + store (DB o in-memory)
-  parsers/                      parseIF · parseBEF · parseChiusura · parseAggregatore
+  parsers/                      parseIF · parseBEF · parseChiusura · parseAggregatore · parseDashboard
   queries.ts  charts.ts  format.ts
 components/
   Dashboard.tsx  FilterBar.tsx
@@ -105,9 +105,13 @@ API: `POST /api/auth/{register,login,logout}` · `GET /api/me` ·
 
 ## Upload
 
-`POST /api/upload` (multipart, campo `file`). Il tipo è riconosciuto dal nome:
-`IF_ARIA` · `BEF` · `Chiusura` · `Aggregatore`. Protetto da `UPLOAD_SECRET`
-(header `x-upload-secret` o `?token=`). Pagina UI: `/upload`.
+`POST /api/upload` (multipart, campo `file`). Il tipo è riconosciuto dal nome
+(o dal contenuto come fallback): `Dashboard` · `IF_ARIA` · `BEF` · `Chiusura` ·
+`Aggregatore`. Il workbook **Dashboard ARIA SISS** è la fonte della revenue
+mensile (fogli `DATI` + `TIMELINE_REVENUE`); l'upsert è *merge-aware*, quindi un
+file aggiorna solo i campi che effettivamente contiene senza azzerare gli altri
+(es. la revenue non viene persa caricando un IF_ARIA). Protetto da
+`UPLOAD_SECRET` (header `x-upload-secret` o `?token=`). Pagina UI: `/upload`.
 
 ## Deploy su Vercel
 

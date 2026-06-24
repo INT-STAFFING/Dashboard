@@ -32,6 +32,16 @@ export default function Dashboard({
   const [interventi, setInterventi] = useState<Intervento[]>(initial.interventi);
   const [rti, setRti] = useState<RtiConfig>(initial.rti);
   const [quotaVal, setQuotaVal] = useState<Record<string, number>>(initial.quota_val);
+
+  // SSR re-runs (e.g. after an upload + router.refresh()) deliver fresh data via
+  // the `initial` prop. useState ignores prop changes after mount, so sync the
+  // server-derived state whenever a new payload arrives, otherwise the view
+  // keeps showing the data captured at first mount.
+  useEffect(() => {
+    setInterventi(initial.interventi);
+    setRti(initial.rti);
+    setQuotaVal(initial.quota_val);
+  }, [initial]);
   const [filters, setFilters] = useState<Filters>({});
   const [tab, setTab] = useState(0);
   const [rtiSel, setRtiSel] = useState<string | null>(null);

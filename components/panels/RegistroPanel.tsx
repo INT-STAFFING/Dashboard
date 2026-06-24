@@ -42,6 +42,7 @@ type SortKey = keyof Intervento;
 
 export default function RegistroPanel({
   IFs,
+  canEdit = true,
   onSaveField,
   onOpenEdit,
   onOpenNew,
@@ -50,6 +51,7 @@ export default function RegistroPanel({
   highlightIds,
 }: {
   IFs: Intervento[];
+  canEdit?: boolean;
   onSaveField: (numero_if: string, patch: InterventoInput) => void;
   onOpenEdit: (i: Intervento) => void;
   onOpenNew: () => void;
@@ -119,9 +121,11 @@ export default function RegistroPanel({
       <div className="tablecard">
         <div className="tbar">
           <h3>Interventi di Fornitura</h3>
-          <button className="addbtn" style={{ marginLeft: 8 }} onClick={onOpenNew}>
-            + Nuovo IF
-          </button>
+          {canEdit && (
+            <button className="addbtn" style={{ marginLeft: 8 }} onClick={onOpenNew}>
+              + Nuovo IF
+            </button>
+          )}
           <input className="search" placeholder="Cerca IF, titolo, referente, ambito…" value={q} onChange={(e) => setQ(e.target.value)} />
           <button className="freset" onClick={() => exportCSV(rows)} style={{ borderColor: 'var(--petrol)', color: 'var(--petrol-d)' }}>
             ⤓ Esporta CSV
@@ -139,7 +143,7 @@ export default function RegistroPanel({
                     {label}
                   </th>
                 ))}
-                <th>Azioni</th>
+                {canEdit && <th>Azioni</th>}
               </tr>
             </thead>
             <tbody>
@@ -161,66 +165,96 @@ export default function RegistroPanel({
                       </span>
                     </td>
                     <td>
-                      <InlineField value={x.modalita_if} onSave={(v) => onSaveField(x.numero_if, { modalita_if: v })} />
+                      {canEdit ? (
+                        <InlineField value={x.modalita_if} onSave={(v) => onSaveField(x.numero_if, { modalita_if: v })} />
+                      ) : (
+                        x.modalita_if || '—'
+                      )}
                     </td>
                     <td>
-                      <select
-                        className="stsel"
-                        value={x.attivazione || 'NO'}
-                        disabled={saving}
-                        onChange={(e) => onSaveField(x.numero_if, { attivazione: e.target.value })}
-                      >
-                        <option value="SI">SI</option>
-                        <option value="NO">NO</option>
-                      </select>
+                      {canEdit ? (
+                        <select
+                          className="stsel"
+                          value={x.attivazione || 'NO'}
+                          disabled={saving}
+                          onChange={(e) => onSaveField(x.numero_if, { attivazione: e.target.value })}
+                        >
+                          <option value="SI">SI</option>
+                          <option value="NO">NO</option>
+                        </select>
+                      ) : (
+                        x.attivazione || 'NO'
+                      )}
                     </td>
                     <td>
-                      <select
-                        className="stsel"
-                        value={x.stato}
-                        disabled={saving}
-                        onChange={(e) =>
-                          onSaveField(x.numero_if, { stato: e.target.value, has_bo: e.target.value === 'approvato' })
-                        }
-                      >
-                        <option value="approvato">approvato</option>
-                        <option value="non elaborato">non elab.</option>
-                      </select>
+                      {canEdit ? (
+                        <select
+                          className="stsel"
+                          value={x.stato}
+                          disabled={saving}
+                          onChange={(e) =>
+                            onSaveField(x.numero_if, { stato: e.target.value, has_bo: e.target.value === 'approvato' })
+                          }
+                        >
+                          <option value="approvato">approvato</option>
+                          <option value="non elaborato">non elab.</option>
+                        </select>
+                      ) : (
+                        x.stato
+                      )}
                     </td>
                     {(['pdc', 'v_apertura', 'v_sal', 'bef'] as const).map((k) => (
                       <td key={k} style={{ textAlign: 'center' }}>
-                        <StatusSelect value={x[k]} disabled={saving} onChange={(v) => onSaveField(x.numero_if, { [k]: v })} />
+                        {canEdit ? (
+                          <StatusSelect value={x[k]} disabled={saving} onChange={(v) => onSaveField(x.numero_if, { [k]: v })} />
+                        ) : (
+                          ST_TXT[x[k]]
+                        )}
                       </td>
                     ))}
                     <td className="codecell" style={{ color: 'var(--muted)' }}>
-                      <InlineField type="date" value={x.data_inizio} display={dfmt(x.data_inizio)} onSave={(v) => onSaveField(x.numero_if, { data_inizio: v || null })} />
+                      {canEdit ? (
+                        <InlineField type="date" value={x.data_inizio} display={dfmt(x.data_inizio)} onSave={(v) => onSaveField(x.numero_if, { data_inizio: v || null })} />
+                      ) : (
+                        dfmt(x.data_inizio)
+                      )}
                     </td>
                     <td className="codecell" style={{ color: 'var(--muted)' }}>
-                      <InlineField type="date" value={x.data_fine} display={dfmt(x.data_fine)} onSave={(v) => onSaveField(x.numero_if, { data_fine: v || null })} />
+                      {canEdit ? (
+                        <InlineField type="date" value={x.data_fine} display={dfmt(x.data_fine)} onSave={(v) => onSaveField(x.numero_if, { data_fine: v || null })} />
+                      ) : (
+                        dfmt(x.data_fine)
+                      )}
                     </td>
                     <td className="num">
-                      <InlineField type="number" value={x.importo} display={EUR0(x.importo)} onSave={(v) => onSaveField(x.numero_if, { importo: Number(v) || 0 })} />
+                      {canEdit ? (
+                        <InlineField type="number" value={x.importo} display={EUR0(x.importo)} onSave={(v) => onSaveField(x.numero_if, { importo: Number(v) || 0 })} />
+                      ) : (
+                        EUR0(x.importo)
+                      )}
                     </td>
-                    <td className="actcell">
-                      <button className="iconbtn" title="Modifica completa" onClick={() => onOpenEdit(x)}>
-                        ✏️
-                      </button>
-                      <button
-                        className="iconbtn"
-                        title="Elimina"
-                        onClick={() => {
-                          if (window.confirm(`Eliminare l'IF ${x.numero_if}? (soft-delete)`)) onDelete(x.numero_if);
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    </td>
+                    {canEdit && (
+                      <td className="actcell">
+                        <button className="iconbtn" title="Modifica completa" onClick={() => onOpenEdit(x)}>
+                          ✏️
+                        </button>
+                        <button
+                          className="iconbtn"
+                          title="Elimina"
+                          onClick={() => {
+                            if (window.confirm(`Eliminare l'IF ${x.numero_if}? (soft-delete)`)) onDelete(x.numero_if);
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={14} style={{ color: 'var(--muted)', padding: 18 }}>
+                  <td colSpan={canEdit ? 14 : 13} style={{ color: 'var(--muted)', padding: 18 }}>
                     Nessun IF in questa vista.
                   </td>
                 </tr>
@@ -230,9 +264,15 @@ export default function RegistroPanel({
         </div>
       </div>
       <div className="foot" style={{ marginTop: 10 }}>
-        Modifica inline: clic su modalità, importo o date · usa i menu per stato/PDC/verbali · ✏️ per il form completo · 🗑️
-        per eliminare (soft-delete). Le modifiche manuali non vengono sovrascritte dal successivo upload Excel (salvo
-        <span className="mono"> ?force=true</span>).
+        {canEdit ? (
+          <>
+            Modifica inline: clic su modalità, importo o date · usa i menu per stato/PDC/verbali · ✏️ per il form completo ·
+            🗑️ per eliminare (soft-delete). Le modifiche manuali non vengono sovrascritte dal successivo upload Excel (salvo
+            <span className="mono"> ?force=true</span>).
+          </>
+        ) : (
+          <>Hai accesso in sola visualizzazione: i dati non sono modificabili. Puoi comunque cercare, ordinare ed esportare in CSV.</>
+        )}
       </div>
     </div>
   );

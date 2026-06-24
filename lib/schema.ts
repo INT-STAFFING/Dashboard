@@ -79,6 +79,20 @@ export const tariffe = pgTable('tariffe', {
   tariffa_oraria: numeric('tariffa_oraria', { precision: 10, scale: 4 }),
 });
 
+// Application users with role-based access control.
+//  - role:   'ADMIN' (full access, undeletable) | 'USERPLUS' (view+edit) | 'USER' (view only)
+//  - status: 'pending' (awaiting admin approval) | 'approved' | 'rejected'
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  email: text('email').unique().notNull(),
+  name: text('name'),
+  password_hash: text('password_hash').notNull(),
+  role: text('role').notNull().default('USER'),
+  status: text('status').notNull().default('pending'),
+  created_at: timestamp('created_at').defaultNow(),
+  approved_at: timestamp('approved_at'),
+});
+
 export const config_rti = pgTable('config_rti', {
   id: serial('id').primaryKey(),
   massimale_totale: numeric('massimale_totale', { precision: 18, scale: 4 }),

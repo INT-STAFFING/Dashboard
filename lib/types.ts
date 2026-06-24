@@ -3,6 +3,21 @@
 
 export type DocStatus = 'ok' | 'ko' | 'prog' | 'nd'; // OK | Mancante | In corso | N/D
 
+// --- Authentication / users -------------------------------------------------
+export type Role = 'ADMIN' | 'USER' | 'USERPLUS';
+export type UserStatus = 'pending' | 'approved' | 'rejected';
+
+// User shape exposed to the client (never includes password_hash).
+export type SafeUser = {
+  id: number;
+  email: string;
+  name: string | null;
+  role: Role;
+  status: UserStatus;
+  created_at: string | null;
+  approved_at: string | null;
+};
+
 export type Intervento = {
   numero_if: string;
   bdo: string | null;

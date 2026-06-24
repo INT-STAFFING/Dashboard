@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { parseFile } from '@/lib/parsers';
 import { upsertInterventiFromUpload } from '@/lib/store';
 import { setSeniority } from '@/lib/portfolio';
+import { getSessionUser, canEdit } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 function authorized(req: Request): boolean {
   const secret = process.env.UPLOAD_SECRET;
-  if (!secret) return true; // no secret configured -> open (dev)
+  if (!secret) return true; // no secret configured -> rely on edit permission
   const header = req.headers.get('x-upload-secret') || '';
   const url = new URL(req.url);
   const token = url.searchParams.get('token') || header;
@@ -16,6 +17,13 @@ function authorized(req: Request): boolean {
 }
 
 export async function POST(req: Request) {
+  // Upload mutates data: require an account with edit permission (ADMIN/USERPLUS).
+  if (!canEdit(await getSessionUser())) {
+    return NextResponse.json(
+      { ok: false, error: 'Permessi di modifica non concessi' },
+      { status: 403 },
+    );
+  }
   if (!authorized(req)) {
     return NextResponse.json({ ok: false, error: 'Non autorizzato' }, { status: 401 });
   }

@@ -20,7 +20,7 @@ const FIGURE_CODE: Record<string, string> = {
   'project manager': 'PRJM',
 };
 
-function codeFor(figura: string): string {
+export function codeFor(figura: string): string {
   const key = figura.toLowerCase().replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
   return FIGURE_CODE[key] || figura;
 }

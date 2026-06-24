@@ -4,6 +4,7 @@ import Link from 'next/link';
 
 function detectKind(name: string): string {
   const n = name.toLowerCase();
+  if (n.includes('dashboard')) return 'dashboard';
   if (n.includes('aggregatore')) return 'aggregatore';
   if (n.includes('chiusura')) return 'chiusura';
   if (n.includes('bef')) return 'bef';
@@ -69,8 +70,9 @@ export default function UploadPage() {
       </div>
       <p style={{ color: 'var(--muted)', fontSize: 13, margin: '8px 0 22px' }}>
         Il tipo di file viene riconosciuto automaticamente dal nome:{' '}
-        <span className="mono">IF_ARIA</span> · <span className="mono">BEF</span> ·{' '}
-        <span className="mono">Chiusura</span> · <span className="mono">Aggregatore</span>.
+        <span className="mono">Dashboard</span> (revenue) · <span className="mono">IF_ARIA</span> ·{' '}
+        <span className="mono">BEF</span> · <span className="mono">Chiusura</span> ·{' '}
+        <span className="mono">Aggregatore</span>.
       </p>
 
       <div

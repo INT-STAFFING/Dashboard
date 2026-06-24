@@ -38,6 +38,19 @@ export function sheetRows(
   return out;
 }
 
+// Read a sheet as a raw matrix of rows (no header keying). Useful when the
+// header cells are dates/duplicated and must be matched positionally.
+export function sheetMatrix(wb: Workbook, sheetName: string): unknown[][] {
+  const ws = wb.Sheets[sheetName];
+  if (!ws) return [];
+  return XLSX.utils.sheet_to_json<unknown[]>(ws, {
+    header: 1,
+    blankrows: false,
+    defval: null,
+    raw: true,
+  }) as unknown[][];
+}
+
 export function findSheet(wb: Workbook, ...candidates: string[]): string | null {
   for (const c of candidates) {
     const exact = wb.SheetNames.find((s) => s === c);

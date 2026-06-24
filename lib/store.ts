@@ -271,6 +271,46 @@ export async function softDeleteIntervento(numeroIf: string): Promise<boolean> {
 
 export type UploadResult = { inserted: number; updated: number; skipped: number };
 
+// Different source files carry different slices of an intervento: IF_ARIA has
+// ambito / referenti / BO / doc-status, the Dashboard workbook has importo /
+// dates / monthly revenue, etc. When merging an upload onto an existing record
+// we must not let a file blank out fields it simply doesn't know about, while
+// still letting it update the fields it does carry. So for descriptive fields
+// the incoming value wins only when it's actually present, and we never
+// downgrade an emitted BO or recognized doc-status back to its default.
+function mergeUpload(existing: Intervento, inc: Intervento, force: boolean): Intervento {
+  const keep = <T>(v: T | null | undefined, fallback: T): T =>
+    v == null || v === '' ? fallback : v;
+  const incHasRevenue =
+    inc.revenue_2026 > 0 || (Array.isArray(inc.rev_mesi) && inc.rev_mesi.some((v) => v > 0));
+  const keepDoc = (a: DocStatus, b: DocStatus): DocStatus => (a !== 'nd' ? a : b);
+
+  return {
+    ...inc,
+    bdo: keep(inc.bdo, existing.bdo),
+    ambito: keep(inc.ambito, existing.ambito),
+    ref_aria: keep(inc.ref_aria, existing.ref_aria),
+    ref_fornitore: keep(inc.ref_fornitore, existing.ref_fornitore),
+    modalita_if: keep(inc.modalita_if, existing.modalita_if),
+    attivazione: inc.attivazione === 'SI' ? 'SI' : existing.attivazione,
+    // Revenue lives only in the Dashboard workbook; don't let other files wipe it.
+    revenue_2026: incHasRevenue ? inc.revenue_2026 : existing.revenue_2026,
+    rev_mesi: incHasRevenue ? inc.rev_mesi : existing.rev_mesi,
+    // Never clear an already-emitted BO just because this source lacks it.
+    has_bo: inc.has_bo || existing.has_bo,
+    stato: inc.has_bo ? inc.stato : existing.stato,
+    pdc: keepDoc(inc.pdc, existing.pdc),
+    v_apertura: keepDoc(inc.v_apertura, existing.v_apertura),
+    v_sal: keepDoc(inc.v_sal, existing.v_sal),
+    bef: keepDoc(inc.bef, existing.bef),
+    note_operative: inc.note_operative ?? existing.note_operative,
+    // Preserve manual-edit flag metadata when not forcing.
+    edited_manually: force ? false : existing.edited_manually,
+    last_edited_at: existing.last_edited_at,
+    last_edited_by: existing.last_edited_by,
+  };
+}
+
 // Upsert from an Excel upload. Records flagged edited_manually are preserved
 // unless `force` is set.
 export async function upsertInterventiFromUpload(
@@ -289,22 +329,7 @@ export async function upsertInterventiFromUpload(
     } else if (existing.edited_manually && !force) {
       skipped += 1;
     } else {
-      // IF_ARIA / Aggregatore files don't carry the monthly revenue profile
-      // (it comes from a separate "cruscotto revenue"), so the parsers emit
-      // zeros. Don't let an upload wipe revenue that's already on record:
-      // keep the existing values when the incoming record has none.
-      const incHasRevenue =
-        inc.revenue_2026 > 0 || (inc.rev_mesi && inc.rev_mesi.some((v) => v > 0));
-      // preserve manual-edit flag metadata when not forcing
-      await rawUpdate(inc.numero_if, {
-        ...inc,
-        revenue_2026: incHasRevenue ? inc.revenue_2026 : existing.revenue_2026,
-        rev_mesi: incHasRevenue ? inc.rev_mesi : existing.rev_mesi,
-        edited_manually: force ? false : existing.edited_manually,
-        last_edited_at: existing.last_edited_at,
-        last_edited_by: existing.last_edited_by,
-        note_operative: inc.note_operative ?? existing.note_operative,
-      });
+      await rawUpdate(inc.numero_if, mergeUpload(existing, inc, force));
       updated += 1;
     }
   }

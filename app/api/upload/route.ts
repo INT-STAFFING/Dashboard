@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       {
         ok: false,
         error:
-          'Tipo file non riconosciuto. Il nome deve contenere IF_ARIA / BEF / Chiusura / Aggregatore.',
+          'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore.',
       },
       { status: 422 },
     );

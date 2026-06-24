@@ -1,31 +1,44 @@
 import type { Intervento, Kpi, RtiConfig } from './types';
 import { MESI } from './format';
 
+// Multi-select dimensions use string[] (OR semantics within a dimension, AND
+// across dimensions). Single-select / boolean dimensions stay scalar.
 export type Filters = {
-  forn?: string;
-  ref?: string;
-  refint?: string;
-  amb?: string;
-  att?: string;
-  mod?: string;
-  stato?: string;
+  forn?: string[]; // Fornitore — multi
+  ref?: string[]; // Referente ARIA — multi
+  refint?: string[]; // Referente Intellera — multi
+  amb?: string[]; // Ambito — multi
+  stato?: string[]; // Stato IF — multi
+  mod?: string; // Modalità — single (radio)
+  att?: string; // Attivazione immediata — boolean toggle ('SI')
+  bo?: string; // BO emesso — boolean toggle ('SI'), secondary
+  sub?: string; // Subappalto — boolean toggle ('SI'), secondary
 };
 
-const modKey = (s: string | null) => (s || '').toLowerCase();
+export const modKey = (s: string | null) => (s || '').toLowerCase();
 
-// Port of getIFs() from the original dashboard.
+// True when a multi-select dimension is empty/absent, or the row's value is one
+// of the selected options (OR within the dimension).
+const inSet = (sel: string[] | undefined, v: string | null) =>
+  !sel || sel.length === 0 || (v != null && sel.includes(v));
+
+// Modalità matcher kept identical to the original fuzzy "contains" logic.
+export const matchesMod = (modalita: string | null, mod: string) =>
+  !!modalita && modKey(modalita).includes(modKey(mod).replace('a ', ''));
+
+// Port of getIFs() from the original dashboard, generalised to multi-select.
 export function filterInterventi(all: Intervento[], f: Filters): Intervento[] {
   return all.filter(
     (i) =>
-      (!f.forn || i.fornitore === f.forn) &&
-      (!f.ref || i.ref_aria === f.ref) &&
-      (!f.refint || i.ref_fornitore === f.refint) &&
-      (!f.amb || i.ambito === f.amb) &&
+      inSet(f.forn, i.fornitore) &&
+      inSet(f.ref, i.ref_aria) &&
+      inSet(f.refint, i.ref_fornitore) &&
+      inSet(f.amb, i.ambito) &&
+      inSet(f.stato, i.stato) &&
+      (!f.mod || matchesMod(i.modalita_if, f.mod)) &&
       (!f.att || i.attivazione === f.att) &&
-      (!f.mod ||
-        (i.modalita_if &&
-          modKey(i.modalita_if).includes(modKey(f.mod).replace('a ', '')))) &&
-      (!f.stato || i.stato === f.stato),
+      (!f.bo || i.has_bo) &&
+      (!f.sub || i.subappalto),
   );
 }
 

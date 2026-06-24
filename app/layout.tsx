@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './filterbar.css';
 
 export const metadata: Metadata = {
   title: 'Monitor IF/BO · ARIA SISS L2 · Intellera',

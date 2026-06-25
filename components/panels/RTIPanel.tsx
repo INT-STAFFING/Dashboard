@@ -1,13 +1,67 @@
 'use client';
 import React, { useState } from 'react';
-import type { Intervento, RtiConfig } from '@/lib/types';
+import type { Intervento, RtiConfig, Meta } from '@/lib/types';
 import { EUR, EURM, PCT, FCOL, C } from '@/lib/format';
-import { donut, hbars } from '@/lib/charts';
+import { donut, hbars, esc } from '@/lib/charts';
 import { Html } from '../Html';
+
+function buildYearlyErosionChart(
+  years: number[],
+  impByYear: Record<number, number>,
+  annualQuota: number,
+  todayYear: number,
+): string {
+  const W = 920, H = 260, pl = 76, pr = 18, pt = 20, pb = 44;
+  const pw = W - pl - pr, ph = H - pt - pb;
+  const maxV = Math.max(annualQuota * 1.25, ...Object.values(impByYear), 1);
+  const ticks = 4;
+  const yOf = (v: number) => pt + ph - (v / maxV) * ph;
+  const slot = pw / years.length;
+  const bw = Math.min(slot * 0.5, 80);
+
+  let g = '';
+  for (let i = 0; i <= ticks; i++) {
+    const v = (maxV * i) / ticks, y = yOf(v);
+    g += `<line x1="${pl}" y1="${y.toFixed(1)}" x2="${W - pr}" y2="${y.toFixed(1)}" stroke="${C.line}"/>`;
+    g += `<text x="${pl - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" fill="${C.muted}">€${(v / 1e6).toFixed(1)}M</text>`;
+  }
+
+  // annual quota reference line
+  const qy = yOf(annualQuota);
+  g += `<line x1="${pl}" y1="${qy.toFixed(1)}" x2="${(W - pr).toFixed(1)}" y2="${qy.toFixed(1)}" stroke="${C.amberD}" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+  g += `<text x="${(W - pr - 4).toFixed(1)}" y="${(qy - 5).toFixed(1)}" text-anchor="end" font-size="10" fill="${C.amberD}">budget/anno</text>`;
+
+  let bars = '', labs = '';
+  years.forEach((yr, i) => {
+    const cx = pl + slot * i + slot / 2;
+    const v = impByYear[yr] || 0;
+    const y = yOf(v);
+    const isPast = yr < todayYear;
+    const isToday = yr === todayYear;
+    const col = isToday ? C.petrol : isPast ? C.petrolD : C.petrolL;
+    bars += `<rect x="${(cx - bw / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${(pt + ph - y).toFixed(1)}" rx="4" fill="${col}" class="seg" data-tip="${esc(`${yr}\nImpegnato: ${EUR(v)}\nBudget annuo: ${EUR(annualQuota)}`)}"/>`;
+    if (v > 0) {
+      bars += `<text x="${cx.toFixed(1)}" y="${(y - 7).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${C.ink}">${(v / 1e6).toFixed(1)}M</text>`;
+    }
+    labs += `<text x="${cx.toFixed(1)}" y="${H - pb + 18}" text-anchor="middle" font-size="13" font-weight="${isToday ? '700' : '400'}" fill="${isToday ? C.ink : C.muted}">${yr}</text>`;
+  });
+
+  // today marker
+  let mk = '';
+  const todayIdx = years.indexOf(todayYear);
+  if (todayIdx >= 0) {
+    const mx = pl + slot * todayIdx + slot / 2;
+    mk = `<line x1="${mx.toFixed(1)}" y1="${pt}" x2="${mx.toFixed(1)}" y2="${pt + ph}" stroke="${C.amberD}" stroke-width="1.3" stroke-dasharray="4 3"/>`;
+    mk += `<text x="${(mx + 5).toFixed(1)}" y="${pt + 13}" text-anchor="start" font-size="10" fill="${C.amberD}" font-weight="700">oggi</text>`;
+  }
+
+  return `<svg class="msvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${bars}${mk}${labs}</svg>`;
+}
 
 export default function RTIPanel({
   IFs,
   rti,
+  meta,
   quotaVal,
   filtersForn,
   rtiSel,
@@ -17,6 +71,7 @@ export default function RTIPanel({
 }: {
   IFs: Intervento[];
   rti: RtiConfig;
+  meta: Meta;
   quotaVal: Record<string, number>;
   filtersForn?: string;
   rtiSel: string | null;
@@ -24,7 +79,6 @@ export default function RTIPanel({
   editMode: boolean;
   onUpdateRti: (u: { massimale_totale: number; quota_intellera_pct: number; quota_deloitte_pct: number }) => void;
 }) {
-  const tot = IFs.reduce((s, i) => s + i.importo, 0);
   const impByP: Record<string, number> = {};
   rti.partners.forEach((p) => (impByP[p.name] = 0));
   IFs.forEach((i) => {
@@ -47,21 +101,6 @@ export default function RTIPanel({
     selP ? 'Mln quota ' + selP : 'Mln massimale contr.',
   );
 
-  const eDen = selP ? quotaVal[selP] : ceil;
-  const impB = selP ? impByP[selP] || 0 : tot;
-  const ePct = eDen ? (impB / eDen) * 100 : 0;
-  const selPartner = selP ? rti.partners.find((p) => p.name === selP) : null;
-
-  const eroHead = `<div class="erohead">
-    <div class="erorow"><span>${selP ? 'Quota ' + selP : 'Massimale contrattuale'}</span><b>${EURM(eDen)}</b></div>
-    <div class="erotrack"><div class="erofill" style="width:${Math.max(ePct, 6).toFixed(1)}%">${PCT(ePct)}</div></div>
-    <div class="eroleg"><span>Impegnato (IF/BO) <b>${EURM(impB)}</b></span><span>Residuo <b>${EURM(eDen - impB)}</b></span></div>
-    <div class="eronote">${
-      selP && selPartner
-        ? 'Quota ' + selP + ' = ' + PCT(selPartner.pct * 100) + ' del massimale ' + EURM(ceil) + '.'
-        : 'Revenue contratto 2026: <b>' + EURM(rti.erosione_2026) + '</b>.'
-    }</div></div>`;
-
   const eroPartner = hbars(
     rti.partners.map((p) => {
       const im = impByP[p.name] || 0;
@@ -78,6 +117,37 @@ export default function RTIPanel({
     undefined,
     { max: 100 },
   );
+
+  // Yearly erosion
+  const startYear = new Date(meta.contract_date).getFullYear();
+  const endYear = new Date(meta.valid_to).getFullYear();
+  const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
+  const annualQuota = ceil / years.length;
+  const todayYear = new Date().getFullYear();
+
+  const impByYear: Record<number, number> = {};
+  years.forEach((y) => (impByYear[y] = 0));
+  IFs.forEach((i) => {
+    const y = i.data_inizio ? new Date(i.data_inizio).getFullYear() : startYear;
+    if (impByYear[y] != null) impByYear[y] += i.importo;
+    else impByYear[startYear] += i.importo;
+  });
+
+  const totImpegnato = IFs.reduce((s, i) => s + i.importo, 0);
+  const eroTotPct = ceil ? (totImpegnato / ceil) * 100 : 0;
+
+  const eroAnnoSvg = buildYearlyErosionChart(years, impByYear, annualQuota, todayYear);
+  const eroAnnoHtml = `<div>
+    <div class="erohead" style="margin-bottom:12px">
+      <div class="erorow"><span>Massimale contrattuale</span><b>${EURM(ceil)}</b></div>
+      <div class="erotrack"><div class="erofill" style="width:${Math.max(eroTotPct, 2).toFixed(1)}%">${PCT(eroTotPct)}</div></div>
+      <div class="eroleg"><span>Impegnato totale <b>${EURM(totImpegnato)}</b></span><span>Residuo <b>${EURM(ceil - totImpegnato)}</b></span></div>
+    </div>
+    ${eroAnnoSvg}
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">
+      Contratto ${meta.contract_date} → ${meta.valid_to} · Budget annuo stimato ${EURM(annualQuota)} · IF/BO raggruppati per anno di inizio
+    </div>
+  </div>`;
 
   const onDonutClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = (e.target as HTMLElement).closest('[data-drill-rti]') as HTMLElement | null;
@@ -119,20 +189,22 @@ export default function RTIPanel({
             )}
           </div>
         </div>
-        <div className="card">
-          <h3>Erosione del massimale</h3>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <h3>Erosione della quota per partner RTI</h3>
           <div className="cap">
-            {selP ? `Impegnato ${selP} rispetto alla sua quota RTI` : 'Impegnato tramite IF/BO rispetto al massimale'}
+            Valore impegnato (IF/BO della vista) rispetto alla quota contrattuale di ciascun partner
           </div>
-          <Html html={eroHead} />
+          <div className="hbars-fill" style={{ flex: 1 }}>
+            <Html html={eroPartner} style={{ height: '100%', display: 'flex', flexDirection: 'column' }} />
+          </div>
         </div>
       </div>
       <div className="card">
-        <h3>Erosione della quota per partner RTI</h3>
+        <h3>Erosione per Anno</h3>
         <div className="cap">
-          Valore impegnato (IF/BO della vista) rispetto alla quota contrattuale di ciascun partner
+          Impegnato (IF/BO della vista) distribuito per anno lungo la durata contrattuale
         </div>
-        <Html html={eroPartner} />
+        <Html html={eroAnnoHtml} />
       </div>
     </div>
   );

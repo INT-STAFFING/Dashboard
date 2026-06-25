@@ -298,6 +298,7 @@ export default function Dashboard({
           <RTIPanel
             IFs={IFs}
             rti={rti}
+            meta={initial.meta}
             quotaVal={quotaVal}
             filtersForn={singleForn}
             rtiSel={rtiSel}

@@ -112,6 +112,11 @@ main{padding:16px 0 60px;position:relative}
 /* hbars */
 .hbars{display:flex;flex-direction:column;gap:12px;margin-top:4px}
 .hrow{display:grid;grid-template-columns:165px 1fr auto;gap:14px;align-items:center;font-size:12.5px;cursor:default}
+.hbars-fill{flex:1;display:flex;flex-direction:column;min-height:0}
+.hbars-fill .hbars{flex:1;gap:0;margin-top:0;display:flex;flex-direction:column;justify-content:space-evenly}
+.hbars-fill .hrow{grid-template-columns:90px 1fr auto;gap:10px;font-size:13px}
+.hbars-fill .htrack{height:28px}
+.hbars-fill .hval{font-size:12px}
 .hrow .hl{color:var(--ink);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 .htrack{background:var(--line-2);border-radius:7px;height:24px;position:relative;overflow:hidden}
 .hfill{height:100%;border-radius:7px;min-width:3px;transition:width .5s}

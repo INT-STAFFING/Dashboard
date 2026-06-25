@@ -189,12 +189,14 @@ export default function RTIPanel({
             )}
           </div>
         </div>
-        <div className="card">
+        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
           <h3>Erosione della quota per partner RTI</h3>
           <div className="cap">
             Valore impegnato (IF/BO della vista) rispetto alla quota contrattuale di ciascun partner
           </div>
-          <Html html={eroPartner} />
+          <div className="hbars-fill">
+            <Html html={eroPartner} />
+          </div>
         </div>
       </div>
       <div className="card">

@@ -194,8 +194,8 @@ export default function RTIPanel({
           <div className="cap">
             Valore impegnato (IF/BO della vista) rispetto alla quota contrattuale di ciascun partner
           </div>
-          <div className="hbars-fill">
-            <Html html={eroPartner} />
+          <div className="hbars-fill" style={{ flex: 1 }}>
+            <Html html={eroPartner} style={{ height: '100%', display: 'flex', flexDirection: 'column' }} />
           </div>
         </div>
       </div>

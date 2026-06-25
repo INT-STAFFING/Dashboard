@@ -1,5 +1,5 @@
 import { listInterventi } from './store';
-import { getRtiConfig, getQuotaVal, META } from './config';
+import { getRtiConfig, getQuotaVal, getMeta } from './config';
 import { getSeniority, getModalita, getTimeline } from './portfolio';
 import { SEED_FORNITORI } from './seed';
 import { computeKpi, revenueMensile, distribuzioneAmbito, rtiSummary } from './queries';
@@ -9,17 +9,24 @@ import type { DashboardData } from './types';
 export async function getDashboardData(): Promise<DashboardData & {
   revenue_mensile: ReturnType<typeof revenueMensile>;
 }> {
-  const all = await listInterventi();
-  const rti = getRtiConfig();
+  const [all, rti, meta, seniority, modalita, quota_val, timeline] = await Promise.all([
+    listInterventi(),
+    getRtiConfig(),
+    getMeta(),
+    getSeniority(),
+    getModalita(),
+    getQuotaVal(),
+    getTimeline(),
+  ]);
   return {
-    meta: META,
+    meta,
     fornitori_filter: SEED_FORNITORI,
     interventi: all,
-    seniority: getSeniority(),
-    modalita: getModalita(),
+    seniority,
+    modalita,
     rti: { ...rti, ...rtiSummary(all, rti) },
-    quota_val: getQuotaVal(),
-    timeline: getTimeline(),
+    quota_val,
+    timeline,
     kpi: computeKpi(all),
     revenue_mensile: revenueMensile(all),
     distribuzione_ambito: distribuzioneAmbito(all),

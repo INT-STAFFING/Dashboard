@@ -17,6 +17,7 @@ type RawIntervento = {
   importo: number;
   revenue_2026: number;
   rev_mesi: number[];
+  cons_mesi?: number[];
   data_assegnazione: string | null;
   data_inizio: string | null;
   data_fine: string | null;
@@ -63,6 +64,7 @@ export const SEED_INTERVENTI: Intervento[] = raw.interventi.map((i) => ({
   importo: i.importo,
   revenue_2026: i.revenue_2026,
   rev_mesi: i.rev_mesi && i.rev_mesi.length === 12 ? i.rev_mesi : Array(12).fill(0),
+  cons_mesi: i.cons_mesi && i.cons_mesi.length === 12 ? i.cons_mesi : Array(12).fill(0),
   modalita_if: i.modalita_if,
   attivazione: i.attivazione,
   stato: i.stato,

@@ -24,6 +24,8 @@ export const interventi = pgTable('interventi', {
   importo: numeric('importo', { precision: 15, scale: 4 }),
   revenue_2026: numeric('revenue_2026', { precision: 15, scale: 4 }),
   rev_mesi: jsonb('rev_mesi').$type<number[]>(),
+  // Consuntivazione (actuals) per month, calendar order Gen..Dic (length 12).
+  cons_mesi: jsonb('cons_mesi').$type<number[]>(),
   modalita_if: text('modalita_if'),
   attivazione: text('attivazione'), // 'SI' | 'NO'
   stato: text('stato'), // 'approvato' | 'non elaborato'
@@ -50,6 +52,7 @@ export const interventi = pgTable('interventi', {
 
 export const bef_records = pgTable('bef_records', {
   id: serial('id').primaryKey(),
+  numero_if: text('numero_if'), // links a BEF row to its IF/BO
   num_bdo: text('num_bdo'),
   descrizione: text('descrizione'),
   periodo_competenza: text('periodo_competenza'),
@@ -91,6 +94,25 @@ export const users = pgTable('users', {
   status: text('status').notNull().default('pending'),
   created_at: timestamp('created_at').defaultNow(),
   approved_at: timestamp('approved_at'),
+});
+
+// Per-IF/BO resource allocation: professional figures, working groups,
+// man-days (giorni uomo) and daily rates for each intervento.
+export const if_risorse = pgTable('if_risorse', {
+  id: serial('id').primaryKey(),
+  numero_if: text('numero_if').notNull(),
+  figura: text('figura'),
+  sigla: text('sigla'),
+  gruppo: text('gruppo'), // gruppo di lavoro
+  gg: numeric('gg', { precision: 10, scale: 2 }), // giorni uomo
+  tariffa_giornaliera: numeric('tariffa_giornaliera', { precision: 12, scale: 4 }),
+});
+
+// Generic JSON settings store (valori di gara, timeline, tariffe globali …).
+export const app_config = pgTable('app_config', {
+  key: text('key').primaryKey(),
+  value: jsonb('value'),
+  updated_at: timestamp('updated_at').defaultNow(),
 });
 
 export const config_rti = pgTable('config_rti', {

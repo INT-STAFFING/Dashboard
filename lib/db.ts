@@ -70,6 +70,7 @@ const DDL: string[] = [
     "importo" numeric(15, 4),
     "revenue_2026" numeric(15, 4),
     "rev_mesi" jsonb,
+    "cons_mesi" jsonb,
     "modalita_if" text,
     "attivazione" text,
     "stato" text,
@@ -95,6 +96,7 @@ const DDL: string[] = [
   )`,
   `CREATE TABLE IF NOT EXISTS "bef_records" (
     "id" serial PRIMARY KEY NOT NULL,
+    "numero_if" text,
     "num_bdo" text,
     "descrizione" text,
     "periodo_competenza" text,
@@ -131,6 +133,24 @@ const DDL: string[] = [
     "contratto_ref" text,
     "updated_at" timestamp DEFAULT now()
   )`,
+  `CREATE TABLE IF NOT EXISTS "if_risorse" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "numero_if" text NOT NULL,
+    "figura" text,
+    "sigla" text,
+    "gruppo" text,
+    "gg" numeric(10, 2),
+    "tariffa_giornaliera" numeric(12, 4)
+  )`,
+  `CREATE TABLE IF NOT EXISTS "app_config" (
+    "key" text PRIMARY KEY NOT NULL,
+    "value" jsonb,
+    "updated_at" timestamp DEFAULT now()
+  )`,
+  // Idempotent column additions for databases created before these fields
+  // existed (CREATE TABLE IF NOT EXISTS won't add columns to an existing table).
+  `ALTER TABLE "interventi" ADD COLUMN IF NOT EXISTS "cons_mesi" jsonb`,
+  `ALTER TABLE "bef_records" ADD COLUMN IF NOT EXISTS "numero_if" text`,
 ];
 
 // Cache the successful bootstrap once per instance. A failed attempt is NOT

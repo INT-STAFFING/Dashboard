@@ -53,6 +53,7 @@ export function parseIF(input: ArrayBuffer | Buffer | Workbook): Intervento[] {
       importo,
       revenue_2026: 0,
       rev_mesi: Array(12).fill(0),
+      cons_mesi: Array(12).fill(0),
       modalita_if: str(r['Modalità']),
       attivazione: ambito === ATT_AMBITO ? 'SI' : 'NO',
       stato: has_bo ? 'approvato' : 'non elaborato',

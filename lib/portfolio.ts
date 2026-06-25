@@ -1,29 +1,26 @@
 import { SEED_SENIORITY, SEED_MODALITA, SEED_TIMELINE } from './seed';
+import { getSetting, setSetting } from './settings';
 import type { Seniority, ModalitaAgg, Timeline } from './types';
 
-// Portfolio-level aggregates (seniority mix, modalità split, revenue timeline).
-// These are not per-intervento and live in a global so an Aggregatore upload
-// can refresh the seniority distribution without a database.
-const g = globalThis as unknown as {
-  __ARIA_SEN__?: Seniority[];
-  __ARIA_MOD__?: ModalitaAgg[];
-  __ARIA_TL__?: Timeline;
-};
+// Portfolio-level aggregates (seniority/tariffe mix, modalità split, revenue
+// timeline). Persisted via the generic settings store (DB-backed with an
+// in-memory fallback) so admin edits and Aggregatore uploads survive.
 
-export function getSeniority(): Seniority[] {
-  if (!g.__ARIA_SEN__) g.__ARIA_SEN__ = SEED_SENIORITY;
-  return g.__ARIA_SEN__;
+export async function getSeniority(): Promise<Seniority[]> {
+  return getSetting<Seniority[]>('seniority', SEED_SENIORITY);
 }
-export function setSeniority(s: Seniority[]) {
-  if (s.length) g.__ARIA_SEN__ = s;
+export async function setSeniority(s: Seniority[]): Promise<Seniority[]> {
+  if (!s.length) return getSeniority();
+  return setSetting<Seniority[]>('seniority', s);
 }
 
-export function getModalita(): ModalitaAgg[] {
-  if (!g.__ARIA_MOD__) g.__ARIA_MOD__ = SEED_MODALITA;
-  return g.__ARIA_MOD__;
+export async function getModalita(): Promise<ModalitaAgg[]> {
+  return getSetting<ModalitaAgg[]>('modalita', SEED_MODALITA);
 }
 
-export function getTimeline(): Timeline {
-  if (!g.__ARIA_TL__) g.__ARIA_TL__ = SEED_TIMELINE;
-  return g.__ARIA_TL__;
+export async function getTimeline(): Promise<Timeline> {
+  return getSetting<Timeline>('timeline', SEED_TIMELINE);
+}
+export async function setTimeline(t: Timeline): Promise<Timeline> {
+  return setSetting<Timeline>('timeline', t);
 }

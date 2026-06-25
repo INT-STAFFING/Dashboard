@@ -100,6 +100,7 @@ export function parseAggregatore(input: ArrayBuffer | Buffer): AggregatoreResult
         importo: toNumber(r['Importo Intervento']),
         revenue_2026: 0,
         rev_mesi: Array(12).fill(0),
+        cons_mesi: Array(12).fill(0),
         modalita_if: of && of.modalita.size ? [...of.modalita].join(' + ') : null,
         attivazione: 'NO',
         stato: hasBdo ? 'approvato' : 'non elaborato',

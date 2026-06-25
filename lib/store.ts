@@ -38,6 +38,7 @@ function rowToIntervento(r: Row): Intervento {
     importo: num(r.importo),
     revenue_2026: num(r.revenue_2026),
     rev_mesi: Array.isArray(r.rev_mesi) && r.rev_mesi.length === 12 ? r.rev_mesi : Array(12).fill(0),
+    cons_mesi: Array.isArray(r.cons_mesi) && r.cons_mesi.length === 12 ? r.cons_mesi : Array(12).fill(0),
     modalita_if: r.modalita_if,
     attivazione: r.attivazione,
     stato: r.stato ?? 'non elaborato',
@@ -72,6 +73,7 @@ function interventoToRow(i: Intervento): typeof interventiTable.$inferInsert {
     importo: String(i.importo),
     revenue_2026: String(i.revenue_2026),
     rev_mesi: i.rev_mesi,
+    cons_mesi: i.cons_mesi,
     modalita_if: i.modalita_if,
     attivazione: i.attivazione,
     stato: i.stato,
@@ -121,6 +123,7 @@ const DEFAULTS: Omit<Intervento, 'numero_if' | 'titolo'> = {
   importo: 0,
   revenue_2026: 0,
   rev_mesi: Array(12).fill(0),
+  cons_mesi: Array(12).fill(0),
   modalita_if: null,
   attivazione: 'NO',
   stato: 'non elaborato',
@@ -296,6 +299,11 @@ function mergeUpload(existing: Intervento, inc: Intervento, force: boolean): Int
     // Revenue lives only in the Dashboard workbook; don't let other files wipe it.
     revenue_2026: incHasRevenue ? inc.revenue_2026 : existing.revenue_2026,
     rev_mesi: incHasRevenue ? inc.rev_mesi : existing.rev_mesi,
+    // Consuntivazione is managed from the admin page, not the Excel uploads.
+    cons_mesi:
+      Array.isArray(inc.cons_mesi) && inc.cons_mesi.some((v) => v > 0)
+        ? inc.cons_mesi
+        : existing.cons_mesi,
     // Never clear an already-emitted BO just because this source lacks it.
     has_bo: inc.has_bo || existing.has_bo,
     stato: inc.has_bo ? inc.stato : existing.stato,

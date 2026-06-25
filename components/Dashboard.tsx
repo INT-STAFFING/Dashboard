@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import type { DashboardData, Intervento, InterventoInput, RtiConfig, SafeUser } from '@/lib/types';
 import { ROLE_LABEL } from '@/lib/auth/permissions';
@@ -44,6 +44,7 @@ export default function Dashboard({
   }, [initial]);
   const [filters, setFilters] = useState<Filters>({});
   const [tab, setTab] = useState(0);
+  const [tabPending, startTabTransition] = useTransition();
   const [rtiSel, setRtiSel] = useState<string | null>(null);
   const [tlMode, setTlMode] = useState<'mese' | 'trim'>('mese');
   const [distSub, setDistSub] = useState(0);
@@ -223,7 +224,7 @@ export default function Dashboard({
 
   const drillTo = (patch: Filters) => {
     setFilters((f) => ({ ...f, ...patch }));
-    setTab(REGISTRO_TAB);
+    startTabTransition(() => setTab(REGISTRO_TAB));
   };
 
   return (
@@ -273,7 +274,7 @@ export default function Dashboard({
       <nav className="tabbar">
         <div className="wrap" id="tabs">
           {TABS.map((t, i) => (
-            <button key={i} className={'tab' + (i === tab ? ' on' : '')} onClick={() => setTab(i)}>
+            <button key={i} className={'tab' + (i === tab ? ' on' : '')} onClick={() => startTabTransition(() => setTab(i))}>
               <span className="ti">{i + 1}</span>
               {t}
             </button>
@@ -290,7 +291,8 @@ export default function Dashboard({
         viewTot={viewTot}
       />
 
-      <main className="wrap">
+      <main className={'wrap' + (tabPending ? ' main-pending' : '')}>
+        <div className="tab-spinner" aria-label="Caricamento…" />
         {tab === 0 && <OverviewPanel IFs={IFs} rti={rti} quotaVal={quotaVal} filtersForn={singleForn} />}
         {tab === 1 && (
           <RTIPanel

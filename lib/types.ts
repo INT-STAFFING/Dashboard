@@ -28,7 +28,8 @@ export type Intervento = {
   ref_fornitore: string | null;
   importo: number;
   revenue_2026: number;
-  rev_mesi: number[]; // length 12
+  rev_mesi: number[]; // length 12 (revenue per month, Gen..Dic)
+  cons_mesi: number[]; // length 12 (consuntivazione/actuals per month, Gen..Dic)
   modalita_if: string | null;
   attivazione: string | null; // 'SI' | 'NO'
   stato: string; // 'approvato' | 'non elaborato'
@@ -141,8 +142,34 @@ export type Kpi = {
 
 // Subset of fields editable via the UI (PUT / POST)
 export type InterventoInput = Partial<
-  Omit<Intervento, 'rev_mesi' | 'subappaltatore'> & {
+  Omit<Intervento, 'rev_mesi' | 'cons_mesi' | 'subappaltatore'> & {
     rev_mesi: number[];
+    cons_mesi: number[];
     subappaltatore: string[];
   }
 >;
+
+// Per-IF/BO resource allocation row (figure professionali, gruppi, giorni uomo).
+export type IfRisorsa = {
+  id?: number;
+  numero_if: string;
+  figura: string | null;
+  sigla: string | null;
+  gruppo: string | null;
+  gg: number | null;
+  tariffa_giornaliera: number | null;
+};
+
+// Per-IF/BO BEF row.
+export type BefRow = {
+  id?: number;
+  numero_if: string;
+  num_bdo: string | null;
+  descrizione: string | null;
+  periodo_competenza: string | null;
+  fornitore_reale: string | null;
+  importo_ricezione: number | null;
+  num_fattura: string | null;
+  data_fattura: string | null;
+  data_pagamento: string | null;
+};

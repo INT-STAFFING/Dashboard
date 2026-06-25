@@ -36,6 +36,8 @@ function normalizeIntervento(raw: unknown): Intervento | null {
   if (!numero_if || !titolo) return null;
   const mesi = Array.isArray(r.rev_mesi) ? r.rev_mesi.map(num) : [];
   const rev_mesi = Array.from({ length: 12 }, (_, i) => mesi[i] ?? 0);
+  const consMesi = Array.isArray(r.cons_mesi) ? r.cons_mesi.map(num) : [];
+  const cons_mesi = Array.from({ length: 12 }, (_, i) => consMesi[i] ?? 0);
   return {
     numero_if,
     bdo: sval(r.bdo),
@@ -47,6 +49,7 @@ function normalizeIntervento(raw: unknown): Intervento | null {
     importo: num(r.importo),
     revenue_2026: num(r.revenue_2026),
     rev_mesi,
+    cons_mesi,
     modalita_if: sval(r.modalita_if),
     attivazione: r.attivazione === 'SI' ? 'SI' : 'NO',
     stato: sval(r.stato) ?? 'non elaborato',
@@ -86,7 +89,7 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     skipped += res.skipped;
   }
   if (parsed.seniority && parsed.seniority.length) {
-    setSeniority(parsed.seniority);
+    await setSeniority(parsed.seniority);
   }
   if (parsed.kind === 'bef') {
     errors.push(`BEF: ${parsed.bef?.length ?? 0} righe lette (non persistite)`);

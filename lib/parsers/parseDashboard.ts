@@ -200,6 +200,7 @@ export function parseDashboard(input: ArrayBuffer | Buffer | Workbook): Dashboar
       importo: a.importo,
       revenue_2026,
       rev_mesi,
+      cons_mesi: Array(12).fill(0),
       modalita_if: a.modalita.size ? [...a.modalita].join(' + ') : null,
       attivazione: 'NO',
       stato: has_bo ? 'approvato' : 'non elaborato',

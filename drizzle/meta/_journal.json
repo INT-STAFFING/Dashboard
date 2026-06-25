@@ -15,6 +15,13 @@
       "when": 1782223058267,
       "tag": "0001_add_users",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782373678203,
+      "tag": "0002_bent_rafael_vega",
+      "breakpoints": true
     }
   ]
 }

@@ -255,6 +255,11 @@ export default function Dashboard({
                 </Link>
               )}
               {isAdmin && (
+                <Link href="/admin/gestione" className="hdr-link">
+                  ⚙ Gestione dati
+                </Link>
+              )}
+              {isAdmin && (
                 <Link href="/admin/users" className="hdr-link">
                   👥 Utenti
                 </Link>

@@ -1,0 +1,30 @@
+/* ---- Admin "Gestione dati" page -------------------------------------- */
+.formgrid.cols2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:760px){.formgrid.cols2{grid-template-columns:1fr}}
+.adm-field{display:flex;flex-direction:column;gap:5px;font-size:11.5px;font-weight:650;color:var(--muted);letter-spacing:.02em;margin-bottom:2px}
+.adm-flab{font-size:11.5px;font-weight:650;color:var(--muted)}
+.exp-save{font-family:inherit;font-size:13px;font-weight:700;border:1px solid var(--petrol);background:var(--petrol);color:#fff;padding:9px 16px;border-radius:9px;cursor:pointer}
+.exp-save:hover{background:var(--petrol-d)}
+.exp-save:disabled{opacity:.55;cursor:default}
+
+.datatable{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface)}
+.datatable th,.datatable td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+.datatable th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;white-space:nowrap}
+.datatable tr.selrow{background:var(--petrol-bg)}
+
+.monthgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:8px 0 14px}
+@media(max-width:760px){.monthgrid{grid-template-columns:repeat(3,1fr)}}
+.mg-cell{display:flex;flex-direction:column;gap:3px}
+.mg-lab{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.monthgrid input{font-family:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 7px;background:#fff;text-align:right;width:100%}
+.monthgrid input:focus{outline:2px solid var(--petrol-l);outline-offset:-1px}
+
+.rollup{margin-top:6px;border-top:1px dashed var(--line);padding-top:12px}
+.rollbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.rollbar .seg2{margin-left:0}
+.seg2.small button{font-size:12px;padding:5px 11px}
+.rollgrid{display:flex;flex-wrap:wrap;gap:8px}
+.rollcell{flex:1 1 110px;min-width:96px;background:var(--canvas);border:1px solid var(--line-2);border-radius:9px;padding:9px 11px}
+.rollcell.tot{background:var(--petrol-bg);border-color:var(--petrol-l)}
+.rc-lab{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.rc-val{font-size:14px;font-weight:750;color:var(--ink);margin-top:3px}

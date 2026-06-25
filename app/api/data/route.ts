@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { listInterventi } from '@/lib/store';
 import { getSessionUser, canView } from '@/lib/auth';
-import { getRtiConfig, getQuotaVal, META } from '@/lib/config';
+import { getRtiConfig, getQuotaVal, getMeta } from '@/lib/config';
 import { getSeniority, getModalita, getTimeline } from '@/lib/portfolio';
 import { SEED_FORNITORI } from '@/lib/seed';
 import {
@@ -36,13 +36,20 @@ export async function GET(req: Request) {
     mod: searchParams.get('modalita') || undefined,
   };
 
-  const all = await listInterventi();
+  const [all, rti, meta, quota_val, seniority, modalita, timeline] = await Promise.all([
+    listInterventi(),
+    getRtiConfig(),
+    getMeta(),
+    getQuotaVal(),
+    getSeniority(),
+    getModalita(),
+    getTimeline(),
+  ]);
   const hasFilter = Object.values(filters).some((v) => (Array.isArray(v) ? v.length : Boolean(v)));
   const view = hasFilter ? filterInterventi(all, filters) : all;
-  const rti = getRtiConfig();
 
   return NextResponse.json({
-    meta: META,
+    meta,
     fornitori_filter: SEED_FORNITORI,
     interventi: all,
     view_count: view.length,
@@ -50,9 +57,9 @@ export async function GET(req: Request) {
     revenue_mensile: revenueMensile(view),
     distribuzione_ambito: distribuzioneAmbito(view),
     rti: { ...rti, ...rtiSummary(view, rti) },
-    quota_val: getQuotaVal(),
-    seniority: getSeniority(),
-    modalita: getModalita(),
-    timeline: getTimeline(),
+    quota_val,
+    seniority,
+    modalita,
+    timeline,
   });
 }

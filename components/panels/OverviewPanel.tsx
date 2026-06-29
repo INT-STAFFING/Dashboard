@@ -28,13 +28,14 @@ export default function OverviewPanel({
   const risk = erosionRisk(eroPct);
   const pct = IFs.length ? Math.round((conBo.length / IFs.length) * 100) : 0;
 
+  const refYear = new Date().getFullYear();
   let cum = 0;
   const cumV = revM.map((v) => (cum += v));
   const sum = (a: number[], s: number, e: number) => a.slice(s, e).reduce((x, y) => x + y, 0);
 
   const stats: [string, string, string][] = [
     ['Valore IF attive', EURM(tot), IFs.length + ' IF'],
-    ['Revenue 2026 (totale anno)', EUR(revTot), 'competenza'],
+    [`Revenue ${refYear} (totale anno)`, EUR(revTot), 'competenza'],
     ['Revenue da gennaio ad oggi', EUR(sum(revM, 0, 6)), 'avanzamento ' + PCT(revTot ? (sum(revM, 0, 6) / revTot) * 100 : 0)],
     ['BO emessi', conBo.length + ' / ' + IFs.length, PCT(pct)],
     ['Quota RTI impegnata', PCT(eroPct), EURM(tot) + ' / ' + EURM(quota)],
@@ -100,13 +101,14 @@ export default function OverviewPanel({
         </div>
       </div>
       <div className="card">
-        <h3>Revenue mensile · 2026</h3>
+        <h3>Revenue mensile · {refYear}</h3>
         <div className="cap">Revenue di competenza per mese · totale vista {EUR(revTot)}</div>
         <Html
-          ariaLabel={`Grafico a barre della revenue mensile 2026 per la vista corrente. Totale ${EUR(revTot)}, cumulato a fine anno ${EUR(cumV[cumV.length - 1] || 0)}. Valori per mese: ${MESI.map((m, i) => `${m} ${EUR(revM[i] || 0)}`).join(', ')}.`}
+          ariaLabel={`Grafico a barre della revenue mensile ${refYear} per la vista corrente. Totale ${EUR(revTot)}, cumulato a fine anno ${EUR(cumV[cumV.length - 1] || 0)}. Valori per mese: ${MESI.map((m, i) => `${m} ${EUR(revM[i] || 0)}`).join(', ')}.`}
           html={chartMonthly(MESI, [{ name: 'Revenue', vals: revM, color: C.petrol }], {
             cumulative: { vals: cumV, color: C.gold, name: 'Cumulato' },
-            today: 5,
+            today: new Date().getMonth(),
+            periodLabel: String(refYear),
           })}
         />
         <Html

@@ -416,7 +416,7 @@ export default function Dashboard({
             onUpdateRti={onUpdateRti}
           />
         )}
-        {tab === 2 && <TimelinePanel timeline={initial.timeline} tlMode={tlMode} setTlMode={setTlMode} />}
+        {tab === 2 && <TimelinePanel timelineMy={initial.timeline_my} tlMode={tlMode} setTlMode={setTlMode} />}
         {tab === 3 && <DistribuzionePanel IFs={IFs} seniority={initial.seniority} distSub={distSub} setDistSub={setDistSub} />}
         {tab === 4 && (
           <ModalitaPanel

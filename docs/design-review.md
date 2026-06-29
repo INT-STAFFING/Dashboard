@@ -366,7 +366,7 @@ Per ogni criticità: una **domanda di ricerca (RQ)** o un'**azione (ACT)**.
 | ID | Criticità | Tipo | Proposta | Stato |
 |----|-----------|------|----------|-------|
 | F-1 | Personas non validate | RQ-1 | 3–4 interviste a PM/PMO/sponsor reali per validare JTBD e priorità. | aperto (richiede utenti reali) |
-| F-2 | Anno fiscale cablato | RQ-2 + ACT | Confermare durata contratto; parametrizzare anno/etichette mesi via `app_config`. | aperto (decisione di prodotto) |
+| F-2 | Anno fiscale cablato | RQ-2 + ACT | Multi-anno reale: nuova tabella `timeline_mensile` (fatto mensile per anno solare); viste solare/fiscale × mensile/trimestrale/annuale; etichette e marker "oggi" dinamici. | **FATTO** |
 | F-3 | BEF/Chiusura scartati (C1/US-D2) | ACT | Persistere su upload (BEF: linking `num_bdo→bdo→IF`, upsert per fattura). Chiusura rimandata (manca superficie UI). | **FATTO (BEF)** · Chiusura a backlog |
 | F-4 | Esito import opaco (C2/US-B5) | ACT | Esporre elenco righe saltate/aggiornate. | **FATTO** |
 | F-5 | Erosione senza alert (C3/US-C3) | ACT | Badge soglia rischio sulla KPI quota. | **FATTO** |
@@ -433,7 +433,8 @@ sviluppo. Stato: ✅ fatto · ⬜ aperto/backlog · 🔬 richiede ricerca utente
 - [✅] Empty-state globale primo avvio (F-9)
 - [✅] Messaggio sessione scaduta durante editing ("rifai login")
 - [⬜] Comportamento upload concorrente / collisione chiave naturale
-- [⬜] Anno fiscale parametrizzato (F-2 — decisione di prodotto)
+- [✅] Multi-anno revenue: tabella `timeline_mensile`, viste solare/fiscale × mensile/trimestrale/annuale, label e marker "oggi" dinamici (F-2)
+- [⬜] Estrazione multi-anno dall'upload Excel (parser): oggi i nuovi anni si inseriscono da "Gestione dati"
 
 ### Build & verifica
 - [✅] `next build` verde dopo le modifiche

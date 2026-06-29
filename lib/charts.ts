@@ -130,6 +130,7 @@ export type Series = { name: string; vals: number[]; color: string };
 export type MonthlyOpts = {
   cumulative?: { vals: number[]; color: string; name: string };
   today?: number;
+  periodLabel?: string; // e.g. the year shown in tooltips (no hardcoded value)
 };
 
 export function chartMonthly(months: string[], series: Series[], opts?: MonthlyOpts): string {
@@ -168,7 +169,7 @@ export function chartMonthly(months: string[], series: Series[], opts?: MonthlyO
       bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 2).toFixed(
         1,
       )}" height="${(pt + ph - y).toFixed(1)}" rx="3" fill="${s.color}" class="seg" data-tip="${esc(
-        mn + ' 2026 · ' + s.name + '\n' + EUR(s.vals[i]),
+        mn + (opts!.periodLabel ? ' ' + opts!.periodLabel : '') + ' · ' + s.name + '\n' + EUR(s.vals[i]),
       )}"/>`;
     });
     labs += `<text x="${cx.toFixed(1)}" y="${H - pb + 18}" text-anchor="middle" font-size="11" fill="${
@@ -193,7 +194,7 @@ export function chartMonthly(months: string[], series: Series[], opts?: MonthlyO
       cum += `<circle cx="${(pl + slot * i + slot / 2).toFixed(1)}" cy="${yC(cv[i]).toFixed(
         1,
       )}" r="4.5" fill="${opts.cumulative!.color}" class="seg" data-tip="${esc(
-        m + ' 2026 · ' + opts!.cumulative!.name + '\n' + EUR(cv[i]),
+        m + (opts!.periodLabel ? ' ' + opts!.periodLabel : '') + ' · ' + opts!.cumulative!.name + '\n' + EUR(cv[i]),
       )}"/>`;
     });
   }
@@ -270,7 +271,13 @@ export function chartVBars(items: VBarItem[]): string {
   return `<svg class="msvg" viewBox="0 0 ${W} ${H}">${g}${bars}${labs}</svg>`;
 }
 
-export function chartRevFatt(labels: string[], rev: number[], fatt: number[], todayIdx: number): string {
+export function chartRevFatt(
+  labels: string[],
+  rev: number[],
+  fatt: number[],
+  todayIdx: number,
+  periodLabel = '',
+): string {
   const W = 1000,
     H = 420,
     pl = 74,
@@ -341,7 +348,7 @@ export function chartRevFatt(labels: string[], rev: number[], fatt: number[], to
   let hov = '';
   labels.forEach((mn, i) => {
     const x = pl + slot * i;
-    const tipTxt = `${mn} 2026\nRevenue: ${EUR(rev[i])}\nFatturazione: ${EUR(fatt[i])}\nCum. Revenue: ${EUR(
+    const tipTxt = `${mn}${periodLabel ? ' ' + periodLabel : ''}\nRevenue: ${EUR(rev[i])}\nFatturazione: ${EUR(fatt[i])}\nCum. Revenue: ${EUR(
       cumR[i],
     )}\nCum. Fatturazione: ${EUR(cumF[i])}`;
     hov += `<rect x="${x.toFixed(1)}" y="${pt}" width="${slot.toFixed(

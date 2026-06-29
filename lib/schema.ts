@@ -8,6 +8,7 @@ import {
   timestamp,
   integer,
   jsonb,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 // Field names mirror the canonical domain model (see lib/types.ts).
@@ -114,6 +115,24 @@ export const app_config = pgTable('app_config', {
   value: jsonb('value'),
   updated_at: timestamp('updated_at').defaultNow(),
 });
+
+// Multi-year revenue/consuntivazione fact table (portfolio-level), one row per
+// calendar (anno, mese). Anchoring on the calendar lets us derive both the
+// solar year (Gen–Dic) and the fiscal year (Set–Ago, spanning two calendar
+// years) at monthly / quarterly / annual grain. See lib/fiscal.ts.
+export const timeline_mensile = pgTable(
+  'timeline_mensile',
+  {
+    id: serial('id').primaryKey(),
+    anno: integer('anno').notNull(),
+    mese: integer('mese').notNull(), // 1..12 calendar
+    revenue: numeric('revenue', { precision: 18, scale: 4 }),
+    consuntivato: numeric('consuntivato', { precision: 18, scale: 4 }),
+  },
+  (t) => ({
+    anno_mese_unique: uniqueIndex('timeline_mensile_anno_mese_unique').on(t.anno, t.mese),
+  }),
+);
 
 export const config_rti = pgTable('config_rti', {
   id: serial('id').primaryKey(),

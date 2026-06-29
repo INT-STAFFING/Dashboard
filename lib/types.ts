@@ -85,6 +85,23 @@ export type Timeline = {
   anno: number;
 };
 
+// --- Multi-year revenue (F-2) ----------------------------------------------
+// Monthly fact anchored to the CALENDAR year (anno) and calendar month
+// (mese 1..12). This single shape supports both the solar year (Gen–Dic) and
+// the fiscal year (Set–Ago, which spans two calendar years) at monthly,
+// quarterly and annual grain — see lib/fiscal.ts.
+export type TimelineMonth = {
+  anno: number;
+  mese: number; // 1..12 (calendar)
+  revenue: number;
+  consuntivato: number;
+};
+
+export type MultiYearTimeline = {
+  months: TimelineMonth[];
+  years: number[]; // calendar years present, ascending
+};
+
 export type Meta = {
   cig: string;
   contratto: string;
@@ -125,6 +142,7 @@ export type DashboardData = {
   rti: RtiConfig;
   quota_val: Record<string, number>;
   timeline: Timeline;
+  timeline_my: MultiYearTimeline;
   kpi: Kpi;
   revenue_mensile: { mese: string; intellera: number; deloitte: number }[];
   distribuzione_ambito: { ambito: string; count: number; valore: number }[];

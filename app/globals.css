@@ -81,6 +81,10 @@ main{padding:16px 0 60px;position:relative}
 .seg2{margin-left:auto;display:flex;gap:4px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:3px}
 .seg2 button{font-family:inherit;font-size:13px;font-weight:650;border:none;background:none;color:var(--muted);padding:7px 15px;border-radius:8px;cursor:pointer}
 .seg2 button.on{background:var(--petrol);color:#fff}
+.seg2.small button{font-size:12px;padding:5px 11px}
+.tl-controls{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tl-controls .seg2{margin-left:0}
+.tl-year{font-family:inherit;font-size:13px;font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 12px;cursor:pointer}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space);margin-bottom:var(--space)}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:0 8px 24px -18px rgba(10,74,67,.5)}
 .kpi .lab{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}

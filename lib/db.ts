@@ -147,6 +147,14 @@ const DDL: string[] = [
     "value" jsonb,
     "updated_at" timestamp DEFAULT now()
   )`,
+  `CREATE TABLE IF NOT EXISTS "timeline_mensile" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "anno" integer NOT NULL,
+    "mese" integer NOT NULL,
+    "revenue" numeric(18, 4),
+    "consuntivato" numeric(18, 4)
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "timeline_mensile_anno_mese_unique" ON "timeline_mensile" ("anno","mese")`,
   // Idempotent column additions for databases created before these fields
   // existed (CREATE TABLE IF NOT EXISTS won't add columns to an existing table).
   `ALTER TABLE "interventi" ADD COLUMN IF NOT EXISTS "cons_mesi" jsonb`,

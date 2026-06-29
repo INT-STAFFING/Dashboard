@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useState, useCallback, useTransition } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import type { DashboardData, Intervento, InterventoInput, RtiConfig, SafeUser } from '@/lib/types';
 import { ROLE_LABEL } from '@/lib/auth/permissions';
@@ -227,6 +227,31 @@ export default function Dashboard({
     startTabTransition(() => setTab(REGISTRO_TAB));
   };
 
+  // --- Accessible tab navigation (WCAG 2.1 AA / AgID, requisito PA) ----------
+  // Roving-tabindex tablist: only the active tab is in the tab order; ←/→ move
+  // focus + selection, Home/End jump to the ends. Mirrors the native ARIA APG
+  // pattern so screen readers announce "scheda N di 7, selezionata".
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const goToTab = useCallback((i: number) => {
+    startTabTransition(() => setTab(i));
+    tabRefs.current[i]?.focus();
+  }, []);
+  const onTabKeyDown = useCallback(
+    (e: React.KeyboardEvent, i: number) => {
+      const last = TABS.length - 1;
+      let next: number | null = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = i === last ? 0 : i + 1;
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = i === 0 ? last : i - 1;
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = last;
+      if (next !== null) {
+        e.preventDefault();
+        goToTab(next);
+      }
+    },
+    [goToTab],
+  );
+
   return (
     <>
       <header>
@@ -271,11 +296,26 @@ export default function Dashboard({
         </div>
       </header>
 
-      <nav className="tabbar">
-        <div className="wrap" id="tabs">
+      <nav className="tabbar" aria-label="Sezioni della dashboard">
+        <div className="wrap" id="tabs" role="tablist" aria-label="Sezioni della dashboard">
           {TABS.map((t, i) => (
-            <button key={i} className={'tab' + (i === tab ? ' on' : '')} onClick={() => startTabTransition(() => setTab(i))}>
-              <span className="ti">{i + 1}</span>
+            <button
+              key={i}
+              ref={(el) => {
+                tabRefs.current[i] = el;
+              }}
+              id={`tab-${i}`}
+              role="tab"
+              aria-selected={i === tab}
+              aria-controls={`tabpanel-${i}`}
+              tabIndex={i === tab ? 0 : -1}
+              className={'tab' + (i === tab ? ' on' : '')}
+              onClick={() => startTabTransition(() => setTab(i))}
+              onKeyDown={(e) => onTabKeyDown(e, i)}
+            >
+              <span className="ti" aria-hidden>
+                {i + 1}
+              </span>
               {t}
             </button>
           ))}
@@ -291,7 +331,13 @@ export default function Dashboard({
         viewTot={viewTot}
       />
 
-      <main className={'wrap' + (tabPending ? ' main-pending' : '')}>
+      <main
+        className={'wrap' + (tabPending ? ' main-pending' : '')}
+        id={`tabpanel-${tab}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${tab}`}
+        tabIndex={0}
+      >
         <div className="tab-spinner" aria-label="Caricamento…" />
         {tab === 0 && <OverviewPanel IFs={IFs} rti={rti} quotaVal={quotaVal} filtersForn={singleForn} />}
         {tab === 1 && (

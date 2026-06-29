@@ -103,6 +103,7 @@ export default function OverviewPanel({
         <h3>Revenue mensile · 2026</h3>
         <div className="cap">Revenue di competenza per mese · totale vista {EUR(revTot)}</div>
         <Html
+          ariaLabel={`Grafico a barre della revenue mensile 2026 per la vista corrente. Totale ${EUR(revTot)}, cumulato a fine anno ${EUR(cumV[cumV.length - 1] || 0)}. Valori per mese: ${MESI.map((m, i) => `${m} ${EUR(revM[i] || 0)}`).join(', ')}.`}
           html={chartMonthly(MESI, [{ name: 'Revenue', vals: revM, color: C.petrol }], {
             cumulative: { vals: cumV, color: C.gold, name: 'Cumulato' },
             today: 5,

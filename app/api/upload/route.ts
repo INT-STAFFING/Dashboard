@@ -81,12 +81,18 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
   let inserted = 0;
   let updated = 0;
   let skipped = 0;
+  let insertedIfs: string[] = [];
+  let updatedIfs: string[] = [];
+  let skippedIfs: string[] = [];
 
   if (parsed.interventi && parsed.interventi.length) {
     const res = await upsertInterventiFromUpload(parsed.interventi, force);
     inserted += res.inserted;
     updated += res.updated;
     skipped += res.skipped;
+    insertedIfs = res.insertedIfs;
+    updatedIfs = res.updatedIfs;
+    skippedIfs = res.skippedIfs;
   }
   if (parsed.seniority && parsed.seniority.length) {
     await setSeniority(parsed.seniority);
@@ -97,7 +103,16 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
   if (parsed.kind === 'chiusura') {
     errors.push(`Chiusura: ${parsed.chiusura?.length ?? 0} righe lette (non persistite)`);
   }
-  return { inserted, updated, skipped, seniority_rows: parsed.seniority?.length ?? 0, errors };
+  return {
+    inserted,
+    updated,
+    skipped,
+    insertedIfs,
+    updatedIfs,
+    skippedIfs,
+    seniority_rows: parsed.seniority?.length ?? 0,
+    errors,
+  };
 }
 
 export async function POST(req: Request) {

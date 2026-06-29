@@ -60,6 +60,17 @@ export default function Dashboard({
   const [toast, setToast] = useState<{ msg: string; bad?: boolean } | null>(null);
 
   const IFs = useMemo(() => filterInterventi(interventi, filters), [interventi, filters]);
+  // F-8: distingui la data del file sorgente (meta.generato) dall'ultima
+  // modifica reale registrata sui dati, così l'header non lascia ambiguità su
+  // "quanto sono freschi" i numeri mostrati.
+  const lastEdit = useMemo(() => {
+    const ts = interventi
+      .map((i) => i.last_edited_at)
+      .filter((s): s is string => !!s)
+      .map((s) => new Date(s).getTime())
+      .filter((n) => Number.isFinite(n));
+    return ts.length ? new Date(Math.max(...ts)) : null;
+  }, [interventi]);
   const viewTot = IFs.reduce((s, i) => s + i.importo, 0);
   // RTI quota panels are meaningful only for a single fornitore in scope.
   const singleForn = filters.forn?.length === 1 ? filters.forn[0] : undefined;
@@ -68,6 +79,21 @@ export default function Dashboard({
     setToast({ msg, bad });
     setTimeout(() => setToast(null), 2600);
   }, []);
+
+  // A 401 during an optimistic mutation means the session expired: give a clear
+  // "log in again" message instead of a generic failure, and return true so the
+  // caller can skip its own generic toast.
+  const handledAuthError = useCallback(
+    (status: number | undefined): boolean => {
+      if (status === 401 || status === 403) {
+        setToast({ msg: 'Sessione scaduta: effettua di nuovo il login', bad: true });
+        setTimeout(() => setToast(null), 4000);
+        return true;
+      }
+      return false;
+    },
+    [],
+  );
 
   const flashRow = useCallback((id: string) => {
     setHighlightIds((s) => new Set(s).add(id));
@@ -127,7 +153,11 @@ export default function Dashboard({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(patch),
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) {
+          setInterventi(prev);
+          if (!handledAuthError(res.status)) showToast('Salvataggio non riuscito', true);
+          return;
+        }
         const data = await res.json();
         setInterventi((list) => list.map((i) => (i.numero_if === numero_if ? (data.updated as Intervento) : i)));
         flashRow(numero_if);
@@ -138,7 +168,7 @@ export default function Dashboard({
         setSaving(numero_if, false);
       }
     },
-    [interventi, flashRow, showToast],
+    [interventi, flashRow, showToast, handledAuthError],
   );
 
   const onSaveDrawer = useCallback(
@@ -151,6 +181,7 @@ export default function Dashboard({
             body: JSON.stringify(input),
           });
           if (!res.ok) {
+            if (handledAuthError(res.status)) return false;
             const e = await res.json().catch(() => ({}));
             showToast(e.error || 'Creazione non riuscita', true);
             return false;
@@ -167,7 +198,7 @@ export default function Dashboard({
             body: JSON.stringify(input),
           });
           if (!res.ok) {
-            showToast('Salvataggio non riuscito', true);
+            if (!handledAuthError(res.status)) showToast('Salvataggio non riuscito', true);
             return false;
           }
           const data = await res.json();
@@ -181,7 +212,7 @@ export default function Dashboard({
         return false;
       }
     },
-    [flashRow, showToast],
+    [flashRow, showToast, handledAuthError],
   );
 
   const onDelete = useCallback(
@@ -190,14 +221,18 @@ export default function Dashboard({
       setInterventi((list) => list.filter((i) => i.numero_if !== numero_if));
       try {
         const res = await fetch(`/api/interventi/${encodeURIComponent(numero_if)}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error();
+        if (!res.ok) {
+          setInterventi(prev);
+          if (!handledAuthError(res.status)) showToast('Eliminazione non riuscita', true);
+          return;
+        }
         showToast(`IF ${numero_if} eliminato`);
       } catch {
         setInterventi(prev);
         showToast('Eliminazione non riuscita', true);
       }
     },
-    [interventi, showToast],
+    [interventi, showToast, handledAuthError],
   );
 
   const onUpdateRti = useCallback(
@@ -262,8 +297,18 @@ export default function Dashboard({
           </div>
           <div className="hdr-right">
             <div className="metaline">
-              CIG <b>{initial.meta.cig}</b> · agg.{' '}
-              <b>{new Date(initial.meta.generato).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}</b>
+              CIG <b>{initial.meta.cig}</b> · dati al{' '}
+              <b title="Data di generazione del file sorgente">
+                {new Date(initial.meta.generato).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
+              </b>
+              {lastEdit && (
+                <>
+                  {' '}· ultima modifica{' '}
+                  <b title="Modifica manuale più recente registrata sui dati">
+                    {lastEdit.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </b>
+                </>
+              )}
             </div>
             <div className="userchip">
               <span className="uname">{user.name || user.email}</span>

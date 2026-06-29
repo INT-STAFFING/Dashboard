@@ -19,10 +19,32 @@ type Result = {
   inserted?: number;
   updated?: number;
   skipped?: number;
+  insertedIfs?: string[];
+  updatedIfs?: string[];
+  skippedIfs?: string[];
   seniority_rows?: number;
   errors?: string[];
   error?: string;
 };
+
+// Collapsible list of IF/BO ids touched by an upload, so the user can verify
+// exactly what changed (and what was preserved) instead of trusting raw counts.
+function IfList({ label, ids, defaultOpen = false }: { label: string; ids: string[]; defaultOpen?: boolean }) {
+  return (
+    <details className="iflist" open={defaultOpen}>
+      <summary>
+        {label} <b>({ids.length})</b>
+      </summary>
+      <div className="iflist-items">
+        {ids.map((id) => (
+          <span className="kindpill" key={id}>
+            {id}
+          </span>
+        ))}
+      </div>
+    </details>
+  );
+}
 
 export default function UploadPage() {
   const router = useRouter();
@@ -193,14 +215,29 @@ export default function UploadPage() {
                 <span>Righe inserite</span>
                 <b>{result.inserted ?? 0}</b>
               </div>
+              {!!result.insertedIfs?.length && <IfList label="IF inseriti" ids={result.insertedIfs} />}
               <div className="row">
                 <span>Righe aggiornate</span>
                 <b>{result.updated ?? 0}</b>
               </div>
+              {!!result.updatedIfs?.length && <IfList label="IF aggiornati" ids={result.updatedIfs} />}
               <div className="row">
                 <span>Righe preservate (modificate a mano)</span>
                 <b>{result.skipped ?? 0}</b>
               </div>
+              {!!result.skippedIfs?.length && (
+                <>
+                  <IfList label="IF preservati (non sovrascritti)" ids={result.skippedIfs} defaultOpen />
+                  {!force && (
+                    <div className="row" style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      <span>
+                        Questi record sono stati modificati a mano e non vengono sovrascritti. Per forzarli, ricarica con
+                        l&apos;opzione <span className="mono">Forza sovrascrittura</span>.
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
               {!!result.seniority_rows && (
                 <div className="row">
                   <span>Figure professionali (GdL)</span>

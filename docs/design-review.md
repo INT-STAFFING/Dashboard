@@ -36,6 +36,18 @@ dal RTI verso **ARIA Lombardia** (Sistema Informativo Socio-Sanitario, L2). Non
 | Export | CSV del registro IF | `components/panels/RegistroPanel.tsx` |
 | Persistenza | Drizzle + Neon Postgres, fallback in-memory a zero config | `lib/store.ts`, `lib/db.ts` |
 
+**Regole di dominio dei codici** (fonte: business owner — codificate in `lib/codes.ts`):
+
+| Codice | Formato | Struttura | Note |
+|---|---|---|---|
+| **IF** (Intervento di Fornitura) | 8 cifre | `AAAAXXXX` | AAAA = anno, XXXX = progressivo |
+| **BDO** (Buono d'Ordine) | 10 cifre | `AAAA33XXXX` | "33" costante; generato dopo l'IF e collegato a esso |
+| **BEF** (rendicontazione) | 20 cifre | `AAMMBBBBBBBBBBXXXXXX` | AA=anno, MM=mese, `BBBBBBBBBB`=BDO rendicontato, XXXXXX=progressivo |
+
+Conseguenza di design: **dal BEF si risale sempre al BDO** (posizioni 5–14) e
+**dal BDO all'IF** (`intervento.bdo`). È la catena usata per agganciare la
+rendicontazione BEF al portafoglio in fase di upload (F-3).
+
 **Assunzione implicita n.1 (da sfidare):** l'app assume *un solo contratto, due
 partner noti (Intellera/Deloitte), anno fiscale 2026 cablato* (`revenue_2026`,
 `rev_mesi[12]` Gen–Dic). Questo è un vincolo di progettazione fortissimo,
@@ -355,7 +367,7 @@ Per ogni criticità: una **domanda di ricerca (RQ)** o un'**azione (ACT)**.
 |----|-----------|------|----------|-------|
 | F-1 | Personas non validate | RQ-1 | 3–4 interviste a PM/PMO/sponsor reali per validare JTBD e priorità. | aperto (richiede utenti reali) |
 | F-2 | Anno fiscale cablato | RQ-2 + ACT | Confermare durata contratto; parametrizzare anno/etichette mesi via `app_config`. | aperto (decisione di prodotto) |
-| F-3 | BEF/Chiusura scartati (C1/US-D2) | ACT | Persistere su upload, o **dichiarare esplicitamente in UI** che vanno gestiti da Admin. | aperto (decisione: linking BEF→IF) |
+| F-3 | BEF/Chiusura scartati (C1/US-D2) | ACT | Persistere su upload (BEF: linking `num_bdo→bdo→IF`, upsert per fattura). Chiusura rimandata (manca superficie UI). | **FATTO (BEF)** · Chiusura a backlog |
 | F-4 | Esito import opaco (C2/US-B5) | ACT | Esporre elenco righe saltate/aggiornate. | **FATTO** |
 | F-5 | Erosione senza alert (C3/US-C3) | ACT | Badge soglia rischio sulla KPI quota. | **FATTO** |
 | F-6 | Accessibilità tablist/grafici (C4/US-F2) | ACT | **Tablist ARIA + navigazione tastiera + alt testuale grafici.** | **FATTO** |
@@ -399,7 +411,8 @@ sviluppo. Stato: ✅ fatto · ⬜ aperto/backlog · 🔬 richiede ricerca utente
 - [🔬] Personas validate con utenti reali (RQ-1)
 
 ### Qualità del dato
-- [⬜] BEF/Chiusura: persistenza o disclaimer esplicito in UI (F-3 — richiede decisione linking)
+- [✅] BEF: persistenza su upload con linking `num_bdo→bdo→IF` e upsert per fattura (F-3)
+- [⬜] Chiusura: persistenza + superficie UI (F-3 residuo — manca dove mostrarla)
 - [✅] Esito import mostra righe inserite/aggiornate/preservate (F-4)
 - [✅] Distinzione "dati al" vs "ultima modifica" (F-8)
 - [✅] Validazione cross-field date (fine ≥ inizio) nel drawer

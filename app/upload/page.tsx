@@ -22,6 +22,8 @@ type Result = {
   insertedIfs?: string[];
   updatedIfs?: string[];
   skippedIfs?: string[];
+  bef_saved?: number;
+  bef_ifs?: string[];
   seniority_rows?: number;
   errors?: string[];
   error?: string;
@@ -96,6 +98,7 @@ export default function UploadPage() {
         body: JSON.stringify({
           kind: parsed.kind,
           interventi: parsed.interventi,
+          bef: parsed.bef,
           seniority: parsed.seniority,
           filename: file.name,
         }),
@@ -236,6 +239,15 @@ export default function UploadPage() {
                       </span>
                     </div>
                   )}
+                </>
+              )}
+              {!!result.bef_saved && (
+                <>
+                  <div className="row">
+                    <span>Righe BEF salvate (rendicontazione)</span>
+                    <b>{result.bef_saved}</b>
+                  </div>
+                  {!!result.bef_ifs?.length && <IfList label="IF con BEF aggiornato" ids={result.bef_ifs} />}
                 </>
               )}
               {!!result.seniority_rows && (

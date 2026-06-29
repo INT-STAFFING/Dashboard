@@ -3,6 +3,7 @@ import { parseFile, type FileKind, type ParseOutput } from '@/lib/parsers';
 import { upsertInterventiFromUpload, listInterventi } from '@/lib/store';
 import { persistBefFromUpload } from '@/lib/befStore';
 import { setSeniority } from '@/lib/portfolio';
+import { updateMeta } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
 import type { BefRecord, DocStatus, Intervento } from '@/lib/types';
 
@@ -138,6 +139,8 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
   if (parsed.kind === 'chiusura') {
     errors.push(`Chiusura: ${parsed.chiusura?.length ?? 0} righe lette (gestione Chiusura non ancora attiva)`);
   }
+  // Allinea la data "dati al" mostrata nell'header al momento del caricamento.
+  await updateMeta({ generato: new Date().toISOString() });
   return {
     inserted,
     updated,

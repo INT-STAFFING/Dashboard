@@ -298,8 +298,8 @@ export default function Dashboard({
           <div className="hdr-right">
             <div className="metaline">
               CIG <b>{initial.meta.cig}</b> · dati al{' '}
-              <b title="Data di generazione del file sorgente">
-                {new Date(initial.meta.generato).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
+              <b title="Data e ora dell'ultimo caricamento dati">
+                {new Date(initial.meta.generato).toLocaleString('it-IT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </b>
               {lastEdit && (
                 <>

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { parseFile, type FileKind, type ParseOutput } from '@/lib/parsers';
-import { upsertInterventiFromUpload } from '@/lib/store';
+import { upsertInterventiFromUpload, listInterventi } from '@/lib/store';
+import { persistBefFromUpload } from '@/lib/befStore';
 import { setSeniority } from '@/lib/portfolio';
 import { getSessionUser, canEdit } from '@/lib/auth';
-import type { DocStatus, Intervento } from '@/lib/types';
+import type { BefRecord, DocStatus, Intervento } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -25,6 +26,27 @@ const docStatus = (v: unknown): DocStatus =>
   v === 'ok' || v === 'ko' || v === 'prog' ? v : 'nd';
 const sval = (v: unknown): string | null =>
   typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
+
+// Normalize an untrusted BEF row (client-side parse) into the canonical shape.
+// A BEF row is meaningful only if it carries the BDO it reports on.
+function normalizeBef(raw: unknown): BefRecord | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const num_bdo = sval(r.num_bdo);
+  const num_fattura = sval(r.num_fattura);
+  if (!num_bdo && !num_fattura) return null;
+  const imp = r.importo_ricezione;
+  return {
+    num_bdo,
+    descrizione: sval(r.descrizione),
+    periodo_competenza: sval(r.periodo_competenza),
+    fornitore_reale: sval(r.fornitore_reale),
+    importo_ricezione: imp == null || imp === '' ? null : num(imp),
+    num_fattura,
+    data_fattura: sval(r.data_fattura),
+    data_pagamento: sval(r.data_pagamento),
+  };
+}
 
 // Normalize an untrusted intervento object (from a client-side parse) into the
 // canonical shape before it reaches the store. Only known fields are kept.
@@ -81,23 +103,53 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
   let inserted = 0;
   let updated = 0;
   let skipped = 0;
+  let insertedIfs: string[] = [];
+  let updatedIfs: string[] = [];
+  let skippedIfs: string[] = [];
 
   if (parsed.interventi && parsed.interventi.length) {
     const res = await upsertInterventiFromUpload(parsed.interventi, force);
     inserted += res.inserted;
     updated += res.updated;
     skipped += res.skipped;
+    insertedIfs = res.insertedIfs;
+    updatedIfs = res.updatedIfs;
+    skippedIfs = res.skippedIfs;
   }
   if (parsed.seniority && parsed.seniority.length) {
     await setSeniority(parsed.seniority);
   }
-  if (parsed.kind === 'bef') {
-    errors.push(`BEF: ${parsed.bef?.length ?? 0} righe lette (non persistite)`);
+
+  let befSaved = 0;
+  let befIfs: string[] = [];
+  if (parsed.bef && parsed.bef.length) {
+    // Resolve BDO -> numero_if from the saved portfolio (intervento.bdo).
+    const bdoToIf = new Map<string, string>();
+    for (const i of await listInterventi()) {
+      if (i.bdo) bdoToIf.set(i.bdo, i.numero_if);
+    }
+    const res = await persistBefFromUpload(parsed.bef, bdoToIf);
+    befSaved = res.saved;
+    befIfs = res.ifs;
+    if (res.unresolved) {
+      errors.push(`BEF: ${res.unresolved} righe senza IF corrispondente (BDO non presente in portafoglio)`);
+    }
   }
   if (parsed.kind === 'chiusura') {
-    errors.push(`Chiusura: ${parsed.chiusura?.length ?? 0} righe lette (non persistite)`);
+    errors.push(`Chiusura: ${parsed.chiusura?.length ?? 0} righe lette (gestione Chiusura non ancora attiva)`);
   }
-  return { inserted, updated, skipped, seniority_rows: parsed.seniority?.length ?? 0, errors };
+  return {
+    inserted,
+    updated,
+    skipped,
+    insertedIfs,
+    updatedIfs,
+    skippedIfs,
+    bef_saved: befSaved,
+    bef_ifs: befIfs,
+    seniority_rows: parsed.seniority?.length ?? 0,
+    errors,
+  };
 }
 
 export async function POST(req: Request) {
@@ -120,7 +172,13 @@ export async function POST(req: Request) {
   // extracted records are sent. Avoids the platform request-body size limit
   // that blocks large (>4.5MB) raw spreadsheet uploads to serverless functions.
   if (contentType.includes('application/json')) {
-    let body: { kind?: FileKind; interventi?: unknown[]; seniority?: ParseOutput['seniority']; filename?: string };
+    let body: {
+      kind?: FileKind;
+      interventi?: unknown[];
+      bef?: unknown[];
+      seniority?: ParseOutput['seniority'];
+      filename?: string;
+    };
     try {
       body = await req.json();
     } catch {
@@ -140,7 +198,10 @@ export async function POST(req: Request) {
     const interventi = (body.interventi ?? [])
       .map(normalizeIntervento)
       .filter((i): i is Intervento => i !== null);
-    const parsed: ParseOutput = { kind, interventi, seniority: body.seniority };
+    const bef = (body.bef ?? [])
+      .map(normalizeBef)
+      .filter((b): b is BefRecord => b !== null);
+    const parsed: ParseOutput = { kind, interventi, bef, seniority: body.seniority };
     const summary = await applyParsed(parsed, force);
     return NextResponse.json({ ok: true, kind, filename: body.filename ?? null, force, ...summary });
   }

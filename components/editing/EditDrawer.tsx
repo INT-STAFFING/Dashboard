@@ -62,6 +62,10 @@ export default function EditDrawer({
     setErr(null);
     if (!form.numero_if || !String(form.numero_if).trim()) return setErr('N° IF obbligatorio');
     if (!form.titolo || !String(form.titolo).trim()) return setErr('Titolo obbligatorio');
+    // Cross-field: la data di fine non può precedere quella di inizio.
+    if (form.data_inizio && form.data_fine && String(form.data_fine) < String(form.data_inizio)) {
+      return setErr('La data di fine non può essere precedente alla data di inizio');
+    }
     setSaving(true);
     const ok = await onSave({ ...form, importo: Number(form.importo) || 0 }, mode === 'new');
     setSaving(false);

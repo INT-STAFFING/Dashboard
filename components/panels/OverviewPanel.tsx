@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import type { Intervento, RtiConfig } from '@/lib/types';
-import { EUR, EUR0, EURM, PCT, MESI, C } from '@/lib/format';
+import { EUR, EUR0, EURM, PCT, MESI, C, erosionRisk } from '@/lib/format';
 import { chartMonthly, legchips } from '@/lib/charts';
 import { Html } from '../Html';
 
@@ -25,6 +25,7 @@ export default function OverviewPanel({
   const revTot = revM.reduce((a, b) => a + b, 0);
   const quota = filtersForn && quotaVal[filtersForn] ? quotaVal[filtersForn] : rti.ceiling;
   const eroPct = quota ? (tot / quota) * 100 : 0;
+  const risk = erosionRisk(eroPct);
   const pct = IFs.length ? Math.round((conBo.length / IFs.length) * 100) : 0;
 
   let cum = 0;
@@ -69,15 +70,32 @@ export default function OverviewPanel({
           </div>
           <div className="note">{senzaBo.length} IF da sbloccare</div>
         </div>
-        <div className="kpi accent">
-          <div className="lab">Quota RTI impegnata</div>
-          <div className="val">{PCT(eroPct)}</div>
+        <div className={'kpi accent' + (risk.level === 'ok' ? '' : ' attn')}>
+          <div className="lab">
+            Quota RTI impegnata
+            {risk.level !== 'ok' && (
+              <span
+                className="riskpill"
+                style={{ background: risk.color }}
+                title={`Erosione ${PCT(eroPct)} — soglie: attenzione ≥75%, critico ≥90%`}
+              >
+                {risk.level === 'over' ? '⚠ ' : ''}
+                {risk.label}
+              </span>
+            )}
+          </div>
+          <div className="val" style={risk.level === 'ok' ? undefined : { color: risk.color }}>
+            {PCT(eroPct)}
+          </div>
           <div className="bar">
-            <span style={{ width: `${Math.min(100, eroPct).toFixed(1)}%` }} />
+            <span style={{ width: `${Math.min(100, eroPct).toFixed(1)}%`, background: risk.color }} />
           </div>
           <div className="note">
             {EURM(tot)} su {EURM(quota)}
             {filtersForn ? ' (' + filtersForn + ')' : ' (massimale)'}
+            {eroPct > 100 && (
+              <b style={{ color: C.bad }}> · +{PCT(eroPct - 100)} oltre quota</b>
+            )}
           </div>
         </div>
       </div>
@@ -85,6 +103,7 @@ export default function OverviewPanel({
         <h3>Revenue mensile · 2026</h3>
         <div className="cap">Revenue di competenza per mese · totale vista {EUR(revTot)}</div>
         <Html
+          ariaLabel={`Grafico a barre della revenue mensile 2026 per la vista corrente. Totale ${EUR(revTot)}, cumulato a fine anno ${EUR(cumV[cumV.length - 1] || 0)}. Valori per mese: ${MESI.map((m, i) => `${m} ${EUR(revM[i] || 0)}`).join(', ')}.`}
           html={chartMonthly(MESI, [{ name: 'Revenue', vals: revM, color: C.petrol }], {
             cumulative: { vals: cumV, color: C.gold, name: 'Cumulato' },
             today: 5,

@@ -272,7 +272,16 @@ export async function softDeleteIntervento(numeroIf: string): Promise<boolean> {
   return true;
 }
 
-export type UploadResult = { inserted: number; updated: number; skipped: number };
+export type UploadResult = {
+  inserted: number;
+  updated: number;
+  skipped: number;
+  // Which IF/BO ended up in each bucket, so the upload UI can show *what* was
+  // touched (and crucially, which manually-edited records were preserved).
+  insertedIfs: string[];
+  updatedIfs: string[];
+  skippedIfs: string[];
+};
 
 // Different source files carry different slices of an intervento: IF_ARIA has
 // ambito / referenti / BO / doc-status, the Dashboard workbook has importo /
@@ -325,23 +334,30 @@ export async function upsertInterventiFromUpload(
   incoming: Intervento[],
   force = false,
 ): Promise<UploadResult> {
-  let inserted = 0;
-  let updated = 0;
-  let skipped = 0;
+  const insertedIfs: string[] = [];
+  const updatedIfs: string[] = [];
+  const skippedIfs: string[] = [];
 
   for (const inc of incoming) {
     const existing = await getInterventoAny(inc.numero_if);
     if (!existing) {
       await rawInsert(inc);
-      inserted += 1;
+      insertedIfs.push(inc.numero_if);
     } else if (existing.edited_manually && !force) {
-      skipped += 1;
+      skippedIfs.push(inc.numero_if);
     } else {
       await rawUpdate(inc.numero_if, mergeUpload(existing, inc, force));
-      updated += 1;
+      updatedIfs.push(inc.numero_if);
     }
   }
-  return { inserted, updated, skipped };
+  return {
+    inserted: insertedIfs.length,
+    updated: updatedIfs.length,
+    skipped: skippedIfs.length,
+    insertedIfs,
+    updatedIfs,
+    skippedIfs,
+  };
 }
 
 // helpers that ignore soft-delete state (used by upload upsert)

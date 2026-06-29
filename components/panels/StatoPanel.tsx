@@ -53,7 +53,13 @@ export default function StatoPanel({
           <div className="cap">
             {IFs.length} IF · {conBo.length} con BO · {senzaBo.length} in attesa
           </div>
-          <Html html={stBox} onClick={onDrill} />
+          <Html
+            ariaLabel={`Grafico a ciambella degli IF per stato del Buono d'Ordine. ${IFs.length} IF totali: ${conBo.length} con BO emesso, ${senzaBo.length} in attesa. Per stato: ${stE
+              .map((e) => `${e[0]} ${e[1]} IF`)
+              .join(', ')}.`}
+            html={stBox}
+            onClick={onDrill}
+          />
           <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12, marginTop: 8 }}>
             Clic su una fetta per vedere gli IF ↗
           </div>

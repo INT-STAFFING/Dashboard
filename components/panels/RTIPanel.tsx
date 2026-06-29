@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import type { Intervento, RtiConfig, Meta } from '@/lib/types';
-import { EUR, EURM, PCT, FCOL, C } from '@/lib/format';
+import { EUR, EURM, PCT, FCOL, C, erosionRisk } from '@/lib/format';
 import { donut, hbars, esc } from '@/lib/charts';
 import { Html } from '../Html';
 
@@ -135,13 +135,20 @@ export default function RTIPanel({
 
   const totImpegnato = IFs.reduce((s, i) => s + i.importo, 0);
   const eroTotPct = ceil ? (totImpegnato / ceil) * 100 : 0;
+  const totRisk = erosionRisk(eroTotPct);
+  const residuo = ceil - totImpegnato;
+  const fillW = Math.min(100, Math.max(eroTotPct, 2));
 
   const eroAnnoSvg = buildYearlyErosionChart(years, impByYear, annualQuota, todayYear);
   const eroAnnoHtml = `<div>
     <div class="erohead" style="margin-bottom:12px">
-      <div class="erorow"><span>Massimale contrattuale</span><b>${EURM(ceil)}</b></div>
-      <div class="erotrack"><div class="erofill" style="width:${Math.max(eroTotPct, 2).toFixed(1)}%">${PCT(eroTotPct)}</div></div>
-      <div class="eroleg"><span>Impegnato totale <b>${EURM(totImpegnato)}</b></span><span>Residuo <b>${EURM(ceil - totImpegnato)}</b></span></div>
+      <div class="erorow"><span>Massimale contrattuale</span><b>${EURM(ceil)} · <span style="color:${totRisk.color}">${totRisk.label}</span></b></div>
+      <div class="erotrack"><div class="erofill" style="width:${fillW.toFixed(1)}%;background:${totRisk.color}">${PCT(eroTotPct)}</div></div>
+      <div class="eroleg"><span>Impegnato totale <b>${EURM(totImpegnato)}</b></span><span>${
+        residuo < 0
+          ? `<b style="color:${C.bad}">Sforamento ${EURM(-residuo)}</b>`
+          : `Residuo <b>${EURM(residuo)}</b>`
+      }</span></div>
     </div>
     ${eroAnnoSvg}
     <div style="font-size:11px;color:var(--muted);margin-top:6px">
@@ -168,7 +175,13 @@ export default function RTIPanel({
         <div className="card">
           <h3>Composizione del RTI</h3>
           <div className="cap">Quota contrattuale per partner sul massimale contrattuale</div>
-          <Html html={donutHtml} onClick={onDonutClick} />
+          <Html
+            ariaLabel={`Grafico a ciambella della composizione del RTI sul massimale ${EURM(rti.ceiling)}. ${rti.partners
+              .map((p) => `${p.name} ${PCT(p.pct * 100)} pari a ${EURM(p.quota)}`)
+              .join('; ')}.`}
+            html={donutHtml}
+            onClick={onDonutClick}
+          />
           <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>
             {selP ? (
               <>
@@ -204,7 +217,10 @@ export default function RTIPanel({
         <div className="cap">
           Impegnato (IF/BO della vista) distribuito per anno lungo la durata contrattuale
         </div>
-        <Html html={eroAnnoHtml} />
+        <Html
+          ariaLabel={`Erosione del massimale contrattuale per anno. Massimale ${EURM(ceil)}, impegnato totale ${EURM(totImpegnato)} (${PCT(eroTotPct)}, ${totRisk.label}), ${residuo < 0 ? `sforamento ${EURM(-residuo)}` : `residuo ${EURM(residuo)}`}. Impegnato per anno: ${years.map((y) => `${y} ${EURM(impByYear[y] || 0)}`).join(', ')}.`}
+          html={eroAnnoHtml}
+        />
       </div>
     </div>
   );

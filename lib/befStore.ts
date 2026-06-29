@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { getDb, hasDB, ensureSchema } from './db';
 import { bef_records } from './schema';
-import type { BefRow } from './types';
+import type { BefRow, BefRecord } from './types';
+import { bdoFromBef } from './codes';
 
 // Per-IF/BO BEF rows. DB-backed with an in-memory fallback.
 const g = globalThis as unknown as { __ARIA_BEF__?: Record<string, BefRow[]> };
@@ -74,4 +75,50 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
   }
   mem()[numeroIf] = clean.map((r, i) => ({ id: i + 1, ...r }));
   return mem()[numeroIf].map((r) => ({ ...r }));
+}
+
+// Upsert per Numero Fattura (Decisione 2B): le righe in arrivo con la stessa
+// fattura sostituiscono quelle esistenti, le nuove si aggiungono, le altre si
+// conservano. Le righe senza Numero Fattura non sono deduplicabili e vengono
+// accodate.
+export async function upsertBef(numeroIf: string, incoming: BefRow[]): Promise<BefRow[]> {
+  const existing = await listBef(numeroIf);
+  const byFattura = new Map<string, BefRow>();
+  const noKey: BefRow[] = [];
+  const place = (r: BefRow) => {
+    const k = strN(r.num_fattura);
+    if (k) byFattura.set(k, { ...r, numero_if: numeroIf });
+    else noKey.push({ ...r, numero_if: numeroIf });
+  };
+  existing.forEach(place);
+  incoming.forEach(place);
+  return replaceBef(numeroIf, [...byFattura.values(), ...noKey]);
+}
+
+// Persiste le righe BEF di un upload risolvendo il numero IF dal BDO
+// (BEF.num_bdo -> intervento.bdo). Ogni BEF porta sempre il suo BDO; come
+// fallback estrae il BDO dal codice BEF a 20 cifre (posizioni 5-14).
+export async function persistBefFromUpload(
+  rows: BefRecord[],
+  bdoToIf: Map<string, string>,
+): Promise<{ saved: number; ifs: string[]; unresolved: number }> {
+  const byIf = new Map<string, BefRow[]>();
+  let unresolved = 0;
+  for (const r of rows) {
+    const bdo = strN(r.num_bdo) ?? bdoFromBef(r.num_fattura);
+    const numeroIf = bdo ? bdoToIf.get(bdo) : undefined;
+    if (!numeroIf) {
+      unresolved += 1;
+      continue;
+    }
+    const list = byIf.get(numeroIf) ?? [];
+    list.push({ numero_if: numeroIf, ...r });
+    byIf.set(numeroIf, list);
+  }
+  let saved = 0;
+  for (const [numeroIf, list] of byIf) {
+    await upsertBef(numeroIf, list);
+    saved += list.length;
+  }
+  return { saved, ifs: [...byIf.keys()], unresolved };
 }

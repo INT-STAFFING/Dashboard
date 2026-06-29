@@ -36,6 +36,18 @@ dal RTI verso **ARIA Lombardia** (Sistema Informativo Socio-Sanitario, L2). Non
 | Export | CSV del registro IF | `components/panels/RegistroPanel.tsx` |
 | Persistenza | Drizzle + Neon Postgres, fallback in-memory a zero config | `lib/store.ts`, `lib/db.ts` |
 
+**Regole di dominio dei codici** (fonte: business owner — codificate in `lib/codes.ts`):
+
+| Codice | Formato | Struttura | Note |
+|---|---|---|---|
+| **IF** (Intervento di Fornitura) | 8 cifre | `AAAAXXXX` | AAAA = anno, XXXX = progressivo |
+| **BDO** (Buono d'Ordine) | 10 cifre | `AAAA33XXXX` | "33" costante; generato dopo l'IF e collegato a esso |
+| **BEF** (rendicontazione) | 20 cifre | `AAMMBBBBBBBBBBXXXXXX` | AA=anno, MM=mese, `BBBBBBBBBB`=BDO rendicontato, XXXXXX=progressivo |
+
+Conseguenza di design: **dal BEF si risale sempre al BDO** (posizioni 5–14) e
+**dal BDO all'IF** (`intervento.bdo`). È la catena usata per agganciare la
+rendicontazione BEF al portafoglio in fase di upload (F-3).
+
 **Assunzione implicita n.1 (da sfidare):** l'app assume *un solo contratto, due
 partner noti (Intellera/Deloitte), anno fiscale 2026 cablato* (`revenue_2026`,
 `rev_mesi[12]` Gen–Dic). Questo è un vincolo di progettazione fortissimo,
@@ -355,13 +367,13 @@ Per ogni criticità: una **domanda di ricerca (RQ)** o un'**azione (ACT)**.
 |----|-----------|------|----------|-------|
 | F-1 | Personas non validate | RQ-1 | 3–4 interviste a PM/PMO/sponsor reali per validare JTBD e priorità. | aperto (richiede utenti reali) |
 | F-2 | Anno fiscale cablato | RQ-2 + ACT | Confermare durata contratto; parametrizzare anno/etichette mesi via `app_config`. | aperto (decisione di prodotto) |
-| F-3 | BEF/Chiusura scartati (C1/US-D2) | ACT | Persistere su upload, o **dichiarare esplicitamente in UI** che vanno gestiti da Admin. | **mitigato** (vedi sotto) |
-| F-4 | Esito import opaco (C2/US-B5) | ACT | Esporre elenco righe saltate/aggiornate. | aperto (backlog) |
-| F-5 | Erosione senza alert (C3/US-C3) | ACT | Badge soglia rischio sulla KPI quota. | aperto (backlog) |
-| F-6 | Accessibilità tablist/grafici (C4/US-F2) | ACT | **Tablist ARIA + navigazione tastiera + alt testuale grafici.** | **FATTO (questa iterazione)** |
-| F-7 | Sforamento >100% invisibile | ACT | Mostrare valore reale + stato "oltre soglia" quando >100%. | aperto (backlog) |
-| F-8 | Freschezza dato ambigua | RQ-3 | Distinguere "dati al" (file) da "ultima modifica". | aperto (backlog) |
-| F-9 | Empty-state globale primo avvio | ACT | Schermo "nessun dato, carica Excel". | aperto (backlog) |
+| F-3 | BEF/Chiusura scartati (C1/US-D2) | ACT | Persistere su upload (BEF: linking `num_bdo→bdo→IF`, upsert per fattura). Chiusura rimandata (manca superficie UI). | **FATTO (BEF)** · Chiusura a backlog |
+| F-4 | Esito import opaco (C2/US-B5) | ACT | Esporre elenco righe saltate/aggiornate. | **FATTO** |
+| F-5 | Erosione senza alert (C3/US-C3) | ACT | Badge soglia rischio sulla KPI quota. | **FATTO** |
+| F-6 | Accessibilità tablist/grafici (C4/US-F2) | ACT | **Tablist ARIA + navigazione tastiera + alt testuale grafici.** | **FATTO** |
+| F-7 | Sforamento >100% invisibile | ACT | Mostrare valore reale + stato "oltre soglia" quando >100%. | **FATTO** |
+| F-8 | Freschezza dato ambigua | RQ-3 | Distinguere "dati al" (file) da "ultima modifica". | **FATTO** |
+| F-9 | Empty-state globale primo avvio | ACT | Schermo "nessun dato, carica Excel". | **FATTO** |
 
 **Sviluppo applicato in questa iterazione (F-6):** accessibilità della
 navigazione a tab — requisito *Must* perché normativo per fornitori PA (AgID /
@@ -399,32 +411,29 @@ sviluppo. Stato: ✅ fatto · ⬜ aperto/backlog · 🔬 richiede ricerca utente
 - [🔬] Personas validate con utenti reali (RQ-1)
 
 ### Qualità del dato
-- [⬜] BEF/Chiusura: persistenza o disclaimer esplicito in UI (F-3 parz.)
-- [⬜] Esito import mostra righe saltate/aggiornate (F-4)
-- [⬜] Distinzione "dati al" vs "ultima modifica" (F-8)
-- [⬜] Validazione cross-field date (fine ≥ inizio) nel drawer
+- [✅] BEF: persistenza su upload con linking `num_bdo→bdo→IF` e upsert per fattura (F-3)
+- [⬜] Chiusura: persistenza + superficie UI (F-3 residuo — manca dove mostrarla)
+- [✅] Esito import mostra righe inserite/aggiornate/preservate (F-4)
+- [✅] Distinzione "dati al" vs "ultima modifica" (F-8)
+- [✅] Validazione cross-field date (fine ≥ inizio) nel drawer
 
 ### Decisione & rischio
-- [⬜] Alert soglia erosione quota (F-5)
-- [⬜] Sforamento >100% reso visibile (F-7)
+- [✅] Alert soglia erosione quota (F-5)
+- [✅] Sforamento >100% reso visibile (F-7)
 
 ### Accessibilità (AgID/WCAG 2.1 AA — Must PA)
 - [✅] Tablist ARIA + navigazione tastiera (←/→/Home/End) (F-6)
 - [✅] Pannelli `role="tabpanel"` collegati ai tab
-- [⬜] Alternativa testuale ai grafici SVG (US-F2 residuo)
+- [✅] Alternativa testuale ai grafici SVG principali (US-F2: revenue mensile, donut RTI, erosione per anno, donut stato BO)
 - [⬜] Verifica contrasto colori palette (petrol/gold) AA
 - [⬜] Tabella Operativo navigabile/utilizzabile da tastiera e touch
 
 ### Robustezza / edge case
 - [✅] Divisioni protette su portafoglio vuoto (verificato nel codice)
-- [⬜] Empty-state globale primo avvio (F-9)
+- [✅] Empty-state globale primo avvio (F-9)
+- [✅] Messaggio sessione scaduta durante editing ("rifai login")
 - [⬜] Comportamento upload concorrente / collisione chiave naturale
-- [⬜] Messaggio sessione scaduta durante editing ("rifai login")
-- [⬜] Anno fiscale parametrizzato (F-2)
-
-### Governance
-- [⬜] Audit trail chi/cosa/quando (US-E3)
-- [⬜] Notifica admin su nuova registrazione (Journey 4)
+- [⬜] Anno fiscale parametrizzato (F-2 — decisione di prodotto)
 
 ### Build & verifica
 - [✅] `next build` verde dopo le modifiche

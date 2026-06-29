@@ -56,6 +56,20 @@ export const C = {
   good: '#2F8F5B',
 } as const;
 
+// --- Erosione quota: classificazione del rischio (F-5/F-7) -----------------
+// Soglie di prodotto: oltre `warn` si è in attenzione, oltre `critical` si è in
+// zona critica, oltre 100% si è in sforamento. Centralizzate qui così che KPI e
+// barre usino la stessa logica e siano facili da ricalibrare.
+export type RiskLevel = 'ok' | 'warn' | 'critical' | 'over';
+export const EROSION_THRESHOLDS = { warn: 75, critical: 90 } as const;
+
+export function erosionRisk(pct: number): { level: RiskLevel; label: string; color: string } {
+  if (pct > 100) return { level: 'over', label: 'Oltre quota', color: C.bad };
+  if (pct >= EROSION_THRESHOLDS.critical) return { level: 'critical', label: 'Critico', color: C.bad };
+  if (pct >= EROSION_THRESHOLDS.warn) return { level: 'warn', label: 'Attenzione', color: C.amberD };
+  return { level: 'ok', label: 'Sotto soglia', color: C.good };
+}
+
 export const FCOL: Record<string, string> = {
   Intellera: C.petrol,
   Deloitte: C.slate,

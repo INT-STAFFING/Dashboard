@@ -90,6 +90,12 @@ main{padding:16px 0 60px;position:relative}
 .kpi.accent{border-top:3px solid var(--petrol)}.kpi.amber{border-top:3px solid var(--gold)}
 .kpi .bar{height:6px;background:var(--line-2);border-radius:3px;margin-top:11px;overflow:hidden}
 .kpi .bar span{display:block;height:100%;background:var(--petrol);border-radius:3px;transition:width .5s}
+.kpi.attn{border-top-color:var(--amber-d)}
+.emptystate{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:48px 24px;text-align:center;box-shadow:0 8px 24px -20px rgba(10,74,67,.5)}
+.emptystate-ic{font-size:42px;line-height:1;margin-bottom:8px}
+.emptystate h2{margin:0 0 6px}
+.emptystate p{color:var(--muted);max-width:520px;margin:0 auto 18px}
+.kpi .lab .riskpill{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;color:#fff;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:none;vertical-align:middle}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space)}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:0 8px 24px -20px rgba(10,74,67,.5)}

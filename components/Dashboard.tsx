@@ -339,6 +339,24 @@ export default function Dashboard({
         tabIndex={0}
       >
         <div className="tab-spinner" aria-label="Caricamento…" />
+        {interventi.length === 0 && (
+          <div className="emptystate" role="status">
+            <div className="emptystate-ic" aria-hidden>📂</div>
+            <h2>Nessun dato nel portafoglio</h2>
+            <p>
+              Non ci sono ancora IF/BO da mostrare. {canEdit
+                ? 'Carica un file Excel (Dashboard ARIA SISS, Aggregatore o IF_ARIA) per popolare la dashboard.'
+                : 'Chiedi a un utente abilitato di caricare i dati di portafoglio.'}
+            </p>
+            {canEdit && (
+              <Link href="/upload" className="addbtn">
+                ⤴ Carica dati
+              </Link>
+            )}
+          </div>
+        )}
+        {interventi.length > 0 && (
+          <>
         {tab === 0 && <OverviewPanel IFs={IFs} rti={rti} quotaVal={quotaVal} filtersForn={singleForn} />}
         {tab === 1 && (
           <RTIPanel
@@ -374,6 +392,8 @@ export default function Dashboard({
             savingIds={savingIds}
             highlightIds={highlightIds}
           />
+        )}
+          </>
         )}
 
         <div className="foot">

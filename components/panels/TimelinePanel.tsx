@@ -23,17 +23,26 @@ export default function TimelinePanel({
 }) {
   const months = timelineMy.months;
   const [cal, setCal] = useState<Calendar>('solare');
-  const currentYear = new Date().getFullYear();
-  const [year, setYear] = useState<number>(currentYear);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  // A fiscal year labeled Y spans Set(Y)..Ago(Y+1), so the fiscal year that
+  // actually contains "today" is last year's calendar label whenever today's
+  // month is before September (e.g. in Jul 2026 we're inside FY2025, not FY2026).
+  const currentFiscalYear = now.getMonth() + 1 >= 9 ? currentYear : currentYear - 1;
+  // null = the user hasn't explicitly picked a year yet, so the default should
+  // track "today" for whichever calendar is active (solare vs fiscale).
+  const [year, setYear] = useState<number | null>(null);
 
-  // Selectable years depend on the calendar; fall back to the current year, then
-  // to the latest year with data, so the panel always shows something coherent.
+  // Selectable years depend on the calendar; fall back to the year that
+  // actually contains "today" for the active calendar, then to the latest
+  // year with data, so the panel always opens on the current period.
   const years = availableYears(months, cal);
-  const effYear = years.includes(year)
+  const defaultYear = cal === 'fiscale' ? currentFiscalYear : currentYear;
+  const effYear = year != null && years.includes(year)
     ? year
-    : years.includes(currentYear)
-      ? currentYear
-      : years[years.length - 1] ?? currentYear;
+    : years.includes(defaultYear)
+      ? defaultYear
+      : years[years.length - 1] ?? defaultYear;
 
   const periodLabel =
     cal === 'solare' ? `${effYear}` : `Set ${effYear}–Ago ${effYear + 1}`;

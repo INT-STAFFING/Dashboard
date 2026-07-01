@@ -14,8 +14,9 @@ function exportCSV(IFs: Intervento[]) {
     'Modalità', 'Attivazione immediata', 'Stato', 'Data assegnazione', 'Data inizio', 'Data fine',
     'PDC', 'V. Apertura', 'V. SAL', 'BEF', 'Importo', 'Revenue 2026', 'Subappalto',
   ];
-  const rows = [...IFs]
-    .sort((a, b) => b.importo - a.importo)
+  // IFs arrives already filtered/sorted exactly as shown on screen — export it
+  // as-is instead of re-sorting, so the CSV matches what the user is looking at.
+  const rows = IFs
     .map((x) => [
       x.numero_if, x.bdo || '', x.titolo, x.ambito || '', x.fornitore, x.ref_aria || '', x.ref_fornitore || '',
       x.modalita_if || '', x.attivazione || '', x.stato, x.data_assegnazione || '', x.data_inizio || '', x.data_fine || '',
@@ -139,8 +140,14 @@ export default function RegistroPanel({
             <thead>
               <tr>
                 {cols.map(([k, label]) => (
-                  <th key={k} onClick={() => sort(k)} style={{ cursor: 'pointer' }}>
+                  <th
+                    key={k}
+                    onClick={() => sort(k)}
+                    style={{ cursor: 'pointer' }}
+                    aria-sort={sortK === k ? (sortDir === 1 ? 'ascending' : 'descending') : 'none'}
+                  >
                     {label}
+                    {sortK === k && <span aria-hidden="true"> {sortDir === 1 ? '▲' : '▼'}</span>}
                   </th>
                 ))}
                 {canEdit && <th>Azioni</th>}

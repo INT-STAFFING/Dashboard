@@ -38,11 +38,18 @@ export async function PUT(req: Request, { params }: Params) {
   } catch {
     return NextResponse.json({ ok: false, error: 'JSON non valido' }, { status: 400 });
   }
-  const updated = await updateIntervento(params.num_if, body, me!.email);
-  if (!updated) {
-    return NextResponse.json({ ok: false, error: 'Non trovato' }, { status: 404 });
+  try {
+    const updated = await updateIntervento(params.num_if, body, me!.email);
+    if (!updated) {
+      return NextResponse.json({ ok: false, error: 'Non trovato' }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true, updated });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : 'Errore' },
+      { status: 400 },
+    );
   }
-  return NextResponse.json({ ok: true, updated });
 }
 
 // DELETE /api/interventi/[num_if] — soft-delete (sets deleted_at)

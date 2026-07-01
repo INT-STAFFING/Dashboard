@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Intervento } from '@/lib/types';
-import { filterInterventi, matchesMod, type Filters } from '@/lib/queries';
+import { filterInterventi, matchesMod, AMBITO_NON_CLASSIFICATO, type Filters } from '@/lib/queries';
 import { EUR } from '@/lib/format';
 
 const uniq = (arr: (string | null)[]) =>
@@ -175,7 +175,10 @@ export default function FilterBar({
   );
   const refDomain = useMemo(() => uniq(interventi.map((i) => i.ref_aria)), [interventi]);
   const refintDomain = useMemo(() => uniq(interventi.map((i) => i.ref_fornitore)), [interventi]);
-  const ambDomain = useMemo(() => uniq(interventi.map((i) => i.ambito)), [interventi]);
+  const ambDomain = useMemo(
+    () => uniq(interventi.map((i) => i.ambito || AMBITO_NON_CLASSIFICATO)),
+    [interventi],
+  );
   const statoDomain = useMemo(() => uniq(interventi.map((i) => i.stato)), [interventi]);
   const MOD_DOMAIN = ['A corpo', 'A canone', 'A consumo'];
 
@@ -208,7 +211,7 @@ export default function FilterBar({
 
   const fornOpts = facet('forn', fornDomain, (i) => i.fornitore);
   const statoOpts = facet('stato', statoDomain, (i) => i.stato);
-  const ambOpts = facet('amb', ambDomain, (i) => i.ambito);
+  const ambOpts = facet('amb', ambDomain, (i) => i.ambito || AMBITO_NON_CLASSIFICATO);
   const refOpts = facet('ref', refDomain, (i) => i.ref_aria);
   const refintOpts = facet('refint', refintDomain, (i) => i.ref_fornitore);
   const modBase = filterInterventi(interventi, { ...filters, mod: undefined });

@@ -28,15 +28,20 @@ export default function OverviewPanel({
   const risk = erosionRisk(eroPct);
   const pct = IFs.length ? Math.round((conBo.length / IFs.length) * 100) : 0;
 
-  const refYear = new Date().getFullYear();
+  const now = new Date();
+  const refYear = now.getFullYear();
   let cum = 0;
   const cumV = revM.map((v) => (cum += v));
   const sum = (a: number[], s: number, e: number) => a.slice(s, e).reduce((x, y) => x + y, 0);
+  // Months elapsed so far this calendar year (Gen..mese corrente incluso) —
+  // previously hardcoded to a fixed Gen-Giu slice regardless of the actual
+  // current month.
+  const revToDate = sum(revM, 0, now.getMonth() + 1);
 
   const stats: [string, string, string][] = [
     ['Valore IF attive', EURM(tot), IFs.length + ' IF'],
     [`Revenue ${refYear} (totale anno)`, EUR(revTot), 'competenza'],
-    ['Revenue da gennaio ad oggi', EUR(sum(revM, 0, 6)), 'avanzamento ' + PCT(revTot ? (sum(revM, 0, 6) / revTot) * 100 : 0)],
+    ['Revenue da gennaio ad oggi', EUR(revToDate), 'avanzamento ' + PCT(revTot ? (revToDate / revTot) * 100 : 0)],
     ['BO emessi', conBo.length + ' / ' + IFs.length, PCT(pct)],
     ['Quota RTI impegnata', PCT(eroPct), EURM(tot) + ' / ' + EURM(quota)],
   ];

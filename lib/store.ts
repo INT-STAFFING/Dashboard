@@ -114,6 +114,33 @@ function applyInput(base: Intervento, input: InterventoInput): Intervento {
   return { ...base, ...input, numero_if: base.numero_if } as Intervento;
 }
 
+// Shared invariants enforced on every write path (drawer, inline edit, raw
+// API/upload) — previously only checked client-side in EditDrawer, so they
+// were silently bypassable via inline edits or direct API calls.
+function validateIntervento(rec: Intervento): void {
+  if (rec.importo != null && (!Number.isFinite(rec.importo) || rec.importo < 0)) {
+    throw new Error('Importo non valido: deve essere un numero >= 0');
+  }
+  if (rec.data_inizio && rec.data_fine && rec.data_fine < rec.data_inizio) {
+    throw new Error('La data di fine non può essere precedente alla data di inizio');
+  }
+}
+
+// Keep `has_bo` and `stato` in lockstep (mirrors the convention already used
+// by every Excel parser: has_bo <=> stato === 'approvato'). If a caller only
+// touches one of the two fields (e.g. an inline edit that sets `stato` alone),
+// derive the other so the pair never silently diverges. If both are supplied
+// together in the same patch, the caller's explicit intent wins for both.
+function syncStatoBo(input: InterventoInput, rec: Intervento): void {
+  const hasStato = Object.prototype.hasOwnProperty.call(input, 'stato');
+  const hasBo = Object.prototype.hasOwnProperty.call(input, 'has_bo');
+  if (hasStato && !hasBo) {
+    rec.has_bo = rec.stato === 'approvato';
+  } else if (hasBo && !hasStato) {
+    rec.stato = rec.has_bo ? 'approvato' : 'non elaborato';
+  }
+}
+
 const DEFAULTS: Omit<Intervento, 'numero_if' | 'titolo'> = {
   bdo: null,
   ambito: null,
@@ -217,6 +244,7 @@ export async function createIntervento(
     last_edited_at: nowIso,
     last_edited_by: by ?? 'ui',
   } as Intervento;
+  validateIntervento(record);
 
   if (hasDB) {
     await getDb().insert(interventiTable).values(interventoToRow(record));
@@ -242,6 +270,8 @@ export async function updateIntervento(
   updated.edited_manually = true;
   updated.last_edited_at = nowIso;
   updated.last_edited_by = by ?? 'ui';
+  syncStatoBo(input, updated);
+  validateIntervento(updated);
 
   if (hasDB) {
     await getDb()

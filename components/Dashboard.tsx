@@ -434,8 +434,7 @@ export default function Dashboard({
         {tab === 3 && <DistribuzionePanel IFs={IFs} seniority={initial.seniority} distSub={distSub} setDistSub={setDistSub} />}
         {tab === 4 && (
           <ModalitaPanel
-            modalita={initial.modalita}
-            interventi={interventi}
+            interventi={IFs}
             onDrillMod={(m) => drillTo({ mod: m })}
           />
         )}

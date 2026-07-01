@@ -18,6 +18,13 @@ export async function PUT(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: 'JSON non valido' }, { status: 400 });
   }
-  const updated = await updateRtiConfig(body);
-  return NextResponse.json({ ok: true, rti: updated });
+  try {
+    const updated = await updateRtiConfig(body);
+    return NextResponse.json({ ok: true, rti: updated });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : 'Errore' },
+      { status: 400 },
+    );
+  }
 }

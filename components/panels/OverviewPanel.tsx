@@ -67,7 +67,7 @@ export default function OverviewPanel({
             <small> / {IFs.length}</small>
           </div>
           <div className="bar">
-            <span style={{ width: `${pct}%` }} />
+            <span style={{ transform: `scaleX(${pct / 100})` }} />
           </div>
           <div className="note">{senzaBo.length} IF da sbloccare</div>
         </div>
@@ -89,7 +89,7 @@ export default function OverviewPanel({
             {PCT(eroPct)}
           </div>
           <div className="bar">
-            <span style={{ width: `${Math.min(100, eroPct).toFixed(1)}%`, background: risk.color }} />
+            <span style={{ transform: `scaleX(${Math.min(100, eroPct) / 100})`, background: risk.color }} />
           </div>
           <div className="note">
             {EURM(tot)} su {EURM(quota)}

@@ -202,7 +202,7 @@ export default function UploadPage() {
 
       {progress > 0 && (
         <div className="progress">
-          <span style={{ width: progress + '%' }} />
+          <span style={{ transform: `scaleX(${progress / 100})` }} />
         </div>
       )}
 

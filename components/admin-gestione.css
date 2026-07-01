@@ -1,6 +1,4 @@
 /* ---- Admin "Gestione dati" page -------------------------------------- */
-.formgrid.cols2{grid-template-columns:repeat(2,1fr)}
-@media(max-width:760px){.formgrid.cols2{grid-template-columns:1fr}}
 .adm-field{display:flex;flex-direction:column;gap:5px;font-size:11.5px;font-weight:650;color:var(--muted);letter-spacing:.02em;margin-bottom:2px}
 .adm-flab{font-size:11.5px;font-weight:650;color:var(--muted)}
 .exp-save{font-family:inherit;font-size:13px;font-weight:700;border:1px solid var(--petrol);background:var(--petrol);color:#fff;padding:9px 16px;border-radius:9px;cursor:pointer}
@@ -11,6 +9,12 @@
 .datatable th,.datatable td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
 .datatable th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;white-space:nowrap}
 .datatable tr.selrow{background:var(--petrol-bg)}
+/* below this width the table would otherwise squeeze every input down to a
+   few illegible characters instead of triggering the horizontal scroll
+   already provided by the table's wrapping overflowX:auto container */
+@media(max-width:900px){
+  .datatable td input,.datatable td select{min-width:96px}
+}
 
 .monthgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:8px 0 14px}
 @media(max-width:760px){.monthgrid{grid-template-columns:repeat(3,1fr)}}

@@ -28,7 +28,7 @@ h1{font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing
 .idcard{background:rgba(7,42,38,.42);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:12px 15px;backdrop-filter:blur(4px);min-width:225px}
 .idcard dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12.5px}
 .idcard dt{color:#9FD4CB}.idcard dd{text-align:right;font-weight:600}
-.hdr-right{display:flex;flex-direction:column;gap:6px;min-width:300px;max-width:380px;align-items:flex-end}
+.hdr-right{display:flex;flex-direction:column;gap:6px;min-width:300px;max-width:380px;align-items:flex-end;flex:1 1 300px}
 .metaline{font-size:11px;color:#C7E4DF}.metaline b{color:#fff;font-weight:700}
 .exp{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;background:#fff;border:1.5px solid var(--gold);border-radius:10px;padding:5px 8px;box-shadow:0 4px 14px -10px rgba(0,0,0,.4)}
 .exp .elab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--petrol-d);font-weight:800;white-space:nowrap}
@@ -151,6 +151,8 @@ main{padding:16px 0 60px;position:relative}
 .formgrid input,.formgrid select,.formgrid textarea{font-family:inherit;font-size:13px;font-weight:400;color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff}
 .formgrid input:focus,.formgrid select:focus,.formgrid textarea:focus{outline:2px solid var(--petrol-l);outline-offset:-1px}
 .formgrid textarea{resize:vertical}
+.formgrid.cols2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:640px){.formgrid.cols2{grid-template-columns:1fr}}
 .formbtns{display:flex;align-items:center;gap:10px;margin-top:16px}
 .addbtn{font-family:inherit;font-size:13px;font-weight:700;border:none;background:var(--petrol);color:#fff;padding:9px 18px;border-radius:9px;cursor:pointer}
 .addbtn:hover{background:var(--petrol-d)}
@@ -232,7 +234,41 @@ tbody tr:hover{background:#F5F8F7}
 .foot b{color:var(--ink)}
 #tip{position:fixed;display:none;pointer-events:none;z-index:9999;background:#0F1E1B;color:#fff;padding:8px 11px;border-radius:8px;font-size:12px;line-height:1.4;white-space:pre-line;box-shadow:0 6px 20px -6px rgba(0,0,0,.5);max-width:280px;font-weight:500}
 @media(max-width:1080px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2,.grid3{grid-template-columns:1fr}.phead p{display:none}}
-@media(max-width:560px){.kpis{grid-template-columns:1fr}.hrow{grid-template-columns:120px 1fr auto}.fsel{max-width:140px}}
+@media(max-width:560px){.kpis{grid-template-columns:1fr}.hrow{grid-template-columns:120px 1fr auto}.hsrow{grid-template-columns:110px 1fr auto}.fsel{max-width:140px}}
+
+/* ---- Mobile / tablet layout (touch-first header, nav, filters, tables) ---- */
+@media(max-width:900px){
+  .wrap{padding:0 16px}
+  .brandrow{gap:12px}
+  .hdr-right{min-width:0;max-width:100%;width:100%;align-items:flex-start;flex-basis:100%}
+  .metaline,.expdesc{text-align:left}
+  .exp{flex-wrap:wrap;width:100%}
+  .userchip{flex-wrap:wrap}
+  .tabbar .wrap{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabbar .wrap::-webkit-scrollbar{display:none}
+  .tab{padding:12px 12px;font-size:12.5px}
+  .search{width:100%;flex:1 1 100%}
+  .phead{flex-wrap:wrap;row-gap:8px}
+  .tl-controls{margin-left:0;flex-basis:100%}
+  /* charts drawn on a fixed SVG viewBox shrink their text past legibility below
+     this width — let the card scroll horizontally instead of squeezing labels */
+  .card{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .msvg{min-width:640px}
+  .donutsvg{min-width:0}
+  /* the operational table has 13+ nowrap columns: on desktop that width is
+     clipped on purpose, on mobile it must scroll instead of hiding data */
+  .tscroll.noxscroll{overflow-x:auto}
+  #tbl{table-layout:auto}
+}
+@media(max-width:520px){
+  .formgrid{grid-template-columns:1fr}
+}
+/* touch devices: 16px inputs avoid the iOS auto-zoom-on-focus, bigger tap targets */
+@media(pointer:coarse){
+  input,select,textarea{font-size:16px}
+  .iconbtn{padding:6px 8px;font-size:16px}
+  .editbtn,.delbtn{padding:5px 7px;font-size:16px}
+}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hfill,.kpi .bar span,.panel.on{transition:none;animation:none}}
 @media print{
   @page{margin:11mm}

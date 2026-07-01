@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './filterbar.css';
 
@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: 'Monitor IF/BO · ARIA SISS L2 · Intellera',
   description:
     'Executive dashboard del portafoglio Interventi di Fornitura — contratto ARIA SISS L2 (CIG B313D0710B).',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

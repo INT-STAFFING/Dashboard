@@ -121,7 +121,7 @@ export default function UploadPage() {
 
   return (
     <div className="upbox">
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'baseline', justifyContent: 'space-between' }}>
         <h1 style={{ fontSize: 24, fontWeight: 800 }}>Carica dati Excel</h1>
         <Link href="/dashboard" className="hdr-link" style={{ color: 'var(--petrol-d)' }}>
           ← Torna alla Dashboard
@@ -178,7 +178,7 @@ export default function UploadPage() {
         )}
       </div>
 
-      <div className="formgrid" style={{ gridTemplateColumns: '1fr 1fr', marginTop: 18 }}>
+      <div className="formgrid cols2" style={{ marginTop: 18 }}>
         <label>
           Token upload (UPLOAD_SECRET)
           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="se configurato" />

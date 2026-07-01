@@ -112,22 +112,36 @@ export default function Dashboard({
     tip.id = 'tip';
     tip.style.display = 'none';
     document.body.appendChild(tip);
+    const showAt = (t: HTMLElement, x: number, y: number) => {
+      tip.textContent = t.getAttribute('data-tip') || '';
+      tip.style.display = 'block';
+      tip.style.left = Math.min(x + 14, window.innerWidth - tip.offsetWidth - 12) + 'px';
+      tip.style.top = Math.min(y + 16, window.innerHeight - tip.offsetHeight - 12) + 'px';
+    };
     const move = (e: MouseEvent) => {
       const t = (e.target as HTMLElement).closest('[data-tip]') as HTMLElement | null;
       if (!t) {
         tip.style.display = 'none';
         return;
       }
-      tip.textContent = t.getAttribute('data-tip') || '';
-      tip.style.display = 'block';
-      tip.style.left = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 12) + 'px';
-      tip.style.top = e.clientY + 16 + 'px';
+      showAt(t, e.clientX, e.clientY);
+    };
+    // Touchscreens never fire mousemove, so chart tooltips are otherwise
+    // unreachable on mobile/tablet: mirror the same lookup on tap.
+    const tap = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const el = touch ? (document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null) : null;
+      const t = el?.closest('[data-tip]') as HTMLElement | null;
+      if (t) showAt(t, touch.clientX, touch.clientY);
+      else tip.style.display = 'none';
     };
     const hide = () => (tip.style.display = 'none');
     document.addEventListener('mousemove', move);
+    document.addEventListener('touchstart', tap, { passive: true });
     document.addEventListener('scroll', hide, true);
     return () => {
       document.removeEventListener('mousemove', move);
+      document.removeEventListener('touchstart', tap);
       document.removeEventListener('scroll', hide, true);
       tip.remove();
     };

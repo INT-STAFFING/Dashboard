@@ -59,7 +59,7 @@ export default function UsersAdmin({
 
   return (
     <div className="upbox" style={{ maxWidth: 980 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'baseline', justifyContent: 'space-between' }}>
         <h1 style={{ fontSize: 24, fontWeight: 800 }}>Gestione utenti</h1>
         <Link href="/dashboard" className="hdr-link" style={{ color: 'var(--petrol-d)' }}>
           ← Torna alla Dashboard

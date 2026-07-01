@@ -10,6 +10,10 @@ function detectKind(name: string): string {
   if (n.includes('chiusura')) return 'chiusura';
   if (n.includes('bef')) return 'bef';
   if (n.includes('if_aria') || n.includes('monitoraggio') || n.includes('dettaglio')) return 'if';
+  // "REPORT Bdo" exports don't have a fixed filename pattern (system-generated
+  // timestamp/code names) — the real classification happens by content on
+  // parse; this is just a best-effort hint for the preview pill.
+  if (n.includes('bdo')) return 'report_bdo';
   return 'sconosciuto';
 }
 
@@ -24,6 +28,8 @@ type Result = {
   skippedIfs?: string[];
   bef_saved?: number;
   bef_ifs?: string[];
+  report_bdo_saved?: number;
+  report_bdo_ignored?: number;
   seniority_rows?: number;
   errors?: string[];
   error?: string;
@@ -84,7 +90,7 @@ export default function UploadPage() {
         setResult({
           ok: false,
           error:
-            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore.',
+            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo".',
         });
         return;
       }
@@ -99,6 +105,7 @@ export default function UploadPage() {
           kind: parsed.kind,
           interventi: parsed.interventi,
           bef: parsed.bef,
+          reportBdo: parsed.reportBdo,
           seniority: parsed.seniority,
           filename: file.name,
         }),
@@ -131,7 +138,9 @@ export default function UploadPage() {
         Il tipo di file viene riconosciuto automaticamente dal nome:{' '}
         <span className="mono">Dashboard</span> (revenue) · <span className="mono">IF_ARIA</span> ·{' '}
         <span className="mono">BEF</span> · <span className="mono">Chiusura</span> ·{' '}
-        <span className="mono">Aggregatore</span>.
+        <span className="mono">Aggregatore</span> — oppure dal contenuto per il{' '}
+        <span className="mono">REPORT Bdo</span> (stato workflow ROI/PMO/CTRM), il cui nome file non segue un
+        pattern fisso.
       </p>
 
       <div
@@ -248,6 +257,22 @@ export default function UploadPage() {
                     <b>{result.bef_saved}</b>
                   </div>
                   {!!result.bef_ifs?.length && <IfList label="IF con BEF aggiornato" ids={result.bef_ifs} />}
+                </>
+              )}
+              {(!!result.report_bdo_saved || !!result.report_bdo_ignored) && (
+                <>
+                  <div className="row">
+                    <span>Righe Report Bdo salvate (BDO già in portafoglio)</span>
+                    <b>{result.report_bdo_saved ?? 0}</b>
+                  </div>
+                  {!!result.report_bdo_ignored && (
+                    <div className="row" style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      <span>
+                        {result.report_bdo_ignored} righe ignorate: BDO non presente nel portafoglio (non vengono
+                        creati nuovi interventi).
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
               {!!result.seniority_rows && (

@@ -74,6 +74,42 @@ export const verbali_chiusura = pgTable('verbali_chiusura', {
   data_firma_roi: date('data_firma_roi'),
 });
 
+// Snapshot of the "REPORT Bdo" export (workflow approvativo ROI/PMO/CTRM per
+// BDO). num_bdo is the business key: one row per BDO, upserted on each
+// upload. Only BDO already present in `interventi.bdo` are ever written here
+// (see lib/reportBdoStore.ts) — this table never creates new interventi.
+export const report_bdo = pgTable('report_bdo', {
+  id: serial('id').primaryKey(),
+  num_bdo: text('num_bdo').unique().notNull(),
+  descrizione_bdo: text('descrizione_bdo'),
+  nome_file_pif_if: text('nome_file_pif_if'),
+  descrizione_pif_if: text('descrizione_pif_if'),
+  codifica_documento: text('codifica_documento'),
+  stato_documento: text('stato_documento'),
+  divisione: text('divisione'),
+  centro_costo: text('centro_costo'),
+  ultima_pif_approvata: text('ultima_pif_approvata'),
+  data_caricamento: date('data_caricamento'),
+  utente_caricamento: text('utente_caricamento'),
+  fornitore: text('fornitore'),
+  roi: text('roi'),
+  data_invio_roi: date('data_invio_roi'),
+  data_approvazione_roi: date('data_approvazione_roi'),
+  data_rifiuto_roi: date('data_rifiuto_roi'),
+  pmo: text('pmo'),
+  data_invio_pmo: date('data_invio_pmo'),
+  data_approvazione_pmo: date('data_approvazione_pmo'),
+  data_rifiuto_pmo: date('data_rifiuto_pmo'),
+  ctrm: text('ctrm'),
+  data_invio_ctrm: date('data_invio_ctrm'),
+  data_approvazione_ctrm: date('data_approvazione_ctrm'),
+  data_rifiuto_ctrm: date('data_rifiuto_ctrm'),
+  versione_corrente: text('versione_corrente'),
+  data_versione_corrente: date('data_versione_corrente'),
+  data_decorrenza: date('data_decorrenza'),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
 export const tariffe = pgTable('tariffe', {
   id: serial('id').primaryKey(),
   figura: text('figura'),

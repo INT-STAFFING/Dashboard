@@ -89,16 +89,13 @@ function valueMap(months: TimelineMonth[], metric: Metric): Map<string, number> 
   return m;
 }
 
-// 12 monthly buckets for a year window, in display order for the calendar.
+// 12 monthly buckets for a year window, in display order for the calendar,
+// reading values from a `${anno}-${mese}` -> value map. Shared by the
+// TimelineMonth-based series below and by any other monthly fact map (e.g.
+// bef_records totals grouped by data_fattura).
 //  - solare:  Gen..Dic of `year`
 //  - fiscale: Set `year` .. Ago `year+1`
-export function yearSeriesMonthly(
-  months: TimelineMonth[],
-  year: number,
-  cal: Calendar,
-  metric: Metric,
-): Bucket[] {
-  const vm = valueMap(months, metric);
+function bucketsFromMap(vm: Map<string, number>, year: number, cal: Calendar): Bucket[] {
   if (cal === 'solare') {
     return MESI.map((label, i) => ({ label, value: vm.get(`${year}-${i + 1}`) ?? 0 }));
   }
@@ -108,17 +105,40 @@ export function yearSeriesMonthly(
   });
 }
 
+function quarterlyFromBuckets(m: Bucket[]): Bucket[] {
+  return [0, 1, 2, 3].map((q) => ({
+    label: `Q${q + 1}`,
+    value: m.slice(q * 3, q * 3 + 3).reduce((s, b) => s + b.value, 0),
+  }));
+}
+
+export function yearSeriesMonthly(
+  months: TimelineMonth[],
+  year: number,
+  cal: Calendar,
+  metric: Metric,
+): Bucket[] {
+  return bucketsFromMap(valueMap(months, metric), year, cal);
+}
+
 export function yearSeriesQuarterly(
   months: TimelineMonth[],
   year: number,
   cal: Calendar,
   metric: Metric,
 ): Bucket[] {
-  const m = yearSeriesMonthly(months, year, cal, metric);
-  return [0, 1, 2, 3].map((q) => ({
-    label: `Q${q + 1}`,
-    value: m.slice(q * 3, q * 3 + 3).reduce((s, b) => s + b.value, 0),
-  }));
+  return quarterlyFromBuckets(yearSeriesMonthly(months, year, cal, metric));
+}
+
+// Same monthly/quarterly aggregation, but reading directly from a
+// `${anno}-${mese}` -> value map instead of TimelineMonth facts (e.g. BEF
+// invoiced totals grouped by month of `data_fattura`).
+export function yearSeriesMonthlyMap(vm: Map<string, number>, year: number, cal: Calendar): Bucket[] {
+  return bucketsFromMap(vm, year, cal);
+}
+
+export function yearSeriesQuarterlyMap(vm: Map<string, number>, year: number, cal: Calendar): Bucket[] {
+  return quarterlyFromBuckets(bucketsFromMap(vm, year, cal));
 }
 
 export function yearTotal(

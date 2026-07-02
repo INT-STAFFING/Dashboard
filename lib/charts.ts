@@ -275,6 +275,7 @@ export function chartRevFatt(
   labels: string[],
   rev: number[],
   fatt: number[],
+  bef: number[] = [],
   todayIdx: number,
   periodLabel = '',
 ): string {
@@ -286,7 +287,8 @@ export function chartRevFatt(
     pb = 42;
   const pw = W - pl - pr,
     ph = H - pt - pb;
-  const maxBar = Math.max(1, ...rev, ...fatt);
+  const hasBef = bef.some((v) => v > 0);
+  const maxBar = Math.max(1, ...rev, ...fatt, ...bef);
   const ticks = 4;
   const yL = (v: number) => pt + ph - (v / maxBar) * ph;
   let cr = 0,
@@ -296,8 +298,9 @@ export function chartRevFatt(
   const maxCum = Math.max(1, cumR[cumR.length - 1], cumF[cumF.length - 1]);
   const yR = (v: number) => pt + ph - (v / maxCum) * ph;
   const slot = pw / labels.length;
-  const gw = slot * 0.56;
-  const bw = gw / 2;
+  const nBars = hasBef ? 3 : 2;
+  const gw = slot * (hasBef ? 0.66 : 0.56);
+  const bw = gw / nBars;
   let g = '';
   for (let i = 0; i <= ticks; i++) {
     const v = (maxBar * i) / ticks,
@@ -322,6 +325,12 @@ export function chartRevFatt(
     bars += `<rect x="${xf.toFixed(1)}" y="${yL(fatt[i]).toFixed(1)}" width="${(bw - 2).toFixed(
       1,
     )}" height="${(pt + ph - yL(fatt[i])).toFixed(1)}" rx="3" fill="${C.gold}"/>`;
+    if (hasBef) {
+      const xb = xr + 2 * bw;
+      bars += `<rect x="${xb.toFixed(1)}" y="${yL(bef[i] || 0).toFixed(1)}" width="${(bw - 2).toFixed(
+        1,
+      )}" height="${(pt + ph - yL(bef[i] || 0)).toFixed(1)}" rx="3" fill="${C.slate}"/>`;
+    }
     labs += `<text x="${cx.toFixed(1)}" y="${H - pb + 18}" text-anchor="middle" font-size="11.5" fill="${
       C.muted
     }">${esc(mn)}</text>`;
@@ -350,7 +359,7 @@ export function chartRevFatt(
     const x = pl + slot * i;
     const tipTxt = `${mn}${periodLabel ? ' ' + periodLabel : ''}\nRevenue: ${EUR(rev[i])}\nFatturazione: ${EUR(fatt[i])}\nCum. Revenue: ${EUR(
       cumR[i],
-    )}\nCum. Fatturazione: ${EUR(cumF[i])}`;
+    )}\nCum. Fatturazione: ${EUR(cumF[i])}${hasBef ? `\nFatturato (BEF): ${EUR(bef[i] || 0)}` : ''}`;
     hov += `<rect x="${x.toFixed(1)}" y="${pt}" width="${slot.toFixed(
       1,
     )}" height="${ph}" fill="transparent" style="pointer-events:all" class="hovcol" data-tip="${esc(tipTxt)}"/>`;

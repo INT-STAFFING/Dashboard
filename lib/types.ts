@@ -102,6 +102,14 @@ export type MultiYearTimeline = {
   years: number[]; // calendar years present, ascending
 };
 
+// Monthly total of `bef_records.importo_ricezione`, grouped by the calendar
+// month of `data_fattura` (rows without a `data_fattura` are excluded).
+export type BefMonthly = {
+  anno: number;
+  mese: number; // 1..12 (calendar)
+  totale: number;
+};
+
 export type Meta = {
   cig: string;
   contratto: string;
@@ -175,6 +183,7 @@ export type DashboardData = {
   quota_val: Record<string, number>;
   timeline: Timeline;
   timeline_my: MultiYearTimeline;
+  bef_monthly: BefMonthly[];
   kpi: Kpi;
   revenue_mensile: { mese: string; intellera: number; deloitte: number }[];
   distribuzione_ambito: { ambito: string; count: number; valore: number }[];

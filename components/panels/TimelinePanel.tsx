@@ -1,12 +1,14 @@
 'use client';
-import React, { useState } from 'react';
-import type { MultiYearTimeline } from '@/lib/types';
-import { EUR, EUR2, PCT, C, FATTURATO_EMESSO } from '@/lib/format';
+import React, { useMemo, useState } from 'react';
+import type { MultiYearTimeline, BefMonthly, BefAggregates } from '@/lib/types';
+import { EUR, EUR2, PCT, C } from '@/lib/format';
 import {
   type Calendar,
   availableYears,
   yearSeriesMonthly,
   yearSeriesQuarterly,
+  yearSeriesMonthlyMap,
+  yearSeriesQuarterlyMap,
   todayIndex,
 } from '@/lib/fiscal';
 import { chartRevFatt, legchips } from '@/lib/charts';
@@ -14,14 +16,23 @@ import { Html } from '../Html';
 
 export default function TimelinePanel({
   timelineMy,
+  befMonthly,
+  befAggregates,
   tlMode,
   setTlMode,
 }: {
   timelineMy: MultiYearTimeline;
+  befMonthly: BefMonthly[];
+  befAggregates: BefAggregates;
   tlMode: 'mese' | 'trim';
   setTlMode: (m: 'mese' | 'trim') => void;
 }) {
   const months = timelineMy.months;
+  const befMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of befMonthly) m.set(`${r.anno}-${r.mese}`, r.totale);
+    return m;
+  }, [befMonthly]);
   const [cal, setCal] = useState<Calendar>('solare');
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -54,9 +65,14 @@ export default function TimelinePanel({
 
   const revB = series('revenue');
   const fattB = series('consuntivato');
+  const befB =
+    tlMode === 'trim'
+      ? yearSeriesQuarterlyMap(befMap, effYear, cal)
+      : yearSeriesMonthlyMap(befMap, effYear, cal);
   const labels = revB.map((b) => b.label);
   const rev = revB.map((b) => b.value);
   const fatt = fattB.map((b) => b.value);
+  const bef = befB.map((b) => b.value);
 
   const monthToday = todayIndex(effYear, cal);
   const today =
@@ -65,18 +81,19 @@ export default function TimelinePanel({
   const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
   const totR = sum(rev);
   const totF = sum(fatt);
+  const totBef = sum(bef);
+  const hasBef = bef.some((v) => v > 0);
   const upto = today < 0 ? 0 : today + 1;
   const matR = rev.slice(0, upto).reduce((x, y) => x + y, 0);
-  const matF = fatt.slice(0, upto).reduce((x, y) => x + y, 0);
   const modeTxt = tlMode === 'trim' ? 'trimestrale' : 'mensile';
   const calTxt = cal === 'solare' ? 'anno solare' : 'anno fiscale';
 
   const stats: [string, string, string][] = [
     ['Revenue totale', EUR(totR), `competenza · ${calTxt} ${periodLabel}`],
-    ['Fatturazione totale', EUR(totF), 'consuntivato/fatturabile'],
+    ['Valore IF Attivate', EUR(totF), 'consuntivato/fatturabile'],
     ['Revenue maturata ad oggi', EUR(matR), 'avanzamento ' + PCT(totR ? (matR / totR) * 100 : 0)],
-    ['Fatturabile ad oggi', EUR(matF), 'avanzamento ' + PCT(totF ? (matF / totF) * 100 : 0)],
-    ['Fatturato emesso', EUR2(FATTURATO_EMESSO.totale), FATTURATO_EMESSO.voci[0].nome + ' · BO ' + FATTURATO_EMESSO.voci[0].bo],
+    ['Fatturabile ad oggi', EUR2(befAggregates.fatturabile), 'bef_records senza numero e data fattura'],
+    ['Fatturato emesso', EUR2(befAggregates.fatturatoEmesso), 'bef_records con numero e data fattura'],
   ];
 
   return (
@@ -123,16 +140,24 @@ export default function TimelinePanel({
           Barre: valori per periodo · Linee: cumulati · intero portafoglio contrattuale
         </div>
         <Html
-          ariaLabel={`Revenue vs fatturazione (${modeTxt}, ${calTxt} ${periodLabel}). Revenue totale ${EUR(totR)}, fatturazione totale ${EUR(totF)}. Per periodo: ${labels
-            .map((l, i) => `${l} revenue ${EUR(rev[i])} fatturazione ${EUR(fatt[i])}`)
+          ariaLabel={`Revenue vs fatturazione (${modeTxt}, ${calTxt} ${periodLabel}). Revenue totale ${EUR(totR)}, fatturazione totale ${EUR(totF)}${
+            hasBef ? `, fatturato BEF totale ${EUR(totBef)}` : ''
+          }. Per periodo: ${labels
+            .map(
+              (l, i) =>
+                `${l} revenue ${EUR(rev[i])} fatturazione ${EUR(fatt[i])}${
+                  hasBef ? ` fatturato BEF ${EUR(bef[i])}` : ''
+                }`,
+            )
             .join('; ')}.`}
-          html={chartRevFatt(labels, rev, fatt, today, periodLabel)}
+          html={chartRevFatt(labels, rev, fatt, bef, today, periodLabel)}
         />
         <Html
           className="legrow"
           html={legchips([
             { c: C.petrol, t: 'Revenue' },
             { c: C.gold, t: 'Fatturazione' },
+            ...(hasBef ? [{ c: C.slate, t: 'Fatturato (BEF)' }] : []),
             { c: C.petrolD, t: 'Cum. Revenue', line: true },
             { c: C.amberD, t: 'Cum. Fatturazione', dash: true },
           ])}

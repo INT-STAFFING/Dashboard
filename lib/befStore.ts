@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { getDb, hasDB, ensureSchema } from './db';
 import { bef_records } from './schema';
-import type { BefRow, BefRecord } from './types';
+import type { BefRow, BefRecord, BefMonthly, BefAggregates } from './types';
 import { bdoFromBef } from './codes';
 
 // Per-IF/BO BEF rows. DB-backed with an in-memory fallback.
@@ -37,6 +37,54 @@ export async function listBef(numeroIf: string): Promise<BefRow[]> {
     return rows.map(rowTo);
   }
   return (mem()[numeroIf] || []).map((r) => ({ ...r }));
+}
+
+// All BEF rows across every IF/BO (used for portfolio-level aggregation).
+export async function listAllBef(): Promise<BefRow[]> {
+  if (hasDB) {
+    await ensureSchema();
+    const rows = await getDb().select().from(bef_records);
+    return rows.map(rowTo);
+  }
+  return Object.values(mem()).flat().map((r) => ({ ...r }));
+}
+
+const isFatturata = (r: BefRow) => Boolean(r.num_fattura) && Boolean(r.data_fattura);
+const isNonFatturata = (r: BefRow) => !r.num_fattura && !r.data_fattura;
+
+// Sum of `importo_ricezione` grouped by calendar month of `data_fattura`, for
+// rows that have both a `num_fattura` and a `data_fattura` (i.e. fatturate).
+export async function getBefMonthlyTotals(): Promise<BefMonthly[]> {
+  const rows = await listAllBef();
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    if (!isFatturata(r) || r.importo_ricezione == null) continue;
+    const [y, m] = (r.data_fattura as string).split('-');
+    const anno = Number(y),
+      mese = Number(m);
+    if (!anno || !mese) continue;
+    const key = `${anno}-${mese}`;
+    totals.set(key, (totals.get(key) ?? 0) + r.importo_ricezione);
+  }
+  return [...totals.entries()].map(([key, totale]) => {
+    const [anno, mese] = key.split('-').map(Number);
+    return { anno, mese, totale };
+  });
+}
+
+// Portfolio-level BEF totals (no year/period filtering):
+//  - fatturabile: righe senza numero fattura e senza data fattura (non ancora fatturate)
+//  - fatturatoEmesso: righe con numero fattura e data fattura (fatturate)
+export async function getBefAggregates(): Promise<BefAggregates> {
+  const rows = await listAllBef();
+  let fatturabile = 0,
+    fatturatoEmesso = 0;
+  for (const r of rows) {
+    if (r.importo_ricezione == null) continue;
+    if (isNonFatturata(r)) fatturabile += r.importo_ricezione;
+    else if (isFatturata(r)) fatturatoEmesso += r.importo_ricezione;
+  }
+  return { fatturabile, fatturatoEmesso };
 }
 
 // Replace the full set of BEF rows for an intervento (idempotent save).

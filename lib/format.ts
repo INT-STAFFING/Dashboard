@@ -86,11 +86,3 @@ export const ICO: Record<string, [string, string, string]> = {
   prog: ['var(--amber-d)', 'In corso', '◐'],
   nd: ['var(--slate-l)', 'N/D', '○'],
 };
-
-// fixed "fatturato emesso" reference value (from source cruscotto)
-export const FATTURATO_EMESSO = {
-  voci: [{ nome: 'XT-EHR', bo: '2026330767', importo: 2493.72 }],
-  get totale() {
-    return this.voci.reduce((s, v) => s + v.importo, 0);
-  },
-};

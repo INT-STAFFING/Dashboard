@@ -434,6 +434,7 @@ export default function Dashboard({
           <TimelinePanel
             timelineMy={initial.timeline_my}
             befMonthly={initial.bef_monthly}
+            befAggregates={initial.bef_aggregates}
             tlMode={tlMode}
             setTlMode={setTlMode}
           />

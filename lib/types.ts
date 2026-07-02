@@ -110,6 +110,12 @@ export type BefMonthly = {
   totale: number;
 };
 
+// Portfolio-level totals of `bef_records.importo_ricezione` (no period filter).
+export type BefAggregates = {
+  fatturabile: number; // righe senza numero fattura e senza data fattura
+  fatturatoEmesso: number; // righe con numero fattura e data fattura
+};
+
 export type Meta = {
   cig: string;
   contratto: string;
@@ -184,6 +190,7 @@ export type DashboardData = {
   timeline: Timeline;
   timeline_my: MultiYearTimeline;
   bef_monthly: BefMonthly[];
+  bef_aggregates: BefAggregates;
   kpi: Kpi;
   revenue_mensile: { mese: string; intellera: number; deloitte: number }[];
   distribuzione_ambito: { ambito: string; count: number; valore: number }[];

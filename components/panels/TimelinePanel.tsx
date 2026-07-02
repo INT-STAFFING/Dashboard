@@ -1,7 +1,7 @@
 'use client';
 import React, { useMemo, useState } from 'react';
-import type { MultiYearTimeline, BefMonthly } from '@/lib/types';
-import { EUR, EUR2, PCT, C, FATTURATO_EMESSO } from '@/lib/format';
+import type { MultiYearTimeline, BefMonthly, BefAggregates } from '@/lib/types';
+import { EUR, EUR2, PCT, C } from '@/lib/format';
 import {
   type Calendar,
   availableYears,
@@ -17,11 +17,13 @@ import { Html } from '../Html';
 export default function TimelinePanel({
   timelineMy,
   befMonthly,
+  befAggregates,
   tlMode,
   setTlMode,
 }: {
   timelineMy: MultiYearTimeline;
   befMonthly: BefMonthly[];
+  befAggregates: BefAggregates;
   tlMode: 'mese' | 'trim';
   setTlMode: (m: 'mese' | 'trim') => void;
 }) {
@@ -83,17 +85,15 @@ export default function TimelinePanel({
   const hasBef = bef.some((v) => v > 0);
   const upto = today < 0 ? 0 : today + 1;
   const matR = rev.slice(0, upto).reduce((x, y) => x + y, 0);
-  const matF = fatt.slice(0, upto).reduce((x, y) => x + y, 0);
   const modeTxt = tlMode === 'trim' ? 'trimestrale' : 'mensile';
   const calTxt = cal === 'solare' ? 'anno solare' : 'anno fiscale';
 
   const stats: [string, string, string][] = [
     ['Revenue totale', EUR(totR), `competenza · ${calTxt} ${periodLabel}`],
-    ['Fatturazione totale', EUR(totF), 'consuntivato/fatturabile'],
+    ['Valore IF Attivate', EUR(totF), 'consuntivato/fatturabile'],
     ['Revenue maturata ad oggi', EUR(matR), 'avanzamento ' + PCT(totR ? (matR / totR) * 100 : 0)],
-    ['Fatturabile ad oggi', EUR(matF), 'avanzamento ' + PCT(totF ? (matF / totF) * 100 : 0)],
-    ['Fatturato emesso', EUR2(FATTURATO_EMESSO.totale), FATTURATO_EMESSO.voci[0].nome + ' · BO ' + FATTURATO_EMESSO.voci[0].bo],
-    ['Fatturato (BEF) totale', EUR(totBef), `data fattura · ${calTxt} ${periodLabel}`],
+    ['Fatturabile ad oggi', EUR2(befAggregates.fatturabile), 'bef_records senza numero e data fattura'],
+    ['Fatturato emesso', EUR2(befAggregates.fatturatoEmesso), 'bef_records con numero e data fattura'],
   ];
 
   return (

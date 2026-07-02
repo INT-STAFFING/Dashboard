@@ -1,12 +1,13 @@
-import type { Intervento, BefRecord, VerbaleChiusura, Seniority } from '../types';
+import type { Intervento, BefRecord, VerbaleChiusura, Seniority, ReportBdoRecord } from '../types';
 import { parseIF } from './parseIF';
 import { parseBEF } from './parseBEF';
 import { parseChiusura } from './parseChiusura';
 import { parseAggregatore } from './parseAggregatore';
 import { parseDashboard } from './parseDashboard';
+import { parseReportBdo, findReportBdoSheet } from './parseReportBdo';
 import { readWorkbook } from './util';
 
-export type FileKind = 'if' | 'bef' | 'chiusura' | 'aggregatore' | 'dashboard' | 'unknown';
+export type FileKind = 'if' | 'bef' | 'chiusura' | 'aggregatore' | 'dashboard' | 'report_bdo' | 'unknown';
 
 export function detectKind(filename: string): FileKind {
   const n = filename.toLowerCase();
@@ -25,6 +26,7 @@ export type ParseOutput = {
   bef?: BefRecord[];
   chiusura?: VerbaleChiusura[];
   seniority?: Seniority[];
+  reportBdo?: ReportBdoRecord[];
 };
 
 export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOutput {
@@ -45,14 +47,19 @@ export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOut
       return { kind, seniority, interventi };
     }
     default: {
-      // Fall back to content sniffing: the master Dashboard workbook is
-      // identified by its data sheets regardless of how the file is named.
+      // Fall back to content sniffing: some exports (master Dashboard
+      // workbook, "REPORT Bdo") have filenames that don't follow a fixed
+      // pattern (e.g. system-generated timestamps/codes), so they're
+      // identified by their sheets instead.
       try {
         const wb = readWorkbook(buf);
         const has = (name: string) => wb.SheetNames.some((s) => s === name);
         if (has('TIMELINE_REVENUE') && has('DATI')) {
           const { seniority, interventi } = parseDashboard(wb);
           return { kind: 'dashboard', seniority, interventi };
+        }
+        if (findReportBdoSheet(wb)) {
+          return { kind: 'report_bdo', reportBdo: parseReportBdo(wb) };
         }
       } catch {
         // not a spreadsheet we can read -> report as unknown below
@@ -62,4 +69,4 @@ export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOut
   }
 }
 
-export { parseIF, parseBEF, parseChiusura, parseAggregatore, parseDashboard };
+export { parseIF, parseBEF, parseChiusura, parseAggregatore, parseDashboard, parseReportBdo };

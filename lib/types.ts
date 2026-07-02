@@ -132,6 +132,38 @@ export type VerbaleChiusura = {
   data_firma_roi: string | null;
 };
 
+// Row from the "REPORT Bdo" export (stato workflow approvativo per BDO).
+// num_bdo ("Numero BDO") is the business key.
+export type ReportBdoRecord = {
+  num_bdo: string;
+  descrizione_bdo: string | null;
+  nome_file_pif_if: string | null;
+  descrizione_pif_if: string | null;
+  codifica_documento: string | null;
+  stato_documento: string | null;
+  divisione: string | null;
+  centro_costo: string | null;
+  ultima_pif_approvata: string | null;
+  data_caricamento: string | null;
+  utente_caricamento: string | null;
+  fornitore: string | null;
+  roi: string | null;
+  data_invio_roi: string | null;
+  data_approvazione_roi: string | null;
+  data_rifiuto_roi: string | null;
+  pmo: string | null;
+  data_invio_pmo: string | null;
+  data_approvazione_pmo: string | null;
+  data_rifiuto_pmo: string | null;
+  ctrm: string | null;
+  data_invio_ctrm: string | null;
+  data_approvazione_ctrm: string | null;
+  data_rifiuto_ctrm: string | null;
+  versione_corrente: string | null;
+  data_versione_corrente: string | null;
+  data_decorrenza: string | null;
+};
+
 // Aggregated payload returned by GET /api/data
 export type DashboardData = {
   meta: Meta;

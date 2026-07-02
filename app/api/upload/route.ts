@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { parseFile, type FileKind, type ParseOutput } from '@/lib/parsers';
 import { upsertInterventiFromUpload, listInterventi } from '@/lib/store';
 import { persistBefFromUpload } from '@/lib/befStore';
+import { persistReportBdoFromUpload } from '@/lib/reportBdoStore';
 import { setSeniority } from '@/lib/portfolio';
 import { updateMeta } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
-import type { BefRecord, DocStatus, Intervento } from '@/lib/types';
+import type { BefRecord, DocStatus, Intervento, ReportBdoRecord } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,6 +47,45 @@ function normalizeBef(raw: unknown): BefRecord | null {
     num_fattura,
     data_fattura: sval(r.data_fattura),
     data_pagamento: sval(r.data_pagamento),
+  };
+}
+
+// Normalize an untrusted "REPORT Bdo" row (client-side parse) into the
+// canonical shape. Numero BDO is the business key, so a row without it is
+// meaningless.
+function normalizeReportBdo(raw: unknown): ReportBdoRecord | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const num_bdo = sval(r.num_bdo);
+  if (!num_bdo) return null;
+  return {
+    num_bdo,
+    descrizione_bdo: sval(r.descrizione_bdo),
+    nome_file_pif_if: sval(r.nome_file_pif_if),
+    descrizione_pif_if: sval(r.descrizione_pif_if),
+    codifica_documento: sval(r.codifica_documento),
+    stato_documento: sval(r.stato_documento),
+    divisione: sval(r.divisione),
+    centro_costo: sval(r.centro_costo),
+    ultima_pif_approvata: sval(r.ultima_pif_approvata),
+    data_caricamento: sval(r.data_caricamento),
+    utente_caricamento: sval(r.utente_caricamento),
+    fornitore: sval(r.fornitore),
+    roi: sval(r.roi),
+    data_invio_roi: sval(r.data_invio_roi),
+    data_approvazione_roi: sval(r.data_approvazione_roi),
+    data_rifiuto_roi: sval(r.data_rifiuto_roi),
+    pmo: sval(r.pmo),
+    data_invio_pmo: sval(r.data_invio_pmo),
+    data_approvazione_pmo: sval(r.data_approvazione_pmo),
+    data_rifiuto_pmo: sval(r.data_rifiuto_pmo),
+    ctrm: sval(r.ctrm),
+    data_invio_ctrm: sval(r.data_invio_ctrm),
+    data_approvazione_ctrm: sval(r.data_approvazione_ctrm),
+    data_rifiuto_ctrm: sval(r.data_rifiuto_ctrm),
+    versione_corrente: sval(r.versione_corrente),
+    data_versione_corrente: sval(r.data_versione_corrente),
+    data_decorrenza: sval(r.data_decorrenza),
   };
 }
 
@@ -121,19 +161,36 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     await setSeniority(parsed.seniority);
   }
 
-  let befSaved = 0;
-  let befIfs: string[] = [];
-  if (parsed.bef && parsed.bef.length) {
-    // Resolve BDO -> numero_if from the saved portfolio (intervento.bdo).
-    const bdoToIf = new Map<string, string>();
+  // Resolve BDO -> numero_if from the saved portfolio (intervento.bdo). Shared
+  // by BEF (resolves the owning IF) and REPORT Bdo (restricts saves to BDO
+  // already present in the portfolio).
+  let bdoToIf: Map<string, string> | null = null;
+  if ((parsed.bef && parsed.bef.length) || (parsed.reportBdo && parsed.reportBdo.length)) {
+    bdoToIf = new Map<string, string>();
     for (const i of await listInterventi()) {
       if (i.bdo) bdoToIf.set(i.bdo, i.numero_if);
     }
-    const res = await persistBefFromUpload(parsed.bef, bdoToIf);
+  }
+
+  let befSaved = 0;
+  let befIfs: string[] = [];
+  if (parsed.bef && parsed.bef.length) {
+    const res = await persistBefFromUpload(parsed.bef, bdoToIf!);
     befSaved = res.saved;
     befIfs = res.ifs;
     if (res.unresolved) {
       errors.push(`BEF: ${res.unresolved} righe senza IF corrispondente (BDO non presente in portafoglio)`);
+    }
+  }
+
+  let reportBdoSaved = 0;
+  let reportBdoIgnored = 0;
+  if (parsed.reportBdo && parsed.reportBdo.length) {
+    const res = await persistReportBdoFromUpload(parsed.reportBdo, new Set(bdoToIf!.keys()));
+    reportBdoSaved = res.saved;
+    reportBdoIgnored = res.ignored;
+    if (res.ignored) {
+      errors.push(`Report Bdo: ${res.ignored} righe ignorate (BDO non presente in portafoglio)`);
     }
   }
   if (parsed.kind === 'chiusura') {
@@ -150,6 +207,8 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     skippedIfs,
     bef_saved: befSaved,
     bef_ifs: befIfs,
+    report_bdo_saved: reportBdoSaved,
+    report_bdo_ignored: reportBdoIgnored,
     seniority_rows: parsed.seniority?.length ?? 0,
     errors,
   };
@@ -179,6 +238,7 @@ export async function POST(req: Request) {
       kind?: FileKind;
       interventi?: unknown[];
       bef?: unknown[];
+      reportBdo?: unknown[];
       seniority?: ParseOutput['seniority'];
       filename?: string;
     };
@@ -193,7 +253,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           error:
-            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore.',
+            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo".',
         },
         { status: 422 },
       );
@@ -204,7 +264,10 @@ export async function POST(req: Request) {
     const bef = (body.bef ?? [])
       .map(normalizeBef)
       .filter((b): b is BefRecord => b !== null);
-    const parsed: ParseOutput = { kind, interventi, bef, seniority: body.seniority };
+    const reportBdo = (body.reportBdo ?? [])
+      .map(normalizeReportBdo)
+      .filter((b): b is ReportBdoRecord => b !== null);
+    const parsed: ParseOutput = { kind, interventi, bef, reportBdo, seniority: body.seniority };
     const summary = await applyParsed(parsed, force);
     return NextResponse.json({ ok: true, kind, filename: body.filename ?? null, force, ...summary });
   }

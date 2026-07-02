@@ -29,6 +29,13 @@
       "when": 1782490000000,
       "tag": "0003_timeline_mensile",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782920320916,
+      "tag": "0004_report_bdo",
+      "breakpoints": true
     }
   ]
 }

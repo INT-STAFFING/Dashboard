@@ -95,6 +95,11 @@ export async function upsertBef(numeroIf: string, incoming: BefRow[]): Promise<B
   return replaceBef(numeroIf, [...byFattura.values(), ...noKey]);
 }
 
+// Numero IF di default per le righe BEF il cui BDO non trova corrispondenza
+// in `interventi` (nessuna riga viene scartata: resta disponibile per un
+// successivo aggancio manuale una volta censito l'intervento).
+const UNRESOLVED_IF = '';
+
 // Persiste le righe BEF di un upload risolvendo il numero IF dal BDO
 // (BEF.num_bdo -> intervento.bdo). Ogni BEF porta sempre il suo BDO; come
 // fallback estrae il BDO dal codice BEF a 20 cifre (posizioni 5-14).
@@ -106,11 +111,8 @@ export async function persistBefFromUpload(
   let unresolved = 0;
   for (const r of rows) {
     const bdo = strN(r.num_bdo) ?? bdoFromBef(r.num_fattura);
-    const numeroIf = bdo ? bdoToIf.get(bdo) : undefined;
-    if (!numeroIf) {
-      unresolved += 1;
-      continue;
-    }
+    const numeroIf = (bdo ? bdoToIf.get(bdo) : undefined) ?? UNRESOLVED_IF;
+    if (numeroIf === UNRESOLVED_IF) unresolved += 1;
     const list = byIf.get(numeroIf) ?? [];
     list.push({ numero_if: numeroIf, ...r });
     byIf.set(numeroIf, list);
@@ -120,5 +122,5 @@ export async function persistBefFromUpload(
     await upsertBef(numeroIf, list);
     saved += list.length;
   }
-  return { saved, ifs: [...byIf.keys()], unresolved };
+  return { saved, ifs: [...byIf.keys()].filter((k) => k !== UNRESOLVED_IF), unresolved };
 }

@@ -239,11 +239,28 @@ function RtiConfigForm({
   const [mass, setMass] = useState(rti.ceiling);
   const [intPct, setIntPct] = useState(Math.round(intq * 100));
   const [delPct, setDelPct] = useState(Math.round(delq * 100));
+  const [err, setErr] = useState('');
+
+  // Always start from the current, persisted values — a previous unsaved
+  // edit must not resurface next time the form is reopened.
+  const resetFromProps = () => {
+    setMass(rti.ceiling);
+    setIntPct(Math.round(intq * 100));
+    setDelPct(Math.round(delq * 100));
+    setErr('');
+  };
 
   if (!open) {
     return (
       <div style={{ marginBottom: 14 }}>
-        <button className="freset" onClick={() => setOpen(true)} style={{ borderColor: 'var(--petrol)', color: 'var(--petrol-d)' }}>
+        <button
+          className="freset"
+          onClick={() => {
+            resetFromProps();
+            setOpen(true);
+          }}
+          style={{ borderColor: 'var(--petrol)', color: 'var(--petrol-d)' }}
+        >
           ⚙️ Configura parametri RTI
         </button>
       </div>
@@ -255,12 +272,14 @@ function RtiConfigForm({
       <div className="formgrid">
         <label>
           Massimale contrattuale (€)
-          <input type="number" value={mass} onChange={(e) => setMass(Number(e.target.value))} />
+          <input type="number" min={0} value={mass} onChange={(e) => setMass(Number(e.target.value))} />
         </label>
         <label>
           Quota % Intellera
           <input
             type="number"
+            min={0}
+            max={100}
             value={intPct}
             onChange={(e) => {
               const v = Number(e.target.value);
@@ -274,17 +293,40 @@ function RtiConfigForm({
           <input type="number" value={delPct} readOnly />
         </label>
       </div>
+      {err && (
+        <div className="form-err" style={{ color: 'var(--bad, #c0392b)', marginTop: 8 }}>
+          {err}
+        </div>
+      )}
       <div className="formbtns">
         <button
           className="addbtn"
           onClick={() => {
+            if (!Number.isFinite(mass) || mass < 0) {
+              setErr('Il massimale contrattuale deve essere un numero >= 0.');
+              return;
+            }
+            if (!Number.isFinite(intPct) || intPct < 0 || intPct > 100) {
+              setErr('La quota % Intellera deve essere compresa tra 0 e 100.');
+              return;
+            }
+            if (!Number.isFinite(delPct) || delPct < 0 || delPct > 100) {
+              setErr('La quota % Deloitte (100 − Intellera) deve restare tra 0 e 100.');
+              return;
+            }
             onUpdate({ massimale_totale: mass, quota_intellera_pct: intPct, quota_deloitte_pct: delPct });
             setOpen(false);
           }}
         >
           Aggiorna
         </button>
-        <button className="clearbtn" onClick={() => setOpen(false)}>
+        <button
+          className="clearbtn"
+          onClick={() => {
+            resetFromProps();
+            setOpen(false);
+          }}
+        >
           Annulla
         </button>
       </div>

@@ -1,29 +1,48 @@
 'use client';
 import React from 'react';
-import type { Intervento, ModalitaAgg } from '@/lib/types';
+import type { Intervento } from '@/lib/types';
 import { EUR, EUR0, PCT, C } from '@/lib/format';
 import { donut, chartVBars } from '@/lib/charts';
 import { Html } from '../Html';
 
-const MODLAB: Record<string, string> = { A_corpo: 'A corpo', A_canone: 'A canone', A_consumo: 'A consumo', A_misura: 'A misura' };
+// Canonical modalità buckets. Matching is EXACT (not substring) so a compound
+// value like "A canone + A corpo" is never double-counted into two buckets —
+// it lands in ALTRO_KEY instead, same as null/unrecognized values.
+const ALTRO_KEY = 'A_altro';
+const MODLAB: Record<string, string> = {
+  A_corpo: 'A corpo',
+  A_canone: 'A canone',
+  A_consumo: 'A consumo',
+  [ALTRO_KEY]: 'Misto / Altro',
+};
 const DESC: Record<string, string> = {
   A_corpo: 'Fatturazione a consegna milestone',
   A_canone: 'Fatturazione mensile ricorrente',
   A_consumo: 'Fatturazione a misura (GG/Uomo)',
+  [ALTRO_KEY]: 'Modalità composte (es. canone + corpo) o non classificate',
 };
-const MCOL: Record<string, string> = { A_corpo: C.petrol, A_canone: C.gold, A_consumo: C.slate };
-const KEY: Record<string, string> = { A_corpo: 'corpo', A_canone: 'canone', A_consumo: 'consumo' };
+const MCOL: Record<string, string> = { A_corpo: C.petrol, A_canone: C.gold, A_consumo: C.slate, [ALTRO_KEY]: C.slateL };
+const MOD_TO_KEY: Record<string, string> = { 'A corpo': 'A_corpo', 'A canone': 'A_canone', 'A consumo': 'A_consumo' };
+const BUCKET_ORDER = ['A_corpo', 'A_canone', 'A_consumo', ALTRO_KEY];
 
 export default function ModalitaPanel({
-  modalita,
   interventi,
   onDrillMod,
 }: {
-  modalita: ModalitaAgg[];
   interventi: Intervento[];
   onDrillMod: (modLabel: string) => void;
 }) {
-  const nIF = (k: string) => interventi.filter((i) => i.modalita_if && i.modalita_if.toLowerCase().includes(k)).length;
+  // Computed live from the (already filtered) portfolio in view, so this panel
+  // reacts to FilterBar/uploads/edits like every other panel — it previously
+  // read a static seed snapshot that never changed and never respected filters.
+  const agg: Record<string, { n: number; costo: number }> = {};
+  for (const i of interventi) {
+    const key = (i.modalita_if && MOD_TO_KEY[i.modalita_if]) || ALTRO_KEY;
+    if (!agg[key]) agg[key] = { n: 0, costo: 0 };
+    agg[key].n += 1;
+    agg[key].costo += i.importo || 0;
+  }
+  const modalita = BUCKET_ORDER.filter((k) => agg[k]).map((k) => ({ mod: k, ...agg[k] }));
   const tot = modalita.reduce((s, m) => s + m.costo, 0) || 1;
 
   const modDonut = modalita.length
@@ -32,7 +51,7 @@ export default function ModalitaPanel({
           label: `${MODLAB[m.mod] || m.mod} · ${PCT((m.costo / tot) * 100)}`,
           v: m.costo,
           c: MCOL[m.mod] || C.slateL,
-          tip: `${MODLAB[m.mod] || m.mod}\n${EUR(m.costo)} · ${PCT((m.costo / tot) * 100)} · ${nIF(KEY[m.mod])} IF`,
+          tip: `${MODLAB[m.mod] || m.mod}\n${EUR(m.costo)} · ${PCT((m.costo / tot) * 100)} · ${m.n} IF`,
         })),
         '',
         '',
@@ -43,10 +62,10 @@ export default function ModalitaPanel({
     ? chartVBars(
         modalita.map((m) => ({
           label: MODLAB[m.mod] || m.mod,
-          val: nIF(KEY[m.mod]),
+          val: m.n,
           color: MCOL[m.mod] || C.slateL,
           drill: MODLAB[m.mod],
-          tip: `${MODLAB[m.mod] || m.mod}\nN° IF: ${nIF(KEY[m.mod])}\nN° attività: ${m.n}\nCosto: ${EUR(m.costo)}\n(clic per vedere gli IF)`,
+          tip: `${MODLAB[m.mod] || m.mod}\nN° IF: ${m.n}\nCosto: ${EUR(m.costo)}\n(clic per vedere gli IF)`,
         })),
       )
     : '';
@@ -60,7 +79,7 @@ export default function ModalitaPanel({
     <div className="panel on" data-p="4">
       <div className="phead">
         <h2>Modalità fornitura</h2>
-        <p>Distribuzione per tipologia contrattuale · intero portafoglio.</p>
+        <p>Distribuzione per tipologia contrattuale · vista corrente (rispetta i filtri attivi).</p>
       </div>
       <div className="grid2">
         <div className="card">
@@ -85,7 +104,6 @@ export default function ModalitaPanel({
               <tr>
                 <th>Modalità</th>
                 <th className="num">N° IF</th>
-                <th className="num">N° attività</th>
                 <th className="num">Costo totale (€)</th>
                 <th className="num">% valore</th>
                 <th>Descrizione</th>
@@ -97,7 +115,6 @@ export default function ModalitaPanel({
                   <td>
                     <b>{MODLAB[m.mod] || m.mod}</b>
                   </td>
-                  <td className="num">{nIF(KEY[m.mod])}</td>
                   <td className="num">{m.n}</td>
                   <td className="num">{EUR0(m.costo)} €</td>
                   <td className="num">{PCT((m.costo / tot) * 100)}</td>

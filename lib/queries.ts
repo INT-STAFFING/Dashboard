@@ -26,6 +26,11 @@ const inSet = (sel: string[] | undefined, v: string | null) =>
 export const matchesMod = (modalita: string | null, mod: string) =>
   !!modalita && modKey(modalita).includes(modKey(mod).replace('a ', ''));
 
+// Ambito has no natural key for "unclassified" — the rest of the app (KPIs,
+// Distribuzione) already labels a null ambito "Non classificato", so filtering
+// uses the same label rather than leaving those IFs unfilterable via null.
+export const AMBITO_NON_CLASSIFICATO = 'Non classificato';
+
 // Port of getIFs() from the original dashboard, generalised to multi-select.
 export function filterInterventi(all: Intervento[], f: Filters): Intervento[] {
   return all.filter(
@@ -33,7 +38,7 @@ export function filterInterventi(all: Intervento[], f: Filters): Intervento[] {
       inSet(f.forn, i.fornitore) &&
       inSet(f.ref, i.ref_aria) &&
       inSet(f.refint, i.ref_fornitore) &&
-      inSet(f.amb, i.ambito) &&
+      inSet(f.amb, i.ambito || AMBITO_NON_CLASSIFICATO) &&
       inSet(f.stato, i.stato) &&
       (!f.mod || matchesMod(i.modalita_if, f.mod)) &&
       (!f.att || i.attivazione === f.att) &&

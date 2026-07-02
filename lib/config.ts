@@ -19,6 +19,25 @@ export type RtiUpdate = {
 // ceiling. When `partners` is supplied it replaces the full split (pct as a
 // fraction 0..1); otherwise the legacy Intellera/Deloitte fields are applied.
 export async function updateRtiConfig(input: RtiUpdate): Promise<RtiConfig> {
+  if (input.massimale_totale != null && (!Number.isFinite(input.massimale_totale) || input.massimale_totale < 0)) {
+    throw new Error('Massimale contrattuale non valido: deve essere un numero >= 0');
+  }
+  for (const [label, v] of [
+    ['Quota % Intellera', input.quota_intellera_pct],
+    ['Quota % Deloitte', input.quota_deloitte_pct],
+  ] as const) {
+    if (v != null && (!Number.isFinite(v) || v < 0 || v > 100)) {
+      throw new Error(`${label} non valida: deve essere compresa tra 0 e 100`);
+    }
+  }
+  if (input.partners) {
+    for (const p of input.partners) {
+      if (!Number.isFinite(p.pct) || p.pct < 0 || p.pct > 1) {
+        throw new Error(`Quota di "${p.name}" non valida: deve essere compresa tra 0% e 100%`);
+      }
+    }
+  }
+
   const cur = await getRtiConfig();
   const ceiling = input.massimale_totale ?? cur.ceiling;
   let partners: RtiConfig['partners'];

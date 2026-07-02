@@ -37,6 +37,16 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, error: 'JSON non valido' }, { status: 400 });
   }
 
+  // Safety guard: an admin acting on their own account could accidentally
+  // lock themselves out (reject/demote away their only way back in). Block it
+  // — a *different* admin can still perform the change.
+  if (id === me!.id && (body.action === 'reject' || (body.action === 'setRole' && body.role !== 'ADMIN'))) {
+    return NextResponse.json(
+      { ok: false, error: 'Non puoi rifiutare o retrocedere il tuo stesso account' },
+      { status: 409 },
+    );
+  }
+
   try {
     let updated;
     switch (body.action) {
@@ -73,6 +83,12 @@ export async function DELETE(_req: Request, { params }: Params) {
   const id = Number(params.id);
   if (!Number.isFinite(id)) {
     return NextResponse.json({ ok: false, error: 'ID non valido' }, { status: 400 });
+  }
+  if (id === me!.id) {
+    return NextResponse.json(
+      { ok: false, error: 'Non puoi eliminare il tuo stesso account' },
+      { status: 409 },
+    );
   }
   try {
     const ok = await deleteUser(id);

@@ -739,18 +739,29 @@ function RisorseEditor({ numeroIf, show }: { numeroIf: string; show: (m: string,
   const [rows, setRows] = useState<IfRisorsa[]>([]);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let active = true;
+    setLoaded(false);
+    setLoadError(false);
     fetch(`/api/admin/risorse/${encodeURIComponent(numeroIf)}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
       .then((d) => {
         if (active) {
           setRows(d.risorse || []);
           setLoaded(true);
         }
       })
-      .catch(() => setLoaded(true));
+      .catch(() => {
+        if (active) {
+          setLoadError(true);
+          setLoaded(true);
+        }
+      });
     return () => {
       active = false;
     };
@@ -789,6 +800,10 @@ function RisorseEditor({ numeroIf, show }: { numeroIf: string; show: (m: string,
       </div>
       {!loaded ? (
         <div style={{ color: 'var(--muted)', fontSize: 13 }}>Caricamento…</div>
+      ) : loadError ? (
+        <div style={{ color: 'var(--bad, #c0392b)', fontSize: 13 }}>
+          Errore nel caricamento delle risorse. Riprova ricaricando la pagina.
+        </div>
       ) : (
         <>
           <div style={{ overflowX: 'auto' }}>
@@ -844,18 +859,29 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
   const [rows, setRows] = useState<BefRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let active = true;
+    setLoaded(false);
+    setLoadError(false);
     fetch(`/api/admin/bef/${encodeURIComponent(numeroIf)}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
       .then((d) => {
         if (active) {
           setRows(d.bef || []);
           setLoaded(true);
         }
       })
-      .catch(() => setLoaded(true));
+      .catch(() => {
+        if (active) {
+          setLoadError(true);
+          setLoaded(true);
+        }
+      });
     return () => {
       active = false;
     };
@@ -891,6 +917,10 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
       <div className="cap">Voci BEF dell&apos;intervento. Totale importi: <b>{EUR(tot)}</b></div>
       {!loaded ? (
         <div style={{ color: 'var(--muted)', fontSize: 13 }}>Caricamento…</div>
+      ) : loadError ? (
+        <div style={{ color: 'var(--bad, #c0392b)', fontSize: 13 }}>
+          Errore nel caricamento dei dati BEF. Riprova ricaricando la pagina.
+        </div>
       ) : (
         <>
           <div style={{ overflowX: 'auto' }}>

@@ -26,7 +26,14 @@ export async function PUT(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: 'JSON non valido' }, { status: 400 });
   }
-  const meta = body.meta ? await updateMeta(body.meta) : await getMeta();
-  const rti = body.rti ? await updateRtiConfig(body.rti) : await getRtiConfig();
-  return NextResponse.json({ ok: true, meta, rti });
+  try {
+    const meta = body.meta ? await updateMeta(body.meta) : await getMeta();
+    const rti = body.rti ? await updateRtiConfig(body.rti) : await getRtiConfig();
+    return NextResponse.json({ ok: true, meta, rti });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : 'Errore' },
+      { status: 400 },
+    );
+  }
 }

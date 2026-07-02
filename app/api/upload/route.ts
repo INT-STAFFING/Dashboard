@@ -179,7 +179,9 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     befSaved = res.saved;
     befIfs = res.ifs;
     if (res.unresolved) {
-      errors.push(`BEF: ${res.unresolved} righe senza IF corrispondente (BDO non presente in portafoglio)`);
+      errors.push(
+        `BEF: ${res.unresolved} righe importate senza IF corrispondente (BDO non presente in portafoglio)`,
+      );
     }
   }
 

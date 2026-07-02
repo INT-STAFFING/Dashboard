@@ -165,7 +165,7 @@ function Rollups({ values }: { values: number[] }) {
   );
 }
 
-const SECTIONS = ['Valori di gara', 'Revenue & Consuntivazione', 'IF / BO'] as const;
+const SECTIONS = ['Valori di gara', 'Revenue & Consuntivazione', 'IF / BO', 'Database'] as const;
 type Section = (typeof SECTIONS)[number];
 
 export default function AdminGestione({
@@ -219,6 +219,7 @@ export default function AdminGestione({
         {section === 'Valori di gara' && <GaraSection meta0={meta0} rti0={rti0} sen0={sen0} show={show} />}
         {section === 'Revenue & Consuntivazione' && <GlobalRevSection my0={my0} show={show} />}
         {section === 'IF / BO' && <IfBoSection ifs0={ifs0} show={show} />}
+        {section === 'Database' && <DbSection show={show} />}
       </main>
 
       {toast && <div className={'toast' + (toast.bad ? ' bad' : '')}>{toast.msg}</div>}
@@ -975,6 +976,322 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
             <button className="exp-save" disabled={busy} onClick={save}>💾 Salva BEF</button>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 4. Database (introspezione tabelle + query SQL)
+// ---------------------------------------------------------------------------
+type TableMeta = { name: string; columnCount: number; approxRows: number };
+type ColumnMeta = { column_name: string; data_type: string; is_nullable: string; column_default: string | null };
+
+function fmtCell(v: unknown): string {
+  if (v == null) return '—';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+function DbSection({ show }: { show: (m: string, bad?: boolean) => void }) {
+  const [tables, setTables] = useState<TableMeta[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const loadTables = useCallback(() => {
+    setLoaded(false);
+    setLoadError(false);
+    fetch('/api/admin/db/tables')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.ok) throw new Error(d.error);
+        setTables(d.tables || []);
+        setLoaded(true);
+      })
+      .catch(() => {
+        setLoadError(true);
+        setLoaded(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    loadTables();
+  }, [loadTables]);
+
+  return (
+    <>
+      <div className="card">
+        <h3>Tabelle del database</h3>
+        <div className="cap">
+          Elenco delle tabelle presenti nello schema. Seleziona una tabella per vederne struttura e contenuto.
+        </div>
+        {!loaded ? (
+          <div style={{ color: 'var(--muted)', fontSize: 13 }}>Caricamento…</div>
+        ) : loadError ? (
+          <div style={{ color: 'var(--bad, #c0392b)', fontSize: 13 }}>
+            Errore nel caricamento delle tabelle. Riprova ricaricando la pagina.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="datatable">
+              <thead>
+                <tr>
+                  <th>Tabella</th>
+                  <th style={{ textAlign: 'right' }}>Colonne</th>
+                  <th style={{ textAlign: 'right' }}>Righe (circa)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tables.map((t) => (
+                  <tr key={t.name} className={t.name === selected ? 'selrow' : ''}>
+                    <td className="mono">{t.name}</td>
+                    <td style={{ textAlign: 'right' }}>{t.columnCount}</td>
+                    <td style={{ textAlign: 'right' }}>{t.approxRows.toLocaleString('it-IT')}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="ubtn" onClick={() => setSelected(t.name)}>
+                        Visualizza
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {tables.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ color: 'var(--muted)', padding: 14 }}>
+                      Nessuna tabella trovata.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {selected && <TableViewer key={selected} name={selected} />}
+
+      <QueryRunner show={show} onMutated={loadTables} />
+    </>
+  );
+}
+
+function TableViewer({ name }: { name: string }) {
+  const limit = 50;
+  const [offset, setOffset] = useState(0);
+  const [data, setData] = useState<{ columns: ColumnMeta[]; rows: Record<string, unknown>[]; total: number } | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [err, setErr] = useState(false);
+
+  useEffect(() => {
+    setLoaded(false);
+    setErr(false);
+    fetch(`/api/admin/db/table/${encodeURIComponent(name)}?limit=${limit}&offset=${offset}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.ok) throw new Error(d.error);
+        setData(d);
+        setLoaded(true);
+      })
+      .catch(() => {
+        setErr(true);
+        setLoaded(true);
+      });
+  }, [name, offset]);
+
+  const cols = data?.columns.map((c) => c.column_name) ?? [];
+
+  return (
+    <div className="card">
+      <h3>
+        Struttura e contenuto · <span className="mono">{name}</span>
+      </h3>
+      {!loaded ? (
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Caricamento…</div>
+      ) : err ? (
+        <div style={{ color: 'var(--bad, #c0392b)', fontSize: 13 }}>
+          Errore nel caricamento della tabella.
+        </div>
+      ) : (
+        <>
+          <div className="cap">Colonne</div>
+          <div style={{ overflowX: 'auto', marginBottom: 14 }}>
+            <table className="datatable">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Tipo</th>
+                  <th>Nullable</th>
+                  <th>Default</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data!.columns.map((c) => (
+                  <tr key={c.column_name}>
+                    <td className="mono">{c.column_name}</td>
+                    <td>{c.data_type}</td>
+                    <td>{c.is_nullable === 'YES' ? 'sì' : 'no'}</td>
+                    <td className="mono">{c.column_default ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="cap">Contenuto ({data!.total.toLocaleString('it-IT')} righe totali)</div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="datatable">
+              <thead>
+                <tr>
+                  {cols.map((c) => (
+                    <th key={c}>{c}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data!.rows.map((row, i) => (
+                  <tr key={i}>
+                    {cols.map((c) => (
+                      <td key={c} className="mono">
+                        {fmtCell(row[c])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {data!.rows.length === 0 && (
+                  <tr>
+                    <td colSpan={cols.length || 1} style={{ color: 'var(--muted)', padding: 14 }}>
+                      Nessuna riga.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button className="ubtn" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - limit))}>
+              ← Precedenti
+            </button>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+              {data!.total === 0 ? 0 : offset + 1}–{Math.min(offset + limit, data!.total)} di {data!.total}
+            </span>
+            <button className="ubtn" disabled={offset + limit >= data!.total} onClick={() => setOffset((o) => o + limit)}>
+              Successive →
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function QueryRunner({
+  show,
+  onMutated,
+}: {
+  show: (m: string, bad?: boolean) => void;
+  onMutated: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ rows: Record<string, unknown>[]; rowCount: number; durationMs: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const isMutating = /^\s*(insert|update|delete|drop|alter|truncate|create)\b/i.test(query);
+
+  const run = async () => {
+    if (!query.trim()) return;
+    if (isMutating && !window.confirm('Questa query modifica schema o dati ed è irreversibile. Continuare?')) return;
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await fetch('/api/admin/db/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || 'Errore esecuzione query');
+      setResult(d);
+      show('Query eseguita');
+      if (isMutating) onMutated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Errore esecuzione query');
+      show('Query non riuscita', true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cols = result && result.rows.length > 0 ? Object.keys(result.rows[0]) : [];
+
+  return (
+    <div className="card">
+      <h3>Esegui query SQL</h3>
+      <div className="cap">
+        Esegui una singola istruzione SQL direttamente sul database (SELECT, INSERT, UPDATE, DELETE, DDL…).
+        Riservato agli amministratori: le modifiche a schema o dati sono irreversibili.
+      </div>
+      <textarea
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="SELECT * FROM interventi LIMIT 10"
+        rows={6}
+        style={{
+          width: '100%',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          fontSize: 13,
+          border: '1px solid var(--line)',
+          borderRadius: 7,
+          padding: '10px 12px',
+          resize: 'vertical',
+        }}
+      />
+      <div style={{ marginTop: 10 }}>
+        <button className="exp-save" disabled={busy || !query.trim()} onClick={run}>
+          {busy ? 'Esecuzione…' : '▶ Esegui query'}
+        </button>
+      </div>
+
+      {error && (
+        <div style={{ marginTop: 14, color: 'var(--bad, #c0392b)', fontSize: 13, whiteSpace: 'pre-wrap' }}>
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div style={{ marginTop: 14 }}>
+          <div className="cap">
+            {result.rows.length > 0
+              ? `${result.rowCount} righe · ${result.durationMs} ms`
+              : `Query eseguita (${result.rowCount} righe interessate) · ${result.durationMs} ms`}
+          </div>
+          {result.rows.length > 0 && (
+            <div style={{ overflowX: 'auto', marginTop: 8 }}>
+              <table className="datatable">
+                <thead>
+                  <tr>
+                    {cols.map((c) => (
+                      <th key={c}>{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, i) => (
+                    <tr key={i}>
+                      {cols.map((c) => (
+                        <td key={c} className="mono">
+                          {fmtCell(row[c])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import {
   toISODate,
   str,
   strId,
+  isRtiIntellera,
   type Workbook,
 } from './util';
 
@@ -40,7 +41,8 @@ export function findVerbaliAperturaSheet(wb: Workbook): string | null {
 
 // Parse the "REPORT Apertura" sheet into VerbaleAperturaRecord[]. Accepts
 // either a raw buffer or an already-read workbook (used by the
-// content-sniffing fallback in lib/parsers/index.ts).
+// content-sniffing fallback in lib/parsers/index.ts). Solo le righe del RTI
+// Intellera (colonna "Fornitore" o "Fornitore RTI") vengono importate.
 export function parseVerbaliApertura(
   input: ArrayBuffer | Buffer | Workbook,
 ): VerbaleAperturaRecord[] {
@@ -50,6 +52,7 @@ export function parseVerbaliApertura(
   warnIfHeaderMismatch(sheetHeaders(wb, sheet), EXPECTED_HEADERS, 'REPORT Apertura');
   const out: VerbaleAperturaRecord[] = [];
   for (const r of sheetRows(wb, sheet, 0)) {
+    if (!isRtiIntellera(r)) continue;
     const num_bdo = strId(r['Numero BDO']);
     if (!num_bdo) continue;
     out.push({

@@ -9,6 +9,7 @@ import {
   str,
   strId,
   pick,
+  isRtiIntellera,
   type Workbook,
 } from './util';
 
@@ -55,7 +56,9 @@ export function findVerbaliSalSheet(wb: Workbook): string | null {
 // Parse the "REPORT Sal" sheet into VerbaleSalRecord[]. Accepts either a raw
 // buffer or an already-read workbook (used by the content-sniffing fallback
 // in lib/parsers/index.ts). Multiple rows per num_bdo are expected (periodic
-// SAL): every row of the sheet becomes one record, no dedup here.
+// SAL): every row of the sheet becomes one record, no dedup here. Solo le
+// righe del RTI Intellera (colonna "Fornitore" o "Fornitore RTI") vengono
+// importate.
 export function parseVerbaliSal(input: ArrayBuffer | Buffer | Workbook): VerbaleSalRecord[] {
   const wb = 'SheetNames' in (input as Workbook) ? (input as Workbook) : readWorkbook(input as ArrayBuffer | Buffer);
   const sheet = findVerbaliSalSheet(wb);
@@ -69,6 +72,7 @@ export function parseVerbaliSal(input: ArrayBuffer | Buffer | Workbook): Verbale
   warnIfHeaderMismatch(headers, expected.length ? expected : EXPECTED_HEADERS, 'REPORT Sal');
   const out: VerbaleSalRecord[] = [];
   for (const r of sheetRows(wb, sheet, 0)) {
+    if (!isRtiIntellera(r)) continue;
     const num_bdo = strId(r['Numero BDO']);
     if (!num_bdo) continue;
     out.push({

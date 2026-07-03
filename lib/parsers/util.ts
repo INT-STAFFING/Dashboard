@@ -154,3 +154,17 @@ export function warnIfHeaderMismatch(actual: string[], expected: string[], label
     console.warn(`[${label}] intestazioni attese non trovate nel foglio: ${missing.join(', ')}`);
   }
 }
+
+const RTI_INTELLERA = 'rti 7-26 intellera';
+
+// Solo le righe del RTI Intellera vanno importate: le altre righe del report
+// (altri fornitori del raggruppamento) devono essere scartate. Il fornitore
+// può comparire in una colonna "Fornitore" o "Fornitore RTI" a seconda
+// dell'export — basta che una delle due combaci.
+export function isRtiIntellera(r: Record<string, unknown>): boolean {
+  const match = (v: unknown) => {
+    const s = str(v);
+    return !!s && s.toLowerCase().includes(RTI_INTELLERA);
+  };
+  return match(r['Fornitore']) || match(r['Fornitore RTI']);
+}

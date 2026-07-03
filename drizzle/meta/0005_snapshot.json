@@ -1,0 +1,1317 @@
+{
+  "id": "e973d2ef-4ab3-4206-a7a4-76505f642f3a",
+  "prevId": "9b032890-3160-4272-ae03-b6ccb1c484e7",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.app_config": {
+      "name": "app_config",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bef_records": {
+      "name": "bef_records",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "numero_if": {
+          "name": "numero_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "num_bdo": {
+          "name": "num_bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descrizione": {
+          "name": "descrizione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "periodo_competenza": {
+          "name": "periodo_competenza",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore_reale": {
+          "name": "fornitore_reale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "importo_ricezione": {
+          "name": "importo_ricezione",
+          "type": "numeric(15, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "num_fattura": {
+          "name": "num_fattura",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_fattura": {
+          "name": "data_fattura",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_pagamento": {
+          "name": "data_pagamento",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.config_rti": {
+      "name": "config_rti",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "massimale_totale": {
+          "name": "massimale_totale",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quota_intellera_pct": {
+          "name": "quota_intellera_pct",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quota_deloitte_pct": {
+          "name": "quota_deloitte_pct",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "partners": {
+          "name": "partners",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cig": {
+          "name": "cig",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contratto_ref": {
+          "name": "contratto_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.if_risorse": {
+      "name": "if_risorse",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "numero_if": {
+          "name": "numero_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "figura": {
+          "name": "figura",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sigla": {
+          "name": "sigla",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gruppo": {
+          "name": "gruppo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gg": {
+          "name": "gg",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tariffa_giornaliera": {
+          "name": "tariffa_giornaliera",
+          "type": "numeric(12, 4)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.interventi": {
+      "name": "interventi",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "numero_if": {
+          "name": "numero_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bdo": {
+          "name": "bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "titolo": {
+          "name": "titolo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ambito": {
+          "name": "ambito",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore": {
+          "name": "fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ref_aria": {
+          "name": "ref_aria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ref_fornitore": {
+          "name": "ref_fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "importo": {
+          "name": "importo",
+          "type": "numeric(15, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revenue_2026": {
+          "name": "revenue_2026",
+          "type": "numeric(15, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rev_mesi": {
+          "name": "rev_mesi",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cons_mesi": {
+          "name": "cons_mesi",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modalita_if": {
+          "name": "modalita_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attivazione": {
+          "name": "attivazione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stato": {
+          "name": "stato",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_bo": {
+          "name": "has_bo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "pdc": {
+          "name": "pdc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "v_apertura": {
+          "name": "v_apertura",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "v_sal": {
+          "name": "v_sal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bef_status": {
+          "name": "bef_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subappalto": {
+          "name": "subappalto",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "subappaltatore": {
+          "name": "subappaltatore",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "costo_subappalto": {
+          "name": "costo_subappalto",
+          "type": "numeric(15, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_assegnazione": {
+          "name": "data_assegnazione",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_inizio": {
+          "name": "data_inizio",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_fine": {
+          "name": "data_fine",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "azione": {
+          "name": "azione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note_operative": {
+          "name": "note_operative",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "edited_manually": {
+          "name": "edited_manually",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "last_edited_by": {
+          "name": "last_edited_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_edited_at": {
+          "name": "last_edited_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "interventi_numero_if_unique": {
+          "name": "interventi_numero_if_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "numero_if"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.report_bdo": {
+      "name": "report_bdo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "num_bdo": {
+          "name": "num_bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descrizione_bdo": {
+          "name": "descrizione_bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nome_file_pif_if": {
+          "name": "nome_file_pif_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descrizione_pif_if": {
+          "name": "descrizione_pif_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codifica_documento": {
+          "name": "codifica_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stato_documento": {
+          "name": "stato_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "divisione": {
+          "name": "divisione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "centro_costo": {
+          "name": "centro_costo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ultima_pif_approvata": {
+          "name": "ultima_pif_approvata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_caricamento": {
+          "name": "data_caricamento",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utente_caricamento": {
+          "name": "utente_caricamento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore": {
+          "name": "fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roi": {
+          "name": "roi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_invio_roi": {
+          "name": "data_invio_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_approvazione_roi": {
+          "name": "data_approvazione_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_rifiuto_roi": {
+          "name": "data_rifiuto_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pmo": {
+          "name": "pmo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_invio_pmo": {
+          "name": "data_invio_pmo",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_approvazione_pmo": {
+          "name": "data_approvazione_pmo",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_rifiuto_pmo": {
+          "name": "data_rifiuto_pmo",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ctrm": {
+          "name": "ctrm",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_invio_ctrm": {
+          "name": "data_invio_ctrm",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_approvazione_ctrm": {
+          "name": "data_approvazione_ctrm",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_rifiuto_ctrm": {
+          "name": "data_rifiuto_ctrm",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "versione_corrente": {
+          "name": "versione_corrente",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_versione_corrente": {
+          "name": "data_versione_corrente",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_decorrenza": {
+          "name": "data_decorrenza",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "report_bdo_num_bdo_unique": {
+          "name": "report_bdo_num_bdo_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "num_bdo"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.report_rdi": {
+      "name": "report_rdi",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "numero_rdi": {
+          "name": "numero_rdi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descrizione_rdi": {
+          "name": "descrizione_rdi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nome_file_pif_if": {
+          "name": "nome_file_pif_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codifica_documento": {
+          "name": "codifica_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stato_documento": {
+          "name": "stato_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "divisione": {
+          "name": "divisione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "centro_costo": {
+          "name": "centro_costo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ultima_pif_approvata": {
+          "name": "ultima_pif_approvata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descrizione_pif_if": {
+          "name": "descrizione_pif_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_caricamento": {
+          "name": "data_caricamento",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utente_caricamento": {
+          "name": "utente_caricamento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore": {
+          "name": "fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roi": {
+          "name": "roi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_invio_roi": {
+          "name": "data_invio_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_rifiuto_roi": {
+          "name": "data_rifiuto_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_approvazione_roi": {
+          "name": "data_approvazione_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "report_rdi_numero_rdi_unique": {
+          "name": "report_rdi_numero_rdi_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "numero_rdi"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tariffe": {
+      "name": "tariffe",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "figura": {
+          "name": "figura",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sigla": {
+          "name": "sigla",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gg": {
+          "name": "gg",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tariffa_giornaliera": {
+          "name": "tariffa_giornaliera",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tariffa_oraria": {
+          "name": "tariffa_oraria",
+          "type": "numeric(10, 4)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.timeline_mensile": {
+      "name": "timeline_mensile",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "anno": {
+          "name": "anno",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mese": {
+          "name": "mese",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revenue": {
+          "name": "revenue",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "consuntivato": {
+          "name": "consuntivato",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "timeline_mensile_anno_mese_unique": {
+          "name": "timeline_mensile_anno_mese_unique",
+          "columns": [
+            {
+              "expression": "anno",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "mese",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'USER'"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verbali_apertura": {
+      "name": "verbali_apertura",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "num_bdo": {
+          "name": "num_bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descrizione": {
+          "name": "descrizione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nome_file": {
+          "name": "nome_file",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codifica_documento": {
+          "name": "codifica_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stato_verbale": {
+          "name": "stato_verbale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "periodo_competenza": {
+          "name": "periodo_competenza",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "divisione": {
+          "name": "divisione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "centro_costo": {
+          "name": "centro_costo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore": {
+          "name": "fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utente_caricamento_fornitore": {
+          "name": "utente_caricamento_fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_firma_fornitore": {
+          "name": "data_firma_fornitore",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roi": {
+          "name": "roi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_inserimento_verbale_non_sottomesso": {
+          "name": "data_inserimento_verbale_non_sottomesso",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_sottomissione_verbale_fornitore": {
+          "name": "data_sottomissione_verbale_fornitore",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_firma_roi": {
+          "name": "data_firma_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_rifiuto_roi": {
+          "name": "data_rifiuto_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_invio_roi": {
+          "name": "data_invio_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verbali_chiusura": {
+      "name": "verbali_chiusura",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "num_bdo": {
+          "name": "num_bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descrizione": {
+          "name": "descrizione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stato_verbale": {
+          "name": "stato_verbale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore": {
+          "name": "fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roi": {
+          "name": "roi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_firma_roi": {
+          "name": "data_firma_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verbali_sal": {
+      "name": "verbali_sal",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "num_bdo": {
+          "name": "num_bdo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descrizione": {
+          "name": "descrizione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nome_file": {
+          "name": "nome_file",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codifica_documento": {
+          "name": "codifica_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stato_verbale": {
+          "name": "stato_verbale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "periodo_competenza": {
+          "name": "periodo_competenza",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conforme": {
+          "name": "conforme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_conformita": {
+          "name": "motivo_conformita",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criticita": {
+          "name": "criticita",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivazione_criticita": {
+          "name": "motivazione_criticita",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "livelli_servizio_rispettati": {
+          "name": "livelli_servizio_rispettati",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "divisione": {
+          "name": "divisione",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "centro_costo": {
+          "name": "centro_costo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornitore": {
+          "name": "fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utente_caricamento_fornitore": {
+          "name": "utente_caricamento_fornitore",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_firma_fornitore": {
+          "name": "data_firma_fornitore",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roi": {
+          "name": "roi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_inserimento_verbale_non_sottomesso": {
+          "name": "data_inserimento_verbale_non_sottomesso",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_sottomissione_verbale_fornitore": {
+          "name": "data_sottomissione_verbale_fornitore",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_firma_roi": {
+          "name": "data_firma_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_rifiuto_roi": {
+          "name": "data_rifiuto_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_invio_roi": {
+          "name": "data_invio_roi",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

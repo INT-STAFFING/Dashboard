@@ -10,10 +10,13 @@ function detectKind(name: string): string {
   if (n.includes('chiusura')) return 'chiusura';
   if (n.includes('bef')) return 'bef';
   if (n.includes('if_aria') || n.includes('monitoraggio') || n.includes('dettaglio')) return 'if';
-  // "REPORT Bdo" exports don't have a fixed filename pattern (system-generated
-  // timestamp/code names) — the real classification happens by content on
-  // parse; this is just a best-effort hint for the preview pill.
+  // "REPORT Bdo/Rdi/Apertura/Sal" exports don't have a fixed filename pattern
+  // (system-generated timestamp/code names) — the real classification happens
+  // by content on parse; this is just a best-effort hint for the preview pill.
   if (n.includes('bdo')) return 'report_bdo';
+  if (n.includes('rdi')) return 'report_rdi';
+  if (n.includes('apertura')) return 'verbali_apertura';
+  if (n.includes('sal')) return 'verbali_sal';
   return 'sconosciuto';
 }
 
@@ -30,6 +33,9 @@ type Result = {
   bef_ifs?: string[];
   report_bdo_saved?: number;
   report_bdo_ignored?: number;
+  report_rdi_saved?: number;
+  verbali_apertura_saved?: number;
+  verbali_sal_saved?: number;
   seniority_rows?: number;
   errors?: string[];
   error?: string;
@@ -90,7 +96,7 @@ export default function UploadPage() {
         setResult({
           ok: false,
           error:
-            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo".',
+            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo" / "REPORT Rdi" / "REPORT Apertura" / "REPORT Sal".',
         });
         return;
       }
@@ -106,6 +112,9 @@ export default function UploadPage() {
           interventi: parsed.interventi,
           bef: parsed.bef,
           reportBdo: parsed.reportBdo,
+          reportRdi: parsed.reportRdi,
+          verbaliApertura: parsed.verbaliApertura,
+          verbaliSal: parsed.verbaliSal,
           seniority: parsed.seniority,
           filename: file.name,
         }),
@@ -138,9 +147,10 @@ export default function UploadPage() {
         Il tipo di file viene riconosciuto automaticamente dal nome:{' '}
         <span className="mono">Dashboard</span> (revenue) · <span className="mono">IF_ARIA</span> ·{' '}
         <span className="mono">BEF</span> · <span className="mono">Chiusura</span> ·{' '}
-        <span className="mono">Aggregatore</span> — oppure dal contenuto per il{' '}
-        <span className="mono">REPORT Bdo</span> (stato workflow ROI/PMO/CTRM), il cui nome file non segue un
-        pattern fisso.
+        <span className="mono">Aggregatore</span> — oppure dal contenuto per{' '}
+        <span className="mono">REPORT Bdo</span> (stato workflow ROI/PMO/CTRM),{' '}
+        <span className="mono">REPORT Rdi</span>, <span className="mono">REPORT Apertura</span> e{' '}
+        <span className="mono">REPORT Sal</span>, i cui nomi file non seguono un pattern fisso.
       </p>
 
       <div
@@ -274,6 +284,24 @@ export default function UploadPage() {
                     </div>
                   )}
                 </>
+              )}
+              {!!result.report_rdi_saved && (
+                <div className="row">
+                  <span>Righe Report Rdi salvate</span>
+                  <b>{result.report_rdi_saved}</b>
+                </div>
+              )}
+              {!!result.verbali_apertura_saved && (
+                <div className="row">
+                  <span>Righe Verbali Apertura salvate</span>
+                  <b>{result.verbali_apertura_saved}</b>
+                </div>
+              )}
+              {!!result.verbali_sal_saved && (
+                <div className="row">
+                  <span>Righe Verbali SAL salvate</span>
+                  <b>{result.verbali_sal_saved}</b>
+                </div>
               )}
               {!!result.seniority_rows && (
                 <div className="row">

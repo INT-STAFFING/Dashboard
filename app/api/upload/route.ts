@@ -3,10 +3,21 @@ import { parseFile, type FileKind, type ParseOutput } from '@/lib/parsers';
 import { upsertInterventiFromUpload, listInterventi } from '@/lib/store';
 import { persistBefFromUpload } from '@/lib/befStore';
 import { persistReportBdoFromUpload } from '@/lib/reportBdoStore';
+import { persistReportRdiFromUpload } from '@/lib/reportRdiStore';
+import { persistVerbaliAperturaFromUpload } from '@/lib/verbaliAperturaStore';
+import { persistVerbaliSalFromUpload } from '@/lib/verbaliSalStore';
 import { setSeniority } from '@/lib/portfolio';
 import { updateMeta } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
-import type { BefRecord, DocStatus, Intervento, ReportBdoRecord } from '@/lib/types';
+import type {
+  BefRecord,
+  DocStatus,
+  Intervento,
+  ReportBdoRecord,
+  ReportRdiRecord,
+  VerbaleAperturaRecord,
+  VerbaleSalRecord,
+} from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -86,6 +97,95 @@ function normalizeReportBdo(raw: unknown): ReportBdoRecord | null {
     versione_corrente: sval(r.versione_corrente),
     data_versione_corrente: sval(r.data_versione_corrente),
     data_decorrenza: sval(r.data_decorrenza),
+  };
+}
+
+// Normalize an untrusted "REPORT Rdi" row (client-side parse) into the
+// canonical shape. Numero RDI is the business key, so a row without it is
+// meaningless.
+function normalizeReportRdi(raw: unknown): ReportRdiRecord | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const numero_rdi = sval(r.numero_rdi);
+  if (!numero_rdi) return null;
+  return {
+    numero_rdi,
+    descrizione_rdi: sval(r.descrizione_rdi),
+    nome_file_pif_if: sval(r.nome_file_pif_if),
+    codifica_documento: sval(r.codifica_documento),
+    stato_documento: sval(r.stato_documento),
+    divisione: sval(r.divisione),
+    centro_costo: sval(r.centro_costo),
+    ultima_pif_approvata: sval(r.ultima_pif_approvata),
+    descrizione_pif_if: sval(r.descrizione_pif_if),
+    data_caricamento: sval(r.data_caricamento),
+    utente_caricamento: sval(r.utente_caricamento),
+    fornitore: sval(r.fornitore),
+    roi: sval(r.roi),
+    data_invio_roi: sval(r.data_invio_roi),
+    data_rifiuto_roi: sval(r.data_rifiuto_roi),
+    data_approvazione_roi: sval(r.data_approvazione_roi),
+  };
+}
+
+// Normalize an untrusted "REPORT Apertura" row (client-side parse) into the
+// canonical shape. A row without a BDO carries no useful information.
+function normalizeVerbaleApertura(raw: unknown): VerbaleAperturaRecord | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const num_bdo = sval(r.num_bdo);
+  if (!num_bdo) return null;
+  return {
+    num_bdo,
+    descrizione: sval(r.descrizione),
+    nome_file: sval(r.nome_file),
+    codifica_documento: sval(r.codifica_documento),
+    stato_verbale: sval(r.stato_verbale),
+    periodo_competenza: sval(r.periodo_competenza),
+    divisione: sval(r.divisione),
+    centro_costo: sval(r.centro_costo),
+    fornitore: sval(r.fornitore),
+    utente_caricamento_fornitore: sval(r.utente_caricamento_fornitore),
+    data_firma_fornitore: sval(r.data_firma_fornitore),
+    roi: sval(r.roi),
+    data_inserimento_verbale_non_sottomesso: sval(r.data_inserimento_verbale_non_sottomesso),
+    data_sottomissione_verbale_fornitore: sval(r.data_sottomissione_verbale_fornitore),
+    data_firma_roi: sval(r.data_firma_roi),
+    data_rifiuto_roi: sval(r.data_rifiuto_roi),
+    data_invio_roi: sval(r.data_invio_roi),
+  };
+}
+
+// Normalize an untrusted "REPORT Sal" row (client-side parse) into the
+// canonical shape. A row without a BDO carries no useful information.
+function normalizeVerbaleSal(raw: unknown): VerbaleSalRecord | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const num_bdo = sval(r.num_bdo);
+  if (!num_bdo) return null;
+  return {
+    num_bdo,
+    descrizione: sval(r.descrizione),
+    nome_file: sval(r.nome_file),
+    codifica_documento: sval(r.codifica_documento),
+    stato_verbale: sval(r.stato_verbale),
+    periodo_competenza: sval(r.periodo_competenza),
+    conforme: sval(r.conforme),
+    motivo_conformita: sval(r.motivo_conformita),
+    criticita: sval(r.criticita),
+    motivazione_criticita: sval(r.motivazione_criticita),
+    livelli_servizio_rispettati: sval(r.livelli_servizio_rispettati),
+    divisione: sval(r.divisione),
+    centro_costo: sval(r.centro_costo),
+    fornitore: sval(r.fornitore),
+    utente_caricamento_fornitore: sval(r.utente_caricamento_fornitore),
+    data_firma_fornitore: sval(r.data_firma_fornitore),
+    roi: sval(r.roi),
+    data_inserimento_verbale_non_sottomesso: sval(r.data_inserimento_verbale_non_sottomesso),
+    data_sottomissione_verbale_fornitore: sval(r.data_sottomissione_verbale_fornitore),
+    data_firma_roi: sval(r.data_firma_roi),
+    data_rifiuto_roi: sval(r.data_rifiuto_roi),
+    data_invio_roi: sval(r.data_invio_roi),
   };
 }
 
@@ -195,6 +295,25 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
       errors.push(`Report Bdo: ${res.ignored} righe ignorate (BDO non presente in portafoglio)`);
     }
   }
+
+  let reportRdiSaved = 0;
+  if (parsed.reportRdi && parsed.reportRdi.length) {
+    const res = await persistReportRdiFromUpload(parsed.reportRdi);
+    reportRdiSaved = res.saved;
+  }
+
+  let verbaliAperturaSaved = 0;
+  if (parsed.verbaliApertura && parsed.verbaliApertura.length) {
+    const res = await persistVerbaliAperturaFromUpload(parsed.verbaliApertura);
+    verbaliAperturaSaved = res.saved;
+  }
+
+  let verbaliSalSaved = 0;
+  if (parsed.verbaliSal && parsed.verbaliSal.length) {
+    const res = await persistVerbaliSalFromUpload(parsed.verbaliSal);
+    verbaliSalSaved = res.saved;
+  }
+
   if (parsed.kind === 'chiusura') {
     errors.push(`Chiusura: ${parsed.chiusura?.length ?? 0} righe lette (gestione Chiusura non ancora attiva)`);
   }
@@ -211,6 +330,9 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     bef_ifs: befIfs,
     report_bdo_saved: reportBdoSaved,
     report_bdo_ignored: reportBdoIgnored,
+    report_rdi_saved: reportRdiSaved,
+    verbali_apertura_saved: verbaliAperturaSaved,
+    verbali_sal_saved: verbaliSalSaved,
     seniority_rows: parsed.seniority?.length ?? 0,
     errors,
   };
@@ -241,6 +363,9 @@ export async function POST(req: Request) {
       interventi?: unknown[];
       bef?: unknown[];
       reportBdo?: unknown[];
+      reportRdi?: unknown[];
+      verbaliApertura?: unknown[];
+      verbaliSal?: unknown[];
       seniority?: ParseOutput['seniority'];
       filename?: string;
     };
@@ -255,7 +380,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           error:
-            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo".',
+            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo" / "REPORT Rdi" / "REPORT Apertura" / "REPORT Sal".',
         },
         { status: 422 },
       );
@@ -269,7 +394,25 @@ export async function POST(req: Request) {
     const reportBdo = (body.reportBdo ?? [])
       .map(normalizeReportBdo)
       .filter((b): b is ReportBdoRecord => b !== null);
-    const parsed: ParseOutput = { kind, interventi, bef, reportBdo, seniority: body.seniority };
+    const reportRdi = (body.reportRdi ?? [])
+      .map(normalizeReportRdi)
+      .filter((b): b is ReportRdiRecord => b !== null);
+    const verbaliApertura = (body.verbaliApertura ?? [])
+      .map(normalizeVerbaleApertura)
+      .filter((b): b is VerbaleAperturaRecord => b !== null);
+    const verbaliSal = (body.verbaliSal ?? [])
+      .map(normalizeVerbaleSal)
+      .filter((b): b is VerbaleSalRecord => b !== null);
+    const parsed: ParseOutput = {
+      kind,
+      interventi,
+      bef,
+      reportBdo,
+      reportRdi,
+      verbaliApertura,
+      verbaliSal,
+      seniority: body.seniority,
+    };
     const summary = await applyParsed(parsed, force);
     return NextResponse.json({ ok: true, kind, filename: body.filename ?? null, force, ...summary });
   }

@@ -1,13 +1,35 @@
-import type { Intervento, BefRecord, VerbaleChiusura, Seniority, ReportBdoRecord } from '../types';
+import type {
+  Intervento,
+  BefRecord,
+  VerbaleChiusura,
+  Seniority,
+  ReportBdoRecord,
+  ReportRdiRecord,
+  VerbaleAperturaRecord,
+  VerbaleSalRecord,
+} from '../types';
 import { parseIF } from './parseIF';
 import { parseBEF } from './parseBEF';
 import { parseChiusura } from './parseChiusura';
 import { parseAggregatore } from './parseAggregatore';
 import { parseDashboard } from './parseDashboard';
 import { parseReportBdo, findReportBdoSheet } from './parseReportBdo';
+import { parseReportRdi, findReportRdiSheet } from './parseReportRdi';
+import { parseVerbaliApertura, findVerbaliAperturaSheet } from './parseVerbaliApertura';
+import { parseVerbaliSal, findVerbaliSalSheet } from './parseVerbaliSal';
 import { readWorkbook } from './util';
 
-export type FileKind = 'if' | 'bef' | 'chiusura' | 'aggregatore' | 'dashboard' | 'report_bdo' | 'unknown';
+export type FileKind =
+  | 'if'
+  | 'bef'
+  | 'chiusura'
+  | 'aggregatore'
+  | 'dashboard'
+  | 'report_bdo'
+  | 'report_rdi'
+  | 'verbali_apertura'
+  | 'verbali_sal'
+  | 'unknown';
 
 export function detectKind(filename: string): FileKind {
   const n = filename.toLowerCase();
@@ -27,6 +49,9 @@ export type ParseOutput = {
   chiusura?: VerbaleChiusura[];
   seniority?: Seniority[];
   reportBdo?: ReportBdoRecord[];
+  reportRdi?: ReportRdiRecord[];
+  verbaliApertura?: VerbaleAperturaRecord[];
+  verbaliSal?: VerbaleSalRecord[];
 };
 
 export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOutput {
@@ -48,9 +73,9 @@ export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOut
     }
     default: {
       // Fall back to content sniffing: some exports (master Dashboard
-      // workbook, "REPORT Bdo") have filenames that don't follow a fixed
-      // pattern (e.g. system-generated timestamps/codes), so they're
-      // identified by their sheets instead.
+      // workbook, "REPORT Bdo", "REPORT Rdi", "REPORT Apertura", "REPORT Sal")
+      // have filenames that don't follow a fixed pattern (e.g. system-generated
+      // timestamps/codes), so they're identified by their sheets instead.
       try {
         const wb = readWorkbook(buf);
         const has = (name: string) => wb.SheetNames.some((s) => s === name);
@@ -61,6 +86,15 @@ export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOut
         if (findReportBdoSheet(wb)) {
           return { kind: 'report_bdo', reportBdo: parseReportBdo(wb) };
         }
+        if (findReportRdiSheet(wb)) {
+          return { kind: 'report_rdi', reportRdi: parseReportRdi(wb) };
+        }
+        if (findVerbaliAperturaSheet(wb)) {
+          return { kind: 'verbali_apertura', verbaliApertura: parseVerbaliApertura(wb) };
+        }
+        if (findVerbaliSalSheet(wb)) {
+          return { kind: 'verbali_sal', verbaliSal: parseVerbaliSal(wb) };
+        }
       } catch {
         // not a spreadsheet we can read -> report as unknown below
       }
@@ -69,4 +103,14 @@ export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOut
   }
 }
 
-export { parseIF, parseBEF, parseChiusura, parseAggregatore, parseDashboard, parseReportBdo };
+export {
+  parseIF,
+  parseBEF,
+  parseChiusura,
+  parseAggregatore,
+  parseDashboard,
+  parseReportBdo,
+  parseReportRdi,
+  parseVerbaliApertura,
+  parseVerbaliSal,
+};

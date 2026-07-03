@@ -178,6 +178,75 @@ export type ReportBdoRecord = {
   data_decorrenza: string | null;
 };
 
+// Row from the "REPORT Rdi" export (Richieste di Intervento). numero_rdi
+// ("Numero RDI") is the business key.
+export type ReportRdiRecord = {
+  numero_rdi: string;
+  descrizione_rdi: string | null;
+  nome_file_pif_if: string | null;
+  codifica_documento: string | null;
+  stato_documento: string | null;
+  divisione: string | null;
+  centro_costo: string | null;
+  ultima_pif_approvata: string | null;
+  descrizione_pif_if: string | null;
+  data_caricamento: string | null;
+  utente_caricamento: string | null;
+  fornitore: string | null;
+  roi: string | null;
+  data_invio_roi: string | null;
+  data_rifiuto_roi: string | null;
+  data_approvazione_roi: string | null;
+};
+
+// Row from the "REPORT Apertura" export (verbali di apertura).
+export type VerbaleAperturaRecord = {
+  num_bdo: string | null;
+  descrizione: string | null;
+  nome_file: string | null;
+  codifica_documento: string | null;
+  stato_verbale: string | null;
+  periodo_competenza: string | null;
+  divisione: string | null;
+  centro_costo: string | null;
+  fornitore: string | null;
+  utente_caricamento_fornitore: string | null;
+  data_firma_fornitore: string | null;
+  roi: string | null;
+  data_inserimento_verbale_non_sottomesso: string | null;
+  data_sottomissione_verbale_fornitore: string | null;
+  data_firma_roi: string | null;
+  data_rifiuto_roi: string | null;
+  data_invio_roi: string | null;
+};
+
+// Row from the "REPORT Sal" export (verbali SAL). Multiple rows per num_bdo
+// are expected (periodic SAL).
+export type VerbaleSalRecord = {
+  num_bdo: string | null;
+  descrizione: string | null;
+  nome_file: string | null;
+  codifica_documento: string | null;
+  stato_verbale: string | null;
+  periodo_competenza: string | null;
+  conforme: string | null;
+  motivo_conformita: string | null;
+  criticita: string | null;
+  motivazione_criticita: string | null;
+  livelli_servizio_rispettati: string | null;
+  divisione: string | null;
+  centro_costo: string | null;
+  fornitore: string | null;
+  utente_caricamento_fornitore: string | null;
+  data_firma_fornitore: string | null;
+  roi: string | null;
+  data_inserimento_verbale_non_sottomesso: string | null;
+  data_sottomissione_verbale_fornitore: string | null;
+  data_firma_roi: string | null;
+  data_rifiuto_roi: string | null;
+  data_invio_roi: string | null;
+};
+
 // Aggregated payload returned by GET /api/data
 export type DashboardData = {
   meta: Meta;

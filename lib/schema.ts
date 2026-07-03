@@ -110,6 +110,85 @@ export const report_bdo = pgTable('report_bdo', {
   updated_at: timestamp('updated_at').defaultNow(),
 });
 
+// Snapshot of the "REPORT Rdi" export (Richieste di Intervento). numero_rdi is
+// the business key: one row per RDI, upserted on each upload (same pattern as
+// report_bdo).
+export const report_rdi = pgTable('report_rdi', {
+  id: serial('id').primaryKey(),
+  numero_rdi: text('numero_rdi').unique().notNull(),
+  descrizione_rdi: text('descrizione_rdi'),
+  nome_file_pif_if: text('nome_file_pif_if'),
+  codifica_documento: text('codifica_documento'),
+  stato_documento: text('stato_documento'),
+  divisione: text('divisione'),
+  centro_costo: text('centro_costo'),
+  ultima_pif_approvata: text('ultima_pif_approvata'),
+  descrizione_pif_if: text('descrizione_pif_if'),
+  data_caricamento: date('data_caricamento'),
+  utente_caricamento: text('utente_caricamento'),
+  fornitore: text('fornitore'),
+  roi: text('roi'),
+  data_invio_roi: date('data_invio_roi'),
+  data_rifiuto_roi: date('data_rifiuto_roi'),
+  data_approvazione_roi: date('data_approvazione_roi'),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+// Snapshot of the "REPORT Apertura" export (verbali di apertura). No natural
+// UNIQUE key: uploads replace rows per num_bdo (delete + insert) for
+// re-runnability — see lib/verbaliAperturaStore.ts.
+export const verbali_apertura = pgTable('verbali_apertura', {
+  id: serial('id').primaryKey(),
+  num_bdo: text('num_bdo'),
+  descrizione: text('descrizione'),
+  nome_file: text('nome_file'),
+  codifica_documento: text('codifica_documento'),
+  stato_verbale: text('stato_verbale'),
+  periodo_competenza: text('periodo_competenza'),
+  divisione: text('divisione'),
+  centro_costo: text('centro_costo'),
+  fornitore: text('fornitore'),
+  utente_caricamento_fornitore: text('utente_caricamento_fornitore'),
+  data_firma_fornitore: date('data_firma_fornitore'),
+  roi: text('roi'),
+  data_inserimento_verbale_non_sottomesso: date('data_inserimento_verbale_non_sottomesso'),
+  data_sottomissione_verbale_fornitore: date('data_sottomissione_verbale_fornitore'),
+  data_firma_roi: date('data_firma_roi'),
+  data_rifiuto_roi: date('data_rifiuto_roi'),
+  data_invio_roi: date('data_invio_roi'),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+// Snapshot of the "REPORT Sal" export (verbali SAL). Multiple rows per
+// num_bdo are expected (periodic SAL) so uploads always append — see
+// lib/verbaliSalStore.ts.
+export const verbali_sal = pgTable('verbali_sal', {
+  id: serial('id').primaryKey(),
+  num_bdo: text('num_bdo'),
+  descrizione: text('descrizione'),
+  nome_file: text('nome_file'),
+  codifica_documento: text('codifica_documento'),
+  stato_verbale: text('stato_verbale'),
+  periodo_competenza: text('periodo_competenza'),
+  conforme: text('conforme'),
+  motivo_conformita: text('motivo_conformita'),
+  criticita: text('criticita'),
+  motivazione_criticita: text('motivazione_criticita'),
+  livelli_servizio_rispettati: text('livelli_servizio_rispettati'),
+  divisione: text('divisione'),
+  centro_costo: text('centro_costo'),
+  fornitore: text('fornitore'),
+  utente_caricamento_fornitore: text('utente_caricamento_fornitore'),
+  data_firma_fornitore: date('data_firma_fornitore'),
+  roi: text('roi'),
+  data_inserimento_verbale_non_sottomesso: date('data_inserimento_verbale_non_sottomesso'),
+  data_sottomissione_verbale_fornitore: date('data_sottomissione_verbale_fornitore'),
+  data_firma_roi: date('data_firma_roi'),
+  data_rifiuto_roi: date('data_rifiuto_roi'),
+  data_invio_roi: date('data_invio_roi'),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
 export const tariffe = pgTable('tariffe', {
   id: serial('id').primaryKey(),
   figura: text('figura'),

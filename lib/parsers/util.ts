@@ -112,3 +112,59 @@ export function str(v: unknown): string | null {
   const s = String(v).trim();
   return s === '' || s === '—' || s === 'nan' ? null : s;
 }
+
+// Identifier columns (Numero BDO, Numero RDI, …) sometimes arrive as a float
+// (e.g. 2017331334.0) because Excel/xlsx reads a numeric-looking cell as a
+// number. Always render them as an integer string, never with a decimal tail.
+export function strId(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === 'number') {
+    return Number.isFinite(v) ? String(Math.trunc(v)) : null;
+  }
+  const s = String(v).trim();
+  if (s === '' || s === '—' || s === 'nan') return null;
+  const wholeFloat = s.match(/^-?\d+\.0+$/);
+  return wholeFloat ? String(Math.trunc(Number(s))) : s;
+}
+
+// Look up a row value trying several header spellings in order (some
+// extractions carry small typos/variations in a column header).
+export function pick(r: Record<string, unknown>, ...keys: string[]): unknown {
+  for (const k of keys) {
+    if (k in r) return r[k];
+  }
+  return undefined;
+}
+
+// Header row of a sheet (trimmed, blanks dropped) — used to sanity-check an
+// export's columns against what a parser expects.
+export function sheetHeaders(wb: Workbook, sheetName: string, headerRowIndex = 0): string[] {
+  const matrix = sheetMatrix(wb, sheetName);
+  if (matrix.length <= headerRowIndex) return [];
+  return (matrix[headerRowIndex] as unknown[])
+    .map((h) => String(h ?? '').trim())
+    .filter(Boolean);
+}
+
+// Warn (non-blocking) when a sheet's headers don't cover every column a
+// parser expects — extractions occasionally carry small refusi/variations.
+export function warnIfHeaderMismatch(actual: string[], expected: string[], label: string): void {
+  const missing = expected.filter((h) => !actual.includes(h));
+  if (missing.length) {
+    console.warn(`[${label}] intestazioni attese non trovate nel foglio: ${missing.join(', ')}`);
+  }
+}
+
+const RTI_INTELLERA = 'rti 7-26 intellera';
+
+// Solo le righe del RTI Intellera vanno importate: le altre righe del report
+// (altri fornitori del raggruppamento) devono essere scartate. Il fornitore
+// può comparire in una colonna "Fornitore" o "Fornitore RTI" a seconda
+// dell'export — basta che una delle due combaci.
+export function isRtiIntellera(r: Record<string, unknown>): boolean {
+  const match = (v: unknown) => {
+    const s = str(v);
+    return !!s && s.toLowerCase().includes(RTI_INTELLERA);
+  };
+  return match(r['Fornitore']) || match(r['Fornitore RTI']);
+}

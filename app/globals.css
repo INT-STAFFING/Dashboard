@@ -9,11 +9,11 @@
   --slate:#5A6B86;--slate-l:#8C9BB3;
   --line:#D7DEDC;--line-2:#EAEEED;--good:#2F8F5B;--bad:#C0492F;--r:16px;
   --space:24px;
-  --font-display:'Fraunces','Iowan Old Style','Palatino',Georgia,serif;
+  --font-display:var(--font-fraunces,'Fraunces'),'Iowan Old Style','Palatino',Georgia,serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;background:var(--canvas);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font-inter,'Inter'),'Helvetica Neue',Arial,sans-serif;background:var(--canvas);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
 .mono{font-family:'SFMono-Regular',ui-monospace,'Roboto Mono','Courier New',monospace}
 .wrap{max-width:1320px;margin:0 auto;padding:0 26px}
 header{position:relative;overflow:hidden;padding:8px 0 10px;color:#EAF4F2;
@@ -76,6 +76,10 @@ main{padding:16px 0 60px;position:relative}
 .skel-line{height:14px;border-radius:6px}
 .skel-line.w60{width:60%}.skel-line.w40{width:40%}.skel-line.w80{width:80%}
 .skel-block{flex:1;border-radius:8px;min-height:100px}
+.skel-pill{height:33px;width:110px;border-radius:9px;flex:none}
+.skel-kpi-val{height:34px;width:55%;margin-top:10px}
+.skel-note{height:12px;width:70%;margin-top:8px;border-radius:5px}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
 .phead{display:flex;align-items:baseline;gap:12px;margin-bottom:var(--space)}
 .phead h2{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.01em}
 .phead p{font-size:13px;color:var(--muted);margin-left:auto;max-width:480px;text-align:right}

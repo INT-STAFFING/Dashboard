@@ -1,5 +1,5 @@
 'use client';
-import React, { useMemo, useState } from 'react';
+import React, { useDeferredValue, useMemo, useState } from 'react';
 import type { Intervento, InterventoInput, DocStatus } from '@/lib/types';
 import { EUR0, dfmt } from '@/lib/format';
 import InlineField from '../editing/InlineField';
@@ -41,7 +41,7 @@ function exportCSV(IFs: Intervento[]) {
 
 type SortKey = keyof Intervento;
 
-export default function RegistroPanel({
+function RegistroPanel({
   IFs,
   canEdit = true,
   onSaveField,
@@ -61,11 +61,14 @@ export default function RegistroPanel({
   highlightIds: Set<string>;
 }) {
   const [q, setQ] = useState('');
+  // The input echoes keystrokes instantly; re-filtering/sorting the table runs
+  // at deferred priority so typing never stutters on long registries.
+  const deferredQ = useDeferredValue(q);
   const [sortK, setSortK] = useState<SortKey>('importo');
   const [sortDir, setSortDir] = useState(-1);
 
   const rows = useMemo(() => {
-    const query = q.toLowerCase().trim();
+    const query = deferredQ.toLowerCase().trim();
     const num = sortK === 'importo' || sortK === 'revenue_2026';
     return IFs.filter(
       (x) =>
@@ -86,7 +89,7 @@ export default function RegistroPanel({
       }
       return va < vb ? -sortDir : va > vb ? sortDir : 0;
     });
-  }, [IFs, q, sortK, sortDir]);
+  }, [IFs, deferredQ, sortK, sortDir]);
 
   const sort = (k: SortKey) => {
     if (sortK === k) setSortDir((d) => d * -1);
@@ -284,3 +287,8 @@ export default function RegistroPanel({
     </div>
   );
 }
+
+// Memoized: only the active tab is mounted, but edits elsewhere in the
+// Dashboard (toasts, drawer, saving flags) re-render the parent — memo skips
+// re-rendering the panel when its own data/props are unchanged.
+export default React.memo(RegistroPanel);

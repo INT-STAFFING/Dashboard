@@ -800,7 +800,12 @@ function RisorseEditor({ numeroIf, show }: { numeroIf: string; show: (m: string,
         Allocazione risorse dell&apos;IF. Totale giorni uomo: <b>{totGg.toLocaleString('it-IT')}</b> · Valore stimato: <b>{EUR(totImporto)}</b>
       </div>
       {!loaded ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Caricamento…</div>
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Caricamento in corso…</span>
+          <div className="skel skel-line w60" style={{ marginBottom: 8 }} aria-hidden />
+          <div className="skel skel-line w80" style={{ marginBottom: 8 }} aria-hidden />
+          <div className="skel skel-line w40" aria-hidden />
+        </div>
       ) : loadError ? (
         <div style={{ color: 'var(--bad, #c0392b)', fontSize: 13 }}>
           Errore nel caricamento delle risorse. Riprova ricaricando la pagina.
@@ -917,7 +922,12 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
       <h3>Dati BEF · IF {numeroIf}</h3>
       <div className="cap">Voci BEF dell&apos;intervento. Totale importi: <b>{EUR(tot)}</b></div>
       {!loaded ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Caricamento…</div>
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Caricamento in corso…</span>
+          <div className="skel skel-line w60" style={{ marginBottom: 8 }} aria-hidden />
+          <div className="skel skel-line w80" style={{ marginBottom: 8 }} aria-hidden />
+          <div className="skel skel-line w40" aria-hidden />
+        </div>
       ) : loadError ? (
         <div style={{ color: 'var(--bad, #c0392b)', fontSize: 13 }}>
           Errore nel caricamento dei dati BEF. Riprova ricaricando la pagina.
@@ -1027,7 +1037,12 @@ function DbSection({ show }: { show: (m: string, bad?: boolean) => void }) {
           Elenco delle tabelle presenti nello schema. Seleziona una tabella per vederne struttura e contenuto.
         </div>
         {!loaded ? (
-          <div style={{ color: 'var(--muted)', fontSize: 13 }}>Caricamento…</div>
+          <div role="status" aria-busy="true">
+            <span className="sr-only">Caricamento in corso…</span>
+            <div className="skel skel-line w60" style={{ marginBottom: 8 }} aria-hidden />
+            <div className="skel skel-line w80" style={{ marginBottom: 8 }} aria-hidden />
+            <div className="skel skel-line w40" aria-hidden />
+          </div>
         ) : loadError ? (
           <div style={{ color: 'var(--bad, #c0392b)', fontSize: 13 }}>
             Errore nel caricamento delle tabelle. Riprova ricaricando la pagina.
@@ -1107,7 +1122,12 @@ function TableViewer({ name }: { name: string }) {
         Struttura e contenuto · <span className="mono">{name}</span>
       </h3>
       {!loaded ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Caricamento…</div>
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Caricamento in corso…</span>
+          <div className="skel skel-line w60" style={{ marginBottom: 8 }} aria-hidden />
+          <div className="skel skel-line w80" style={{ marginBottom: 8 }} aria-hidden />
+          <div className="skel skel-line w40" aria-hidden />
+        </div>
       ) : err ? (
         <div style={{ color: 'var(--bad, #c0392b)', fontSize: 13 }}>
           Errore nel caricamento della tabella.

@@ -9,6 +9,8 @@ const uniq = (arr: (string | null)[]) =>
 
 type Opt = { value: string; count: number };
 
+const MOD_DOMAIN = ['A corpo', 'A canone', 'A consumo'];
+
 // ---------------------------------------------------------------------------
 // Generic dropdown (checkbox = multi, radio = single).
 // Owns: open/close, click-outside, Escape, search field (auto when >7 options),
@@ -151,7 +153,7 @@ function FilterToggle({ label, on, onChange }: { label: string; on: boolean; onC
   );
 }
 
-export default function FilterBar({
+function FilterBar({
   interventi,
   fornitoriFilter,
   filters,
@@ -180,7 +182,6 @@ export default function FilterBar({
     [interventi],
   );
   const statoDomain = useMemo(() => uniq(interventi.map((i) => i.stato)), [interventi]);
-  const MOD_DOMAIN = ['A corpo', 'A canone', 'A consumo'];
 
   // --- update helpers ------------------------------------------------------
   const toggleMulti = (key: 'forn' | 'ref' | 'refint' | 'amb' | 'stato', value: string) => {
@@ -199,26 +200,31 @@ export default function FilterBar({
 
   // Faceted counts: count each option against all OTHER active filters, so the
   // number reflects "results if I also pick this". 0 ⇒ option is disabled.
-  const facet = (key: keyof Filters, domain: string[], get: (i: Intervento) => string | null): Opt[] => {
-    const base = filterInterventi(interventi, { ...filters, [key]: undefined });
-    const counts: Record<string, number> = {};
-    for (const i of base) {
-      const v = get(i);
-      if (v != null) counts[v] = (counts[v] || 0) + 1;
-    }
-    return domain.map((v) => ({ value: v, count: counts[v] || 0 }));
-  };
-
-  const fornOpts = facet('forn', fornDomain, (i) => i.fornitore);
-  const statoOpts = facet('stato', statoDomain, (i) => i.stato);
-  const ambOpts = facet('amb', ambDomain, (i) => i.ambito || AMBITO_NON_CLASSIFICATO);
-  const refOpts = facet('ref', refDomain, (i) => i.ref_aria);
-  const refintOpts = facet('refint', refintDomain, (i) => i.ref_fornitore);
-  const modBase = filterInterventi(interventi, { ...filters, mod: undefined });
-  const modOpts: Opt[] = MOD_DOMAIN.map((v) => ({
-    value: v,
-    count: modBase.filter((i) => matchesMod(i.modalita_if, v)).length,
-  }));
+  // Memoized: 7 full-list scans otherwise re-run on every parent re-render
+  // (toast timers, saving-state flips, …), not just when filters/data change.
+  const { fornOpts, statoOpts, ambOpts, refOpts, refintOpts, modOpts } = useMemo(() => {
+    const facet = (key: keyof Filters, domain: string[], get: (i: Intervento) => string | null): Opt[] => {
+      const base = filterInterventi(interventi, { ...filters, [key]: undefined });
+      const counts: Record<string, number> = {};
+      for (const i of base) {
+        const v = get(i);
+        if (v != null) counts[v] = (counts[v] || 0) + 1;
+      }
+      return domain.map((v) => ({ value: v, count: counts[v] || 0 }));
+    };
+    const modBase = filterInterventi(interventi, { ...filters, mod: undefined });
+    return {
+      fornOpts: facet('forn', fornDomain, (i) => i.fornitore),
+      statoOpts: facet('stato', statoDomain, (i) => i.stato),
+      ambOpts: facet('amb', ambDomain, (i) => i.ambito || AMBITO_NON_CLASSIFICATO),
+      refOpts: facet('ref', refDomain, (i) => i.ref_aria),
+      refintOpts: facet('refint', refintDomain, (i) => i.ref_fornitore),
+      modOpts: MOD_DOMAIN.map((v) => ({
+        value: v,
+        count: modBase.filter((i) => matchesMod(i.modalita_if, v)).length,
+      })) as Opt[],
+    };
+  }, [interventi, filters, fornDomain, statoDomain, ambDomain, refDomain, refintDomain]);
 
   // --- applied-filter pills (Level-3 redundancy) ---------------------------
   const pills: { id: string; text: string; remove: () => void }[] = [];
@@ -359,3 +365,8 @@ export default function FilterBar({
     </div>
   );
 }
+
+// The filter bar re-renders with every Dashboard state change (toasts, saving
+// flags, drawer, tab); memo skips those — its props only change on data/filter
+// updates (setFilters is a stable state setter).
+export default React.memo(FilterBar);

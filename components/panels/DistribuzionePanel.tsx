@@ -7,7 +7,7 @@ import { Html } from '../Html';
 
 const PAL = [C.petrol, C.gold, C.slate, C.petrolL, '#B96E15', '#8C9BB3', '#0A4A43', '#C0492F', '#2F8F5B', '#7A5AA0', '#A100FF', '#D98A2B'];
 
-export default function DistribuzionePanel({
+function DistribuzionePanel({
   IFs,
   seniority,
   distSub,
@@ -242,3 +242,8 @@ export default function DistribuzionePanel({
     </div>
   );
 }
+
+// Memoized: only the active tab is mounted, but edits elsewhere in the
+// Dashboard (toasts, drawer, saving flags) re-render the parent — memo skips
+// re-rendering the panel when its own data/props are unchanged.
+export default React.memo(DistribuzionePanel);

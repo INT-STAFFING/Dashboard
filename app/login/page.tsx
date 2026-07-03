@@ -26,13 +26,15 @@ function LoginForm() {
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.error || 'Accesso non riuscito');
+        setBusy(false);
         return;
       }
+      // Keep the button in its busy state while the dashboard streams in —
+      // re-enabling it here would make the app look idle during navigation.
       router.replace(next);
       router.refresh();
     } catch {
       setError('Errore di rete. Riprova.');
-    } finally {
       setBusy(false);
     }
   };
@@ -81,7 +83,17 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="authwrap">
-      <Suspense fallback={<div className="authcard">Caricamento…</div>}>
+      <Suspense
+        fallback={
+          <div className="authcard" role="status" aria-busy="true">
+            <span className="sr-only">Caricamento della pagina di accesso…</span>
+            <div className="skel skel-line w40" style={{ marginBottom: 12 }} aria-hidden />
+            <div className="skel" style={{ height: 40, borderRadius: 10, marginBottom: 14 }} aria-hidden />
+            <div className="skel" style={{ height: 40, borderRadius: 10, marginBottom: 18 }} aria-hidden />
+            <div className="skel" style={{ height: 42, borderRadius: 10 }} aria-hidden />
+          </div>
+        }
+      >
         <LoginForm />
       </Suspense>
     </div>

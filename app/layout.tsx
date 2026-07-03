@@ -1,6 +1,25 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter, Fraunces } from 'next/font/google';
 import './globals.css';
 import './filterbar.css';
+
+// Self-hosted via next/font: the fonts are downloaded at build time and served
+// from our own origin with a preload + font-display:swap, removing the
+// render-blocking googleapis/gstatic request chain (and the FOUT flash on
+// slow networks). Exposed as CSS variables consumed by globals.css.
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  display: 'swap',
+  variable: '--font-fraunces',
+  // Display face only (h1/eyebrow): not needed for first paint of body text.
+  preload: false,
+});
 
 export const metadata: Metadata = {
   title: 'Monitor IF/BO · ARIA SISS L2 · Intellera',
@@ -16,15 +35,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="it">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="it" className={`${inter.variable} ${fraunces.variable}`}>
       <body>{children}</body>
     </html>
   );

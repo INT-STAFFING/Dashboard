@@ -5,7 +5,7 @@ import { EUR, EUR0, EURM, PCT, MESI, C, erosionRisk } from '@/lib/format';
 import { chartMonthly, legchips } from '@/lib/charts';
 import { Html } from '../Html';
 
-export default function OverviewPanel({
+function OverviewPanel({
   IFs,
   rti,
   quotaVal,
@@ -141,3 +141,8 @@ export default function OverviewPanel({
     </div>
   );
 }
+
+// Memoized: only the active tab is mounted, but edits elsewhere in the
+// Dashboard (toasts, drawer, saving flags) re-render the parent — memo skips
+// re-rendering the panel when its own data/props are unchanged.
+export default React.memo(OverviewPanel);

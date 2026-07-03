@@ -25,7 +25,7 @@ const MCOL: Record<string, string> = { A_corpo: C.petrol, A_canone: C.gold, A_co
 const MOD_TO_KEY: Record<string, string> = { 'A corpo': 'A_corpo', 'A canone': 'A_canone', 'A consumo': 'A_consumo' };
 const BUCKET_ORDER = ['A_corpo', 'A_canone', 'A_consumo', ALTRO_KEY];
 
-export default function ModalitaPanel({
+function ModalitaPanel({
   interventi,
   onDrillMod,
 }: {
@@ -132,3 +132,8 @@ export default function ModalitaPanel({
     </div>
   );
 }
+
+// Memoized: only the active tab is mounted, but edits elsewhere in the
+// Dashboard (toasts, drawer, saving flags) re-render the parent — memo skips
+// re-rendering the panel when its own data/props are unchanged.
+export default React.memo(ModalitaPanel);

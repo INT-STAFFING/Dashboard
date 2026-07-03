@@ -255,6 +255,9 @@ const DDL: string[] = [
     "consuntivato" numeric(18, 4)
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "timeline_mensile_anno_mese_unique" ON "timeline_mensile" ("anno","mese")`,
+  // Per-IF lookups (admin editors, BEF upsert) filter on numero_if.
+  `CREATE INDEX IF NOT EXISTS "bef_records_numero_if_idx" ON "bef_records" ("numero_if")`,
+  `CREATE INDEX IF NOT EXISTS "if_risorse_numero_if_idx" ON "if_risorse" ("numero_if")`,
   // Idempotent column additions for databases created before these fields
   // existed (CREATE TABLE IF NOT EXISTS won't add columns to an existing table).
   `ALTER TABLE "interventi" ADD COLUMN IF NOT EXISTS "cons_mesi" jsonb`,

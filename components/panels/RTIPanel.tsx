@@ -58,7 +58,7 @@ function buildYearlyErosionChart(
   return `<svg class="msvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${bars}${mk}${labs}</svg>`;
 }
 
-export default function RTIPanel({
+function RTIPanel({
   IFs,
   rti,
   meta,
@@ -333,3 +333,8 @@ function RtiConfigForm({
     </div>
   );
 }
+
+// Memoized: only the active tab is mounted, but edits elsewhere in the
+// Dashboard (toasts, drawer, saving flags) re-render the parent — memo skips
+// re-rendering the panel when its own data/props are unchanged.
+export default React.memo(RTIPanel);

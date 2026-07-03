@@ -27,7 +27,7 @@ const config: Config = {
         bad: 'var(--bad)',
       },
       fontFamily: {
-        sans: ['Inter', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        sans: ['var(--font-inter)', 'Inter', 'Helvetica Neue', 'Arial', 'sans-serif'],
       },
     },
   },

@@ -63,13 +63,18 @@ export async function updateRtiConfig(input: RtiUpdate): Promise<RtiConfig> {
   return setSetting<RtiConfig>('rti', { ...cur, ceiling, partners });
 }
 
-export async function getQuotaVal(): Promise<Record<string, number>> {
-  const cfg = await getRtiConfig();
+// Pure derivation, so callers that already hold the RTI config (e.g.
+// getDashboardData) don't re-read the same app_config row.
+export function quotaValFromRti(cfg: RtiConfig): Record<string, number> {
   const out: Record<string, number> = { ...SEED_QUOTA_VAL };
   cfg.partners.forEach((p) => {
     out[p.name] = p.quota;
   });
   return out;
+}
+
+export async function getQuotaVal(): Promise<Record<string, number>> {
+  return quotaValFromRti(await getRtiConfig());
 }
 
 // Contract / tender metadata ("valori di gara"), editable from the admin page.

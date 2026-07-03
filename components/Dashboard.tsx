@@ -71,7 +71,7 @@ export default function Dashboard({
       .filter((n) => Number.isFinite(n));
     return ts.length ? new Date(Math.max(...ts)) : null;
   }, [interventi]);
-  const viewTot = IFs.reduce((s, i) => s + i.importo, 0);
+  const viewTot = useMemo(() => IFs.reduce((s, i) => s + i.importo, 0), [IFs]);
   // RTI quota panels are meaningful only for a single fornitore in scope.
   const singleForn = filters.forn?.length === 1 ? filters.forn[0] : undefined;
 
@@ -271,10 +271,16 @@ export default function Dashboard({
     [quotaVal, showToast],
   );
 
-  const drillTo = (patch: Filters) => {
+  // Stable references so the memoized panels don't re-render from fresh
+  // closures created on every Dashboard render.
+  const drillTo = useCallback((patch: Filters) => {
     setFilters((f) => ({ ...f, ...patch }));
     startTabTransition(() => setTab(REGISTRO_TAB));
-  };
+  }, []);
+  const onDrillMod = useCallback((m: string) => drillTo({ mod: m }), [drillTo]);
+  const onDrillStato = useCallback((s: string) => drillTo({ stato: [s] }), [drillTo]);
+  const onOpenEdit = useCallback((i: Intervento) => setDrawer({ open: true, mode: 'edit', initial: i }), []);
+  const onOpenNew = useCallback(() => setDrawer({ open: true, mode: 'new', initial: null }), []);
 
   // --- Accessible tab navigation (WCAG 2.1 AA / AgID, requisito PA) ----------
   // Roving-tabindex tablist: only the active tab is in the tab order; ←/→ move
@@ -395,6 +401,7 @@ export default function Dashboard({
         id={`tabpanel-${tab}`}
         role="tabpanel"
         aria-labelledby={`tab-${tab}`}
+        aria-busy={tabPending || undefined}
         tabIndex={0}
       >
         <div className="tab-spinner" aria-label="Caricamento…" />
@@ -443,17 +450,17 @@ export default function Dashboard({
         {tab === 4 && (
           <ModalitaPanel
             interventi={IFs}
-            onDrillMod={(m) => drillTo({ mod: m })}
+            onDrillMod={onDrillMod}
           />
         )}
-        {tab === 5 && <StatoPanel IFs={IFs} onDrillStato={(s) => drillTo({ stato: [s] })} />}
+        {tab === 5 && <StatoPanel IFs={IFs} onDrillStato={onDrillStato} />}
         {tab === 6 && (
           <RegistroPanel
             IFs={IFs}
             canEdit={canEdit}
             onSaveField={onSaveField}
-            onOpenEdit={(i) => setDrawer({ open: true, mode: 'edit', initial: i })}
-            onOpenNew={() => setDrawer({ open: true, mode: 'new', initial: null })}
+            onOpenEdit={onOpenEdit}
+            onOpenNew={onOpenNew}
             onDelete={onDelete}
             savingIds={savingIds}
             highlightIds={highlightIds}

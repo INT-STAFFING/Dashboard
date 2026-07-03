@@ -1,4 +1,4 @@
-import { eq, isNull } from 'drizzle-orm';
+import { eq, inArray, isNull } from 'drizzle-orm';
 import { getDb, hasDB, ensureSchema } from './db';
 import { interventi as interventiTable } from './schema';
 import { SEED_INTERVENTI } from './seed';
@@ -360,6 +360,11 @@ function mergeUpload(existing: Intervento, inc: Intervento, force: boolean): Int
 
 // Upsert from an Excel upload. Records flagged edited_manually are preserved
 // unless `force` is set.
+//
+// With the neon-http driver every query is an HTTP round-trip, so the previous
+// one-query-per-row flow made large uploads cost hundreds of sequential
+// round-trips. Now: one batched read of the existing records, one batched
+// insert, and the per-row updates run in parallel chunks.
 export async function upsertInterventiFromUpload(
   incoming: Intervento[],
   force = false,
@@ -368,18 +373,66 @@ export async function upsertInterventiFromUpload(
   const updatedIfs: string[] = [];
   const skippedIfs: string[] = [];
 
-  for (const inc of incoming) {
-    const existing = await getInterventoAny(inc.numero_if);
-    if (!existing) {
-      await rawInsert(inc);
-      insertedIfs.push(inc.numero_if);
-    } else if (existing.edited_manually && !force) {
-      skippedIfs.push(inc.numero_if);
-    } else {
-      await rawUpdate(inc.numero_if, mergeUpload(existing, inc, force));
-      updatedIfs.push(inc.numero_if);
+  const ids = [...new Set(incoming.map((i) => i.numero_if))];
+  const existingById = new Map<string, Intervento>();
+  if (hasDB) {
+    await ensureDbReady();
+    if (ids.length) {
+      const rows = await getDb().select().from(interventiTable).where(inArray(interventiTable.numero_if, ids));
+      for (const r of rows) existingById.set(r.numero_if, rowToIntervento(r));
+    }
+  } else {
+    for (const id of ids) {
+      const e = await getInterventoAny(id);
+      if (e) existingById.set(id, e);
     }
   }
+
+  // Classify sequentially so duplicate numero_if rows inside the same file
+  // still merge onto each other exactly like the previous one-by-one flow.
+  const inserts = new Map<string, Intervento>();
+  const updates = new Map<string, Intervento>();
+  for (const inc of incoming) {
+    const pending = inserts.get(inc.numero_if) ?? updates.get(inc.numero_if);
+    const existing = pending ?? existingById.get(inc.numero_if);
+    if (!existing) {
+      inserts.set(inc.numero_if, inc);
+      insertedIfs.push(inc.numero_if);
+    } else if (!pending && existing.edited_manually && !force) {
+      skippedIfs.push(inc.numero_if);
+    } else {
+      const merged = mergeUpload(existing, inc, force);
+      if (inserts.has(inc.numero_if)) {
+        inserts.set(inc.numero_if, merged);
+      } else {
+        if (!updates.has(inc.numero_if)) updatedIfs.push(inc.numero_if);
+        updates.set(inc.numero_if, merged);
+      }
+    }
+  }
+
+  if (hasDB) {
+    const insertRows = [...inserts.values()].map(interventoToRow);
+    for (let i = 0; i < insertRows.length; i += 100) {
+      await getDb().insert(interventiTable).values(insertRows.slice(i, i + 100));
+    }
+    const updEntries = [...updates.entries()];
+    const CHUNK = 8;
+    for (let i = 0; i < updEntries.length; i += CHUNK) {
+      await Promise.all(
+        updEntries.slice(i, i + CHUNK).map(([id, rec]) =>
+          getDb()
+            .update(interventiTable)
+            .set({ ...interventoToRow(rec), deleted_at: null, updated_at: new Date() })
+            .where(eq(interventiTable.numero_if, id)),
+        ),
+      );
+    }
+  } else {
+    for (const rec of inserts.values()) await rawInsert(rec);
+    for (const [id, rec] of updates) await rawUpdate(id, rec);
+  }
+
   return {
     inserted: insertedIfs.length,
     updated: updatedIfs.length,

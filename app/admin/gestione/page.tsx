@@ -9,17 +9,20 @@ import AdminGestione from '@/components/AdminGestione';
 export const dynamic = 'force-dynamic';
 
 export default async function GestionePage() {
-  const me = await getSessionUser();
-  if (!me) redirect('/login');
-  if (!isAdmin(me)) redirect('/dashboard');
-
-  const [meta, rti, multiYear, seniority, interventi] = await Promise.all([
+  // Data fetch races the session lookup; awaited only after the admin gate.
+  const dataPromise = Promise.all([
     getMeta(),
     getRtiConfig(),
     getMultiYearTimeline(),
     getSeniority(),
     listInterventi(),
   ]);
+  dataPromise.catch(() => {});
+  const me = await getSessionUser();
+  if (!me) redirect('/login');
+  if (!isAdmin(me)) redirect('/dashboard');
+
+  const [meta, rti, multiYear, seniority, interventi] = await dataPromise;
 
   return (
     <AdminGestione

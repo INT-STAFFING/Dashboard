@@ -14,7 +14,7 @@ import {
 import { chartRevFatt, legchips } from '@/lib/charts';
 import { Html } from '../Html';
 
-export default function TimelinePanel({
+function TimelinePanel({
   timelineMy,
   befMonthly,
   befAggregates,
@@ -175,3 +175,8 @@ export default function TimelinePanel({
     </div>
   );
 }
+
+// Memoized: only the active tab is mounted, but edits elsewhere in the
+// Dashboard (toasts, drawer, saving flags) re-render the parent — memo skips
+// re-rendering the panel when its own data/props are unchanged.
+export default React.memo(TimelinePanel);

@@ -41,6 +41,44 @@ export async function getSetting<T>(key: string, seed: T): Promise<T> {
   return clone(seed);
 }
 
+// Batched variant of getSetting: fetches every requested key in a single
+// round-trip (relevant with the neon-http driver, where each query is an HTTP
+// request). Same per-key semantics as getSetting: DB value wins, then the
+// in-memory cache, then the provided seed.
+export async function getSettingsBulk(seeds: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const keys = Object.keys(seeds);
+  const mem = memStore();
+  const found: Record<string, unknown> = {};
+  if (hasDB && keys.length) {
+    try {
+      await ensureSchema();
+      const inList = sql.join(keys.map((k) => sql`${k}`), sql`, `);
+      const rows = (await getDb().execute(
+        sql`select key, value from app_config where key in (${inList})`,
+      )) as unknown as { rows?: { key: string; value: unknown }[] } | { key: string; value: unknown }[];
+      const list = Array.isArray(rows) ? rows : rows.rows ?? [];
+      for (const r of list) {
+        if (r.value != null) {
+          mem[r.key] = r.value;
+          found[r.key] = clone(r.value);
+        }
+      }
+    } catch {
+      // fall through to in-memory / seed for every key
+    }
+  }
+  const out: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (key in found) out[key] = found[key];
+    else if (key in mem) out[key] = clone(mem[key]);
+    else {
+      mem[key] = clone(seeds[key]);
+      out[key] = clone(seeds[key]);
+    }
+  }
+  return out;
+}
+
 export async function setSetting<T>(key: string, value: T): Promise<T> {
   const mem = memStore();
   mem[key] = clone(value);

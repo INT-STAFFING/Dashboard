@@ -40,7 +40,22 @@ export default function UsersAdmin({
     }
   };
 
+  // Optimistic: the row reflects the change immediately; on failure the
+  // previous list is restored (the error banner from call() explains why).
   const action = async (id: number, action: string, role?: Role) => {
+    const prev = users;
+    setUsers((list) =>
+      list.map((u) =>
+        u.id === id
+          ? {
+              ...u,
+              ...(action === 'approve' ? { status: 'approved' as SafeUser['status'] } : {}),
+              ...(action === 'reject' ? { status: 'rejected' as SafeUser['status'] } : {}),
+              ...(action === 'setRole' && role ? { role } : {}),
+            }
+          : u,
+      ),
+    );
     const r = await call(id, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -48,13 +63,17 @@ export default function UsersAdmin({
     });
     if (r.ok && r.user) {
       setUsers((list) => list.map((u) => (u.id === id ? (r.user as SafeUser) : u)));
+    } else {
+      setUsers(prev);
     }
   };
 
   const remove = async (u: SafeUser) => {
     if (!window.confirm(`Eliminare l'utente ${u.email}?`)) return;
+    const prev = users;
+    setUsers((list) => list.filter((x) => x.id !== u.id));
     const r = await call(u.id, { method: 'DELETE' });
-    if (r.ok) setUsers((list) => list.filter((x) => x.id !== u.id));
+    if (!r.ok) setUsers(prev);
   };
 
   return (

@@ -54,8 +54,9 @@ const isNonFatturata = (r: BefRow) => !r.num_fattura && !r.data_fattura;
 
 // Sum of `importo_ricezione` grouped by calendar month of `data_fattura`, for
 // rows that have both a `num_fattura` and a `data_fattura` (i.e. fatturate).
-export async function getBefMonthlyTotals(): Promise<BefMonthly[]> {
-  const rows = await listAllBef();
+// The compute* variants are pure so callers that already hold the rows (e.g.
+// getDashboardData) can derive both aggregates from a single fetch.
+export function computeBefMonthlyTotals(rows: BefRow[]): BefMonthly[] {
   const totals = new Map<string, number>();
   for (const r of rows) {
     if (!isFatturata(r) || r.importo_ricezione == null) continue;
@@ -72,11 +73,14 @@ export async function getBefMonthlyTotals(): Promise<BefMonthly[]> {
   });
 }
 
+export async function getBefMonthlyTotals(): Promise<BefMonthly[]> {
+  return computeBefMonthlyTotals(await listAllBef());
+}
+
 // Portfolio-level BEF totals (no year/period filtering):
 //  - fatturabile: righe senza numero fattura e senza data fattura (non ancora fatturate)
 //  - fatturatoEmesso: righe con numero fattura e data fattura (fatturate)
-export async function getBefAggregates(): Promise<BefAggregates> {
-  const rows = await listAllBef();
+export function computeBefAggregates(rows: BefRow[]): BefAggregates {
   let fatturabile = 0,
     fatturatoEmesso = 0;
   for (const r of rows) {
@@ -85,6 +89,10 @@ export async function getBefAggregates(): Promise<BefAggregates> {
     else if (isFatturata(r)) fatturatoEmesso += r.importo_ricezione;
   }
   return { fatturabile, fatturatoEmesso };
+}
+
+export async function getBefAggregates(): Promise<BefAggregates> {
+  return computeBefAggregates(await listAllBef());
 }
 
 // Replace the full set of BEF rows for an intervento (idempotent save).

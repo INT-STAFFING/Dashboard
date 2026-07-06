@@ -52,7 +52,7 @@
 .flink{font-family:inherit;font-size:13px;font-weight:700;color:var(--petrol-d);background:none;border:none;text-decoration:underline;cursor:pointer;padding:0}
 /* mobile: anchoring the popover under its trigger risks running off-screen —
    pin it as a bottom sheet instead, regardless of where the trigger sits */
-@media(max-width:640px){
+@media(max-width:639px){
   /* backdrop-filter on an ancestor establishes a containing block for
      position:fixed descendants, which would otherwise pin the sheet below
      to the filter bar's own box instead of the viewport */

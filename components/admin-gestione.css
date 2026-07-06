@@ -12,12 +12,12 @@
 /* below this width the table would otherwise squeeze every input down to a
    few illegible characters instead of triggering the horizontal scroll
    already provided by the table's wrapping overflowX:auto container */
-@media(max-width:900px){
+@media(max-width:1023px){
   .datatable td input,.datatable td select{min-width:96px}
 }
 
 .monthgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:8px 0 14px}
-@media(max-width:760px){.monthgrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:767px){.monthgrid{grid-template-columns:repeat(3,1fr)}}
 .mg-cell{display:flex;flex-direction:column;gap:3px}
 .mg-lab{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .monthgrid input{font-family:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 7px;background:#fff;text-align:right;width:100%}

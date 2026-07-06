@@ -6,6 +6,16 @@ const config: Config = {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
+    // Kept at Tailwind's defaults on purpose: the hand-written responsive CSS
+    // in globals.css / filterbar.css / admin-gestione.css uses max-width
+    // media queries aligned to these same thresholds (sm 640, md 768, lg 1024).
+    screens: {
+      sm: '640px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
+      '2xl': '1536px',
+    },
     extend: {
       colors: {
         canvas: 'var(--canvas)',

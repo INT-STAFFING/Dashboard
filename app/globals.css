@@ -213,6 +213,18 @@ main{padding:16px 0 calc(60px + env(safe-area-inset-bottom));position:relative}
 #tbl th,#tbl td{padding:8px 8px;font-size:11.5px;overflow:hidden;text-overflow:ellipsis}
 #tbl td.tt{white-space:normal;min-width:0;max-width:none}
 #tbl td.tt .ref{font-size:10.5px}
+/* colonna Intervento: con table-layout:fixed le colonne si spartiscono lo
+   spazio in parti uguali — qui le riserviamo una quota maggiore */
+#tbl th.thtt{width:19%}
+/* titolo troncato a 2 righe + referenti su 1 riga; <details>[open] rimuove
+   il clamp e mostra il testo completo (riga espansa solo al clic) */
+#tbl td.tt .ttd summary{display:block;cursor:pointer;list-style:none}
+#tbl td.tt .ttd summary::-webkit-details-marker{display:none}
+#tbl td.tt .ttd summary:hover b{color:var(--petrol-d)}
+#tbl td.tt .ttd b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+#tbl td.tt .ttd .ref{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+#tbl td.tt .ttd[open] b{display:block;-webkit-line-clamp:none}
+#tbl td.tt .ttd[open] .ref{white-space:normal}
 #tbl .codecell{font-size:11px}
 #tbl th.ic{text-align:center}#tbl td .pill{font-size:10px;padding:1px 6px}
 #tbl .pill{font-size:10.5px;padding:2px 7px}

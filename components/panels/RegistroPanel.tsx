@@ -145,6 +145,7 @@ function RegistroPanel({
                 {cols.map(([k, label]) => (
                   <th
                     key={k}
+                    className={k === 'titolo' ? 'thtt' : undefined}
                     onClick={() => sort(k)}
                     style={{ cursor: 'pointer' }}
                     aria-sort={sortK === k ? (sortDir === 1 ? 'ascending' : 'descending') : 'none'}
@@ -167,12 +168,18 @@ function RegistroPanel({
                       {x.bdo || '—'}
                     </td>
                     <td className="tt">
-                      <b>{x.titolo}</b>
-                      {x.subappalto ? <span className="pill sub"> sub</span> : null}
-                      <br />
-                      <span className="ref">
-                        ARIA: {x.ref_aria || '—'} · Int.: {x.ref_fornitore || '—'}
-                      </span>
+                      {/* <details> nativo: il titolo è troncato a 2 righe da CSS
+                          e il clic sulla cella (o Invio/Spazio da tastiera)
+                          espande il testo completo senza JS dedicato */}
+                      <details className="ttd">
+                        <summary title="Clic per espandere/comprimere il testo">
+                          <b>{x.titolo}</b>
+                          <span className="ref">
+                            {x.subappalto ? <span className="pill sub">sub</span> : null} ARIA: {x.ref_aria || '—'} · Int.:{' '}
+                            {x.ref_fornitore || '—'}
+                          </span>
+                        </summary>
+                      </details>
                     </td>
                     <td>
                       {canEdit ? (

@@ -1,6 +1,6 @@
 'use client';
 import React, { useDeferredValue, useMemo, useState } from 'react';
-import type { DocStatus, Intervento, InterventoInput } from '@/lib/types';
+import type { DocStatus, Intervento, InterventoInput, ReportPdcRecord, VerbaleSalRecord, BefRow } from '@/lib/types';
 import { EUR0, dfmt, ICO } from '@/lib/format';
 import InlineField from '../editing/InlineField';
 import StatusSelect from '../editing/StatusSelect';
@@ -13,6 +13,116 @@ function DocPill({ v }: { v: DocStatus }) {
     <span className="pill" style={{ background: 'color-mix(in srgb, ' + color + ' 14%, #fff)', color }}>
       {glyph} {label}
     </span>
+  );
+}
+
+// Free-text stato (PDC/SAL) -> traffic-light color. These fields come from
+// the source exports as free text ("PDC Approvata", "Verbale Conforme", …),
+// not the fixed DocStatus enum, so match on keywords instead.
+function statusColor(s: string | null): string {
+  const t = (s || '').toLowerCase();
+  if (!t) return 'var(--slate-l)';
+  if (/(assente|mancante|non conforme|rifiutat)/.test(t)) return 'var(--bad)';
+  if (/(approvat|conforme|^ok$|firmat)/.test(t)) return 'var(--good)';
+  return 'var(--amber-d)';
+}
+
+// "MM/YYYY" -> sortable key (blank/unparsable periods sort last).
+function periodKey(p: string | null): number {
+  const m = (p || '').match(/^(\d{1,2})\/(\d{4})$/);
+  return m ? Number(m[2]) * 100 + Number(m[1]) : Infinity;
+}
+
+type MonthlyData = { pdc: ReportPdcRecord[]; sal: VerbaleSalRecord[]; bef: BefRow[] };
+
+// Dettaglio mensile per BO: PDC (report_pdc), Verbali SAL (verbali_sal) e BEF
+// (bef_records), caricati on-demand dalla riga/card espansa.
+function MonthlyDetail({ state }: { state: MonthlyData | 'loading' | 'error' }) {
+  if (state === 'loading') return <div className="monthly-empty">Caricamento dettaglio mensile…</div>;
+  if (state === 'error') return <div className="monthly-empty">Impossibile caricare il dettaglio mensile.</div>;
+  const pdc = [...state.pdc].sort((a, b) => periodKey(a.periodo_pdc) - periodKey(b.periodo_pdc));
+  const sal = [...state.sal].sort((a, b) => periodKey(a.periodo_competenza) - periodKey(b.periodo_competenza));
+  const bef = [...state.bef].sort((a, b) => periodKey(a.periodo_competenza) - periodKey(b.periodo_competenza));
+  return (
+    <div className="monthly-grid">
+      <div className="monthly-col">
+        <h5>PDC mensile</h5>
+        {pdc.length ? (
+          <table className="monthly-tbl">
+            <thead>
+              <tr>
+                <th>Periodo</th>
+                <th>Stato</th>
+                <th>Codice</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pdc.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.periodo_pdc || '—'}</td>
+                  <td style={{ color: statusColor(r.stato_pdc) }}>{r.stato_pdc || '—'}</td>
+                  <td className="codecell">{r.codice_pdc || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="monthly-empty">Nessuna PDC registrata per questo BO.</div>
+        )}
+      </div>
+      <div className="monthly-col">
+        <h5>Verbali SAL mensili</h5>
+        {sal.length ? (
+          <table className="monthly-tbl">
+            <thead>
+              <tr>
+                <th>Periodo</th>
+                <th>Stato verbale</th>
+                <th>Conforme</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sal.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.periodo_competenza || '—'}</td>
+                  <td style={{ color: statusColor(r.stato_verbale) }}>{r.stato_verbale || '—'}</td>
+                  <td style={{ color: statusColor(r.conforme) }}>{r.conforme || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="monthly-empty">Nessun verbale SAL registrato per questo BO.</div>
+        )}
+      </div>
+      <div className="monthly-col">
+        <h5>BEF mensili</h5>
+        {bef.length ? (
+          <table className="monthly-tbl">
+            <thead>
+              <tr>
+                <th>Periodo</th>
+                <th>Importo</th>
+                <th>Fattura</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bef.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.periodo_competenza || '—'}</td>
+                  <td className="num">{r.importo_ricezione != null ? EUR0(r.importo_ricezione) : '—'}</td>
+                  <td style={{ color: r.num_fattura ? 'var(--good)' : 'var(--slate-l)' }}>
+                    {r.num_fattura || 'fatturabile'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="monthly-empty">Nessun BEF registrato per questo IF.</div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -70,6 +180,24 @@ function DettaglioIFPanel({
   const deferredQ = useDeferredValue(q);
   const [sortK, setSortK] = useState<SortKey>('numero_if');
   const [sortDir, setSortDir] = useState(1);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [monthly, setMonthly] = useState<Record<string, MonthlyData | 'loading' | 'error'>>({});
+
+  const toggleMonthly = (numero_if: string) => {
+    setExpanded((s) => {
+      const n = new Set(s);
+      if (n.has(numero_if)) n.delete(numero_if);
+      else n.add(numero_if);
+      return n;
+    });
+    if (!monthly[numero_if]) {
+      setMonthly((m) => ({ ...m, [numero_if]: 'loading' }));
+      fetch(`/api/interventi/${encodeURIComponent(numero_if)}/monthly`)
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => setMonthly((m) => ({ ...m, [numero_if]: { pdc: data.pdc, sal: data.sal, bef: data.bef } })))
+        .catch(() => setMonthly((m) => ({ ...m, [numero_if]: 'error' })));
+    }
+  };
 
   const rows = useMemo(() => {
     const query = deferredQ.toLowerCase().trim();
@@ -161,10 +289,11 @@ function DettaglioIFPanel({
         </div>
 
         {view === 'table' ? (
-          <div className="tscroll noxscroll">
+          <div className="tscroll">
             <table id="tbl-dif">
               <thead>
                 <tr>
+                  <th aria-label="Dettaglio mensile" />
                   {cols.map(([k, label]) => (
                     <th
                       key={k}
@@ -184,8 +313,20 @@ function DettaglioIFPanel({
                 {rows.map((x) => {
                   const saving = savingIds.has(x.numero_if);
                   const hl = highlightIds.has(x.numero_if);
+                  const isOpen = expanded.has(x.numero_if);
                   return (
-                    <tr key={x.numero_if} className={hl ? 'row-saved' : ''} style={saving ? { opacity: 0.55 } : undefined}>
+                    <React.Fragment key={x.numero_if}>
+                    <tr className={hl ? 'row-saved' : ''} style={saving ? { opacity: 0.55 } : undefined}>
+                      <td>
+                        <button
+                          className="iconbtn"
+                          title="Dettaglio mensile PDC / SAL / BEF"
+                          aria-expanded={isOpen}
+                          onClick={() => toggleMonthly(x.numero_if)}
+                        >
+                          {isOpen ? '▾' : '▸'}
+                        </button>
+                      </td>
                       <td>{x.ambito || '—'}</td>
                       <td className="codecell">{x.numero_if}</td>
                       <td className="codecell" style={{ color: 'var(--muted)' }}>
@@ -268,11 +409,19 @@ function DettaglioIFPanel({
                         </td>
                       )}
                     </tr>
+                    {isOpen && (
+                      <tr>
+                        <td colSpan={cols.length + 1 + (canEdit ? 1 : 0)} className="monthly-row">
+                          <MonthlyDetail state={monthly[x.numero_if] || 'loading'} />
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={canEdit ? 18 : 17} style={{ color: 'var(--muted)', padding: 18 }}>
+                    <td colSpan={cols.length + 1 + (canEdit ? 1 : 0)} style={{ color: 'var(--muted)', padding: 18 }}>
                       Nessun IF in questa vista.
                     </td>
                   </tr>
@@ -362,6 +511,15 @@ function DettaglioIFPanel({
                       <span>{x.azione || '—'}</span>
                     )}
                   </div>
+                  <details
+                    className="difcard-monthly"
+                    onToggle={(e) => {
+                      if ((e.target as HTMLDetailsElement).open) toggleMonthly(x.numero_if);
+                    }}
+                  >
+                    <summary>Dettaglio mensile PDC / SAL / BEF</summary>
+                    <MonthlyDetail state={monthly[x.numero_if] || 'loading'} />
+                  </details>
                   {canEdit && (
                     <div className="difcard-actions">
                       <button className="iconbtn" title="Modifica completa" onClick={() => onOpenEdit(x)}>

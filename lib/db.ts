@@ -215,6 +215,35 @@ const DDL: string[] = [
     "data_invio_roi" date,
     "updated_at" timestamp DEFAULT now()
   )`,
+  `CREATE TABLE IF NOT EXISTS "report_pdc" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "num_bdo" text,
+    "posizione_bdo" text,
+    "descrizione_posizione" text,
+    "importo_posizione" numeric(15, 4),
+    "codice_pdc" text,
+    "periodo_pdc" text,
+    "data_creazione" date,
+    "utente_caricamento" text,
+    "codifica_documento" text,
+    "stato_pdc" text,
+    "divisione" text,
+    "centro_costo" text,
+    "fornitore_rti" text,
+    "roi" text,
+    "data_invio_roi" date,
+    "data_rifiuto_roi" date,
+    "data_approvazione_roi" date,
+    "fornitore_prestazione" text,
+    "service_line" text,
+    "tipo_fornitura" text,
+    "rdi" text,
+    "posizione_rdi" text,
+    "subappalto" text,
+    "subappaltatore" text,
+    "costo_subappalto" numeric(15, 4),
+    "updated_at" timestamp DEFAULT now()
+  )`,
   `CREATE TABLE IF NOT EXISTS "tariffe" (
     "id" serial PRIMARY KEY NOT NULL,
     "figura" text,
@@ -258,6 +287,10 @@ const DDL: string[] = [
   // Per-IF lookups (admin editors, BEF upsert) filter on numero_if.
   `CREATE INDEX IF NOT EXISTS "bef_records_numero_if_idx" ON "bef_records" ("numero_if")`,
   `CREATE INDEX IF NOT EXISTS "if_risorse_numero_if_idx" ON "if_risorse" ("numero_if")`,
+  // Monthly-detail lookups (Dettaglio IF drill-down) filter on num_bdo.
+  `CREATE INDEX IF NOT EXISTS "report_pdc_num_bdo_idx" ON "report_pdc" ("num_bdo")`,
+  `CREATE INDEX IF NOT EXISTS "verbali_sal_num_bdo_idx" ON "verbali_sal" ("num_bdo")`,
+  `CREATE INDEX IF NOT EXISTS "bef_records_num_bdo_idx" ON "bef_records" ("num_bdo")`,
   // Idempotent column additions for databases created before these fields
   // existed (CREATE TABLE IF NOT EXISTS won't add columns to an existing table).
   `ALTER TABLE "interventi" ADD COLUMN IF NOT EXISTS "cons_mesi" jsonb`,

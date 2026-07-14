@@ -6,6 +6,7 @@ import { persistReportBdoFromUpload } from '@/lib/reportBdoStore';
 import { persistReportRdiFromUpload } from '@/lib/reportRdiStore';
 import { persistVerbaliAperturaFromUpload } from '@/lib/verbaliAperturaStore';
 import { persistVerbaliSalFromUpload } from '@/lib/verbaliSalStore';
+import { persistReportPdcFromUpload } from '@/lib/reportPdcStore';
 import { setSeniority } from '@/lib/portfolio';
 import { updateMeta } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
@@ -17,6 +18,7 @@ import type {
   ReportRdiRecord,
   VerbaleAperturaRecord,
   VerbaleSalRecord,
+  ReportPdcRecord,
 } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -189,6 +191,42 @@ function normalizeVerbaleSal(raw: unknown): VerbaleSalRecord | null {
   };
 }
 
+// Normalize an untrusted "REPORT Pdc" row (client-side parse) into the
+// canonical shape. A row without a BDO carries no useful information.
+function normalizeReportPdc(raw: unknown): ReportPdcRecord | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const num_bdo = sval(r.num_bdo);
+  if (!num_bdo) return null;
+  return {
+    num_bdo,
+    posizione_bdo: sval(r.posizione_bdo),
+    descrizione_posizione: sval(r.descrizione_posizione),
+    importo_posizione: r.importo_posizione == null ? null : num(r.importo_posizione),
+    codice_pdc: sval(r.codice_pdc),
+    periodo_pdc: sval(r.periodo_pdc),
+    data_creazione: sval(r.data_creazione),
+    utente_caricamento: sval(r.utente_caricamento),
+    codifica_documento: sval(r.codifica_documento),
+    stato_pdc: sval(r.stato_pdc),
+    divisione: sval(r.divisione),
+    centro_costo: sval(r.centro_costo),
+    fornitore_rti: sval(r.fornitore_rti),
+    roi: sval(r.roi),
+    data_invio_roi: sval(r.data_invio_roi),
+    data_rifiuto_roi: sval(r.data_rifiuto_roi),
+    data_approvazione_roi: sval(r.data_approvazione_roi),
+    fornitore_prestazione: sval(r.fornitore_prestazione),
+    service_line: sval(r.service_line),
+    tipo_fornitura: sval(r.tipo_fornitura),
+    rdi: sval(r.rdi),
+    posizione_rdi: sval(r.posizione_rdi),
+    subappalto: sval(r.subappalto),
+    subappaltatore: sval(r.subappaltatore),
+    costo_subappalto: r.costo_subappalto == null ? null : num(r.costo_subappalto),
+  };
+}
+
 // Normalize an untrusted intervento object (from a client-side parse) into the
 // canonical shape before it reaches the store. Only known fields are kept.
 function normalizeIntervento(raw: unknown): Intervento | null {
@@ -265,7 +303,11 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
   // by BEF (resolves the owning IF) and REPORT Bdo (restricts saves to BDO
   // already present in the portfolio).
   let bdoToIf: Map<string, string> | null = null;
-  if ((parsed.bef && parsed.bef.length) || (parsed.reportBdo && parsed.reportBdo.length)) {
+  if (
+    (parsed.bef && parsed.bef.length) ||
+    (parsed.reportBdo && parsed.reportBdo.length) ||
+    (parsed.reportPdc && parsed.reportPdc.length)
+  ) {
     bdoToIf = new Map<string, string>();
     for (const i of await listInterventi()) {
       if (i.bdo) bdoToIf.set(i.bdo, i.numero_if);
@@ -314,6 +356,17 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     verbaliSalSaved = res.saved;
   }
 
+  let reportPdcSaved = 0;
+  let reportPdcIgnored = 0;
+  if (parsed.reportPdc && parsed.reportPdc.length) {
+    const res = await persistReportPdcFromUpload(parsed.reportPdc, new Set(bdoToIf!.keys()));
+    reportPdcSaved = res.saved;
+    reportPdcIgnored = res.ignored;
+    if (res.ignored) {
+      errors.push(`Report Pdc: ${res.ignored} righe ignorate (BDO non presente in portafoglio)`);
+    }
+  }
+
   if (parsed.kind === 'chiusura') {
     errors.push(`Chiusura: ${parsed.chiusura?.length ?? 0} righe lette (gestione Chiusura non ancora attiva)`);
   }
@@ -333,6 +386,8 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     report_rdi_saved: reportRdiSaved,
     verbali_apertura_saved: verbaliAperturaSaved,
     verbali_sal_saved: verbaliSalSaved,
+    report_pdc_saved: reportPdcSaved,
+    report_pdc_ignored: reportPdcIgnored,
     seniority_rows: parsed.seniority?.length ?? 0,
     errors,
   };
@@ -366,6 +421,7 @@ export async function POST(req: Request) {
       reportRdi?: unknown[];
       verbaliApertura?: unknown[];
       verbaliSal?: unknown[];
+      reportPdc?: unknown[];
       seniority?: ParseOutput['seniority'];
       filename?: string;
     };
@@ -380,7 +436,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           error:
-            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo" / "REPORT Rdi" / "REPORT Apertura" / "REPORT Sal".',
+            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo" / "REPORT Rdi" / "REPORT Apertura" / "REPORT Sal" / "REPORT Pdc".',
         },
         { status: 422 },
       );
@@ -403,6 +459,9 @@ export async function POST(req: Request) {
     const verbaliSal = (body.verbaliSal ?? [])
       .map(normalizeVerbaleSal)
       .filter((b): b is VerbaleSalRecord => b !== null);
+    const reportPdc = (body.reportPdc ?? [])
+      .map(normalizeReportPdc)
+      .filter((b): b is ReportPdcRecord => b !== null);
     const parsed: ParseOutput = {
       kind,
       interventi,
@@ -411,6 +470,7 @@ export async function POST(req: Request) {
       reportRdi,
       verbaliApertura,
       verbaliSal,
+      reportPdc,
       seniority: body.seniority,
     };
     const summary = await applyParsed(parsed, force);

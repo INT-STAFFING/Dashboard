@@ -189,6 +189,40 @@ export const verbali_sal = pgTable('verbali_sal', {
   updated_at: timestamp('updated_at').defaultNow(),
 });
 
+// Snapshot of the "REPORT Pdc" export (Prese in Carico). Multiple rows per
+// num_bdo are expected (one per posizione BDO x periodo di competenza) — the
+// monthly detail behind interventi.pdc. No natural UNIQUE key, so uploads
+// replace rows per num_bdo (delete + insert), same pattern as verbali_apertura.
+export const report_pdc = pgTable('report_pdc', {
+  id: serial('id').primaryKey(),
+  num_bdo: text('num_bdo'),
+  posizione_bdo: text('posizione_bdo'),
+  descrizione_posizione: text('descrizione_posizione'),
+  importo_posizione: numeric('importo_posizione', { precision: 15, scale: 4 }),
+  codice_pdc: text('codice_pdc'),
+  periodo_pdc: text('periodo_pdc'),
+  data_creazione: date('data_creazione'),
+  utente_caricamento: text('utente_caricamento'),
+  codifica_documento: text('codifica_documento'),
+  stato_pdc: text('stato_pdc'),
+  divisione: text('divisione'),
+  centro_costo: text('centro_costo'),
+  fornitore_rti: text('fornitore_rti'),
+  roi: text('roi'),
+  data_invio_roi: date('data_invio_roi'),
+  data_rifiuto_roi: date('data_rifiuto_roi'),
+  data_approvazione_roi: date('data_approvazione_roi'),
+  fornitore_prestazione: text('fornitore_prestazione'),
+  service_line: text('service_line'),
+  tipo_fornitura: text('tipo_fornitura'),
+  rdi: text('rdi'),
+  posizione_rdi: text('posizione_rdi'),
+  subappalto: text('subappalto'),
+  subappaltatore: text('subappaltatore'),
+  costo_subappalto: numeric('costo_subappalto', { precision: 15, scale: 4 }),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
 export const tariffe = pgTable('tariffe', {
   id: serial('id').primaryKey(),
   figura: text('figura'),

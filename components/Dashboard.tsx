@@ -13,9 +13,10 @@ import DistribuzionePanel from './panels/DistribuzionePanel';
 import ModalitaPanel from './panels/ModalitaPanel';
 import StatoPanel from './panels/StatoPanel';
 import RegistroPanel from './panels/RegistroPanel';
+import DettaglioIFPanel from './panels/DettaglioIFPanel';
 import EditDrawer from './editing/EditDrawer';
 
-const TABS = ['Overview', 'Quote RTI', 'Timeline', 'Distribuzione', 'Modalità fornitura', 'Stato IF / BO', 'Operativo'];
+const TABS = ['Overview', 'Quote RTI', 'Timeline', 'Distribuzione', 'Modalità fornitura', 'Stato IF / BO', 'Operativo', 'Dettaglio IF'];
 const REGISTRO_TAB = 6;
 
 export default function Dashboard({
@@ -456,6 +457,18 @@ export default function Dashboard({
         {tab === 5 && <StatoPanel IFs={IFs} onDrillStato={onDrillStato} />}
         {tab === 6 && (
           <RegistroPanel
+            IFs={IFs}
+            canEdit={canEdit}
+            onSaveField={onSaveField}
+            onOpenEdit={onOpenEdit}
+            onOpenNew={onOpenNew}
+            onDelete={onDelete}
+            savingIds={savingIds}
+            highlightIds={highlightIds}
+          />
+        )}
+        {tab === 7 && (
+          <DettaglioIFPanel
             IFs={IFs}
             canEdit={canEdit}
             onSaveField={onSaveField}

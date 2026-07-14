@@ -43,6 +43,13 @@
       "when": 1783063143473,
       "tag": "0005_clean_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784015463847,
+      "tag": "0006_eager_colossus",
+      "breakpoints": true
     }
   ]
 }

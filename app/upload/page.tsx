@@ -17,6 +17,7 @@ function detectKind(name: string): string {
   if (n.includes('rdi')) return 'report_rdi';
   if (n.includes('apertura')) return 'verbali_apertura';
   if (n.includes('sal')) return 'verbali_sal';
+  if (n.includes('pdc')) return 'report_pdc';
   return 'sconosciuto';
 }
 
@@ -36,6 +37,8 @@ type Result = {
   report_rdi_saved?: number;
   verbali_apertura_saved?: number;
   verbali_sal_saved?: number;
+  report_pdc_saved?: number;
+  report_pdc_ignored?: number;
   seniority_rows?: number;
   errors?: string[];
   error?: string;
@@ -96,7 +99,7 @@ export default function UploadPage() {
         setResult({
           ok: false,
           error:
-            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo" / "REPORT Rdi" / "REPORT Apertura" / "REPORT Sal".',
+            'Tipo file non riconosciuto. Il nome deve contenere Dashboard / IF_ARIA / BEF / Chiusura / Aggregatore, oppure il file deve contenere il foglio "REPORT Bdo" / "REPORT Rdi" / "REPORT Apertura" / "REPORT Sal" / "REPORT Pdc".',
         });
         return;
       }
@@ -115,6 +118,7 @@ export default function UploadPage() {
           reportRdi: parsed.reportRdi,
           verbaliApertura: parsed.verbaliApertura,
           verbaliSal: parsed.verbaliSal,
+          reportPdc: parsed.reportPdc,
           seniority: parsed.seniority,
           filename: file.name,
         }),
@@ -149,8 +153,9 @@ export default function UploadPage() {
         <span className="mono">BEF</span> · <span className="mono">Chiusura</span> ·{' '}
         <span className="mono">Aggregatore</span> — oppure dal contenuto per{' '}
         <span className="mono">REPORT Bdo</span> (stato workflow ROI/PMO/CTRM),{' '}
-        <span className="mono">REPORT Rdi</span>, <span className="mono">REPORT Apertura</span> e{' '}
-        <span className="mono">REPORT Sal</span>, i cui nomi file non seguono un pattern fisso.
+        <span className="mono">REPORT Rdi</span>, <span className="mono">REPORT Apertura</span>,{' '}
+        <span className="mono">REPORT Sal</span> e <span className="mono">REPORT Pdc</span>, i cui nomi file non
+        seguono un pattern fisso.
       </p>
 
       <div
@@ -302,6 +307,21 @@ export default function UploadPage() {
                   <span>Righe Verbali SAL salvate</span>
                   <b>{result.verbali_sal_saved}</b>
                 </div>
+              )}
+              {(!!result.report_pdc_saved || !!result.report_pdc_ignored) && (
+                <>
+                  <div className="row">
+                    <span>Righe Report Pdc salvate (BDO già in portafoglio)</span>
+                    <b>{result.report_pdc_saved ?? 0}</b>
+                  </div>
+                  {!!result.report_pdc_ignored && (
+                    <div className="row" style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      <span>
+                        {result.report_pdc_ignored} righe ignorate: BDO non presente nel portafoglio.
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
               {!!result.seniority_rows && (
                 <div className="row">

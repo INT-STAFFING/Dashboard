@@ -247,6 +247,38 @@ export type VerbaleSalRecord = {
   data_invio_roi: string | null;
 };
 
+// Row from the "REPORT Pdc" export (Prese in Carico). Multiple rows per
+// num_bdo are expected: one per posizione BDO x periodo di competenza, so
+// this is the monthly detail behind Intervento.pdc. num_bdo is the join key
+// to interventi.bdo (same as verbali_sal / verbali_apertura).
+export type ReportPdcRecord = {
+  num_bdo: string;
+  posizione_bdo: string | null;
+  descrizione_posizione: string | null;
+  importo_posizione: number | null;
+  codice_pdc: string | null;
+  periodo_pdc: string | null; // "MM/YYYY"
+  data_creazione: string | null;
+  utente_caricamento: string | null;
+  codifica_documento: string | null;
+  stato_pdc: string | null;
+  divisione: string | null;
+  centro_costo: string | null;
+  fornitore_rti: string | null;
+  roi: string | null;
+  data_invio_roi: string | null;
+  data_rifiuto_roi: string | null;
+  data_approvazione_roi: string | null;
+  fornitore_prestazione: string | null;
+  service_line: string | null;
+  tipo_fornitura: string | null;
+  rdi: string | null;
+  posizione_rdi: string | null;
+  subappalto: string | null;
+  subappaltatore: string | null;
+  costo_subappalto: number | null;
+};
+
 // Aggregated payload returned by GET /api/data
 export type DashboardData = {
   meta: Meta;

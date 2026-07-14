@@ -7,6 +7,7 @@ import type {
   ReportRdiRecord,
   VerbaleAperturaRecord,
   VerbaleSalRecord,
+  ReportPdcRecord,
 } from '../types';
 import { parseIF } from './parseIF';
 import { parseBEF } from './parseBEF';
@@ -17,6 +18,7 @@ import { parseReportBdo, findReportBdoSheet } from './parseReportBdo';
 import { parseReportRdi, findReportRdiSheet } from './parseReportRdi';
 import { parseVerbaliApertura, findVerbaliAperturaSheet } from './parseVerbaliApertura';
 import { parseVerbaliSal, findVerbaliSalSheet } from './parseVerbaliSal';
+import { parseReportPdc, findReportPdcSheet } from './parseReportPdc';
 import { readWorkbook } from './util';
 
 export type FileKind =
@@ -29,6 +31,7 @@ export type FileKind =
   | 'report_rdi'
   | 'verbali_apertura'
   | 'verbali_sal'
+  | 'report_pdc'
   | 'unknown';
 
 export function detectKind(filename: string): FileKind {
@@ -52,6 +55,7 @@ export type ParseOutput = {
   reportRdi?: ReportRdiRecord[];
   verbaliApertura?: VerbaleAperturaRecord[];
   verbaliSal?: VerbaleSalRecord[];
+  reportPdc?: ReportPdcRecord[];
 };
 
 export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOutput {
@@ -95,6 +99,9 @@ export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOut
         if (findVerbaliSalSheet(wb)) {
           return { kind: 'verbali_sal', verbaliSal: parseVerbaliSal(wb) };
         }
+        if (findReportPdcSheet(wb)) {
+          return { kind: 'report_pdc', reportPdc: parseReportPdc(wb) };
+        }
       } catch {
         // not a spreadsheet we can read -> report as unknown below
       }
@@ -113,4 +120,5 @@ export {
   parseReportRdi,
   parseVerbaliApertura,
   parseVerbaliSal,
+  parseReportPdc,
 };

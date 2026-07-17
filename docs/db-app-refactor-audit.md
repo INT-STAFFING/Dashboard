@@ -27,7 +27,7 @@ solo se emerge un bisogno reale.
 | R-2 | Scritture non atomiche (delete+insert) nelle store di snapshot | DB/Integrità | Alto | M | P1 | ✅ Completato |
 | R-3 | Console SQL admin senza audit trail | Security | Alto | S | P1 | ⬜ Aperto |
 | R-4 | Doppia fonte di verità per lo schema DB (DDL bootstrap vs migration) | DB/Manutenibilità | Medio | M | P2 | ✅ Completato |
-| R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 | ⬜ Aperto |
+| R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 | ✅ Completato (riduzione -120 righe, sotto l'obiettivo indicativo — vedi nota) |
 | R-6 | Cache assente sul payload SSR della dashboard | Rete/Performance | Medio | L | P2 | ⬜ Aperto |
 | R-7 | Nessun vincolo referenziale/di dominio a livello DB | DB/Integrità | Medio | M | P2 | ✅ Completato (solo CHECK; FK debole resta backlog) |
 | R-8 | Vocabolario doppio dominio↔DB per gli stati documentali | App/Manutenibilità | Basso | S | P3 | ⬜ Aperto |
@@ -274,7 +274,7 @@ chiudere questo intervento.
 
 ---
 
-## R-5 — Duplicazione strutturale negli store di upload
+## R-5 — Duplicazione strutturale negli store di upload ✅ Completato
 
 **Categoria:** App/Manutenibilità · **Impatto:** Medio · **Effort:** M · **Priorità:** P2
 
@@ -303,13 +303,85 @@ dichiarativo (es. Zod) per definire una volta sola forma e regole di ciascun
 tipo di riga, sostituendo le chiamate ripetute a `sval`/`num`.
 
 **Criteri di accettazione:**
-- [ ] Comportamento di upload/lettura identico prima e dopo per tutte le
+- [x] Comportamento di upload/lettura identico prima e dopo per tutte le
       tabelle migrate (stesso file caricato due volte produce lo stesso
       risultato di `saved`/`ignored`).
-- [ ] Riduzione misurabile delle righe duplicate (obiettivo indicativo:
-      -250/-350 righe nette tra store e normalizzatori).
-- [ ] Nessuna modifica alla firma pubblica delle funzioni consumate da
+- [x] Riduzione misurabile delle righe duplicate (obiettivo indicativo:
+      -250/-350 righe nette tra store e normalizzatori) — **raggiunte -120
+      righe nette**, misurabili e reali ma sotto l'obiettivo indicativo. Vedi nota.
+- [x] Nessuna modifica alla firma pubblica delle funzioni consumate da
       `app/api/upload/route.ts` e dagli altri chiamanti.
+
+**Implementazione:** nuova `lib/dualModeStore.ts` con
+`createSnapshotStore<TTable, TRecord>`, che parametrizza tabella Drizzle,
+colonna di scope (`num_bdo`), colonne extra della chiave naturale (opzionali
+— assenti per le tabelle append-only come `verbali_sal`), mappatura
+riga↔record e chiave `globalThis` per il fallback in-memory. Copre entrambe
+le strategie oggi in uso dopo R-2: upsert su chiave naturale composta con
+rimozione delle righe obsolete (`verbali_apertura`, `report_pdc`) e append
+puro senza deduplica (`verbali_sal`). `toRow`/`fromRow` hanno un default
+generico (passthrough + conversione automatica delle colonne `numericColumns`
+stringa↔numero) così `verbaliAperturaStore.ts` e `verbaliSalStore.ts` non
+hanno più bisogno di scriverli a mano; `reportPdcStore.ts` li usa anch'esso
+tramite `numericColumns: ['importo_posizione', 'costo_subappalto']`,
+mantenendo solo il filtro `knownBdo`/`ignored` specifico di quella tabella
+(non generalizzato, perché è una regola di business di un solo store).
+
+Per le funzioni `normalizeXxx` in `app/api/upload/route.ts`: **valutato**
+Zod come indicato nel `GOAL`, **non adottato** — introdurrebbe una nuova
+dipendenza di produzione (non presente nel `package.json` attuale, che ha
+solo `@neondatabase/serverless`/`drizzle-orm`/`next`/`react`/`xlsx`) senza
+che i criteri di accettazione la richiedano esplicitamente, e senza un'analisi
+costi/benefici discussa con il team. Al suo posto, un helper dichiarativo
+`normalizeRow()` interno (elenco di campi + eventuali campi numerici +
+requisito di presenza) sostituisce le 6 funzioni `normalizeBef`/
+`normalizeReportBdo`/`normalizeReportRdi`/`normalizeVerbaleApertura`/
+`normalizeVerbaleSal`/`normalizeReportPdc`, riusando gli stessi helper
+`sval`/`num` già presenti — stessa idea di Zod (schema dichiarato una volta,
+niente `sval()`/`num()` ripetuti campo per campo) senza aggiungere una
+dipendenza. `normalizeIntervento` non è stato toccato: ha logica genuinamente
+più complessa (array `rev_mesi`/`cons_mesi`, default, ternari) che non si
+presta allo stesso schema dichiarativo senza forzature.
+
+**Nota sulla riduzione di righe (-120 invece di -250/-350):** la stima
+originale nel `GOAL` era stata calibrata su store più semplici (delete poi
+insert riga-per-riga) precedenti al redo di R-2, che ha già introdotto la
+logica più sofisticata di upsert su chiave composta con rimozione selettiva
+delle righe obsolete — di per sé più complessa da astrarre correttamente
+(serve gestire tuple SQL a N colonne, split keyed/unkeyed, batch atomico).
+`lib/dualModeStore.ts` porta quindi un costo fisso reale (~180 righe) che tre
+soli punti di utilizzo non ammortizzano fino al range indicato, pur avendo
+reso `verbaliAperturaStore.ts` e `verbaliSalStore.ts` sottilissimi (19 righe
+ciascuno, da 90/71) e dimezzato `reportPdcStore.ts` (37 righe, da 140).
+`lib/befStore.ts` — che ha la maggior quantità di logica quasi-duplicata tra
+i quattro store di snapshot — è rimasto **volutamente fuori scope**, come
+indicato esplicitamente nel `GOAL`; includerlo avrebbe avvicinato la
+riduzione al target ma non era autorizzato da questo intervento. Misura
+esatta: 823 → 703 righe totali su
+`app/api/upload/route.ts` + `lib/reportPdcStore.ts` +
+`lib/verbaliAperturaStore.ts` + `lib/verbaliSalStore.ts` +
+`lib/dualModeStore.ts` (nuovo file incluso).
+
+**Verifica:** `tsc --noEmit` e `next build` puliti. Il driver `neon-http`
+richiede un vero endpoint Neon (non raggiungibile da questo ambiente): per
+verificare il comportamento end-to-end del codice reale (non una
+reimplementazione) è stato impostato un `DATABASE_URL` fittizio e
+intercettato `global.fetch` per catturare le query realmente costruite da
+`persistVerbaliAperturaFromUpload`/`persistReportPdcFromUpload`/
+`persistVerbaliSalFromUpload`/`listPdcByBdo`/`listSalByBdo` (stessi moduli
+importati dal codice, nessuna riscrittura nel test), poi rieseguite contro
+un Postgres locale avvolte in `BEGIN`/`COMMIT` (esattamente il comportamento
+di `db.batch()`). Confermato: aggiornamento in-place della riga con chiave
+esistente, rimozione della riga con chiave obsoleta, sostituzione integrale
+delle righe non deduplicabili (unkeyed), riga di scope non correlato mai
+toccata, conversione numerica string↔number round-trip corretta
+(`importo_posizione`), `verbali_sal` genera una singola `INSERT` (mai un
+batch), `saved`/`ignored` di `persistReportPdcFromUpload` corretti dopo il
+filtro `knownBdo`; un errore iniettato a metà batch lascia intatte le righe
+preesistenti (atomicità) e lo stesso batch rieseguito 3 volte produce sempre
+lo stesso stato finale (idempotenza) — stessa metodologia e stessi risultati
+già osservati in R-2, a conferma che il refactor non ha alterato il
+comportamento.
 
 ---
 

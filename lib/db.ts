@@ -297,16 +297,60 @@ const DDL: string[] = [
   `ALTER TABLE "bef_records" ADD COLUMN IF NOT EXISTS "numero_if" text`,
 ];
 
+// Bump this whenever the DDL array above changes (new table, new column, new
+// index/constraint) and add a one-line note of what changed. Every statement
+// in DDL is idempotent (CREATE ... IF NOT EXISTS / ADD COLUMN IF NOT EXISTS),
+// so re-running the whole array is always safe — this version only exists to
+// let a warm instance skip the 28 round-trips when nothing changed since the
+// last successful bootstrap.
+//   1 — initial versioned baseline (schema as of the R-4 refactor)
+const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION_KEY = 'schema_version';
+
+// Reads the current schema_version from app_config with a single round-trip.
+// Returns null when the sentinel can't be read yet — either app_config
+// doesn't exist yet (fresh DB) or the key was never written — so the caller
+// knows it must run the full DDL bootstrap.
+async function readSchemaVersion(db: ReturnType<typeof getDb>): Promise<number | null> {
+  try {
+    const result = (await db.execute(
+      sql`select value from app_config where key = ${SCHEMA_VERSION_KEY} limit 1`,
+    )) as unknown as { rows?: { value: unknown }[] } | { value: unknown }[];
+    const rows = Array.isArray(result) ? result : result.rows ?? [];
+    if (!rows.length || rows[0].value == null) return null;
+    const v = Number(rows[0].value);
+    return Number.isFinite(v) ? v : null;
+  } catch {
+    // app_config doesn't exist yet on a brand-new database.
+    return null;
+  }
+}
+
+async function writeSchemaVersion(db: ReturnType<typeof getDb>): Promise<void> {
+  const json = JSON.stringify(SCHEMA_VERSION);
+  await db.execute(
+    sql`insert into app_config (key, value, updated_at)
+        values (${SCHEMA_VERSION_KEY}, ${json}::jsonb, now())
+        on conflict (key) do update set value = ${json}::jsonb, updated_at = now()`,
+  );
+}
+
 // Cache the successful bootstrap once per instance. A failed attempt is NOT
 // cached, so transient errors can be retried on the next request.
 let schemaPromise: Promise<void> | null = null;
 
 async function bootstrap(): Promise<void> {
   const db = getDb();
+  // Fast path: a warm database already at the current schema version needs
+  // just this one round-trip instead of the full DDL array below.
+  const current = await readSchemaVersion(db);
+  if (current !== null && current >= SCHEMA_VERSION) return;
+
   // neon-http executes a single statement per round-trip, so run them in order.
   for (const stmt of DDL) {
     await db.execute(sql.raw(stmt));
   }
+  await writeSchemaVersion(db);
 }
 
 export async function ensureSchema(): Promise<void> {

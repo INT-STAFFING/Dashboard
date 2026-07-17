@@ -21,17 +21,17 @@ solo se emerge un bisogno reale.
 
 ## Tabella riepilogativa
 
-| ID | Titolo | Categoria | Impatto | Effort | Priorità |
-|----|--------|-----------|---------|--------|----------|
-| R-1 | Fallback insicuro per `AUTH_SECRET` in produzione | Security | Alto | S | P1 |
-| R-2 | Scritture non atomiche (delete+insert) nelle store di snapshot | DB/Integrità | Alto | M | P1 |
-| R-3 | Console SQL admin senza audit trail | Security | Alto | S | P1 |
-| R-4 | Doppia fonte di verità per lo schema DB (DDL bootstrap vs migration) | DB/Manutenibilità | Medio | M | P2 |
-| R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 |
-| R-6 | Cache assente sul payload SSR della dashboard | Rete/Performance | Medio | L | P2 |
-| R-7 | Nessun vincolo referenziale/di dominio a livello DB | DB/Integrità | Medio | M | P2 |
-| R-8 | Vocabolario doppio dominio↔DB per gli stati documentali | App/Manutenibilità | Basso | S | P3 |
-| R-9 | Duplicazione colonne tra le 5 tabelle "report" | DB/Modellazione | Basso | L | P3 |
+| ID | Titolo | Categoria | Impatto | Effort | Priorità | Stato |
+|----|--------|-----------|---------|--------|----------|-------|
+| R-1 | Fallback insicuro per `AUTH_SECRET` in produzione | Security | Alto | S | P1 | ⬜ Aperto |
+| R-2 | Scritture non atomiche (delete+insert) nelle store di snapshot | DB/Integrità | Alto | M | P1 | ⬜ Aperto |
+| R-3 | Console SQL admin senza audit trail | Security | Alto | S | P1 | ⬜ Aperto |
+| R-4 | Doppia fonte di verità per lo schema DB (DDL bootstrap vs migration) | DB/Manutenibilità | Medio | M | P2 | ✅ Completato |
+| R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 | ⬜ Aperto |
+| R-6 | Cache assente sul payload SSR della dashboard | Rete/Performance | Medio | L | P2 | ⬜ Aperto |
+| R-7 | Nessun vincolo referenziale/di dominio a livello DB | DB/Integrità | Medio | M | P2 | ⬜ Aperto |
+| R-8 | Vocabolario doppio dominio↔DB per gli stati documentali | App/Manutenibilità | Basso | S | P3 | ⬜ Aperto |
+| R-9 | Duplicazione colonne tra le 5 tabelle "report" | DB/Modellazione | Basso | L | P3 | ⬜ Aperto |
 
 ---
 
@@ -132,7 +132,7 @@ body richiesto per abilitare istruzioni diverse da `SELECT` (default
 
 ---
 
-## R-4 — Doppia fonte di verità per lo schema DB
+## R-4 — Doppia fonte di verità per lo schema DB ✅ Completato
 
 **Categoria:** DB/Manutenibilità · **Impatto:** Medio · **Effort:** M · **Priorità:** P2
 
@@ -160,12 +160,33 @@ verità) la generazione automatica del blocco `DDL` a partire dai file
 `drizzle/*.sql` invece di mantenerlo a mano.
 
 **Criteri di accettazione:**
-- [ ] Su un DB già provisionato alla versione corrente, `ensureSchema()` fa un
+- [x] Su un DB già provisionato alla versione corrente, `ensureSchema()` fa un
       solo round-trip invece di eseguire tutti gli statement DDL.
-- [ ] Su un DB vergine, il bootstrap crea correttamente tutte le tabelle e
+- [x] Su un DB vergine, il bootstrap crea correttamente tutte le tabelle e
       imposta la sentinella alla versione corrente.
-- [ ] Nessuna regressione sull'auto-provisioning che oggi garantisce il
+- [x] Nessuna regressione sull'auto-provisioning che oggi garantisce il
       funzionamento su DB vuoto.
+
+**Implementazione:** `lib/db.ts` — costante `SCHEMA_VERSION` (attualmente
+`1`) + chiave `schema_version` in `app_config`. `bootstrap()` legge la
+sentinella con `readSchemaVersion()`: se il valore è già `>= SCHEMA_VERSION`
+ritorna subito (un solo round-trip); altrimenti esegue l'intero blocco `DDL`
+come prima e scrive la nuova versione con `writeSchemaVersion()`. Da
+incrementare `SCHEMA_VERSION` (con nota di cosa è cambiato) a ogni futura
+modifica dell'array `DDL`.
+
+**Verifica:** `tsc --noEmit` e `next build` puliti. I tre criteri sono stati
+validati eseguendo il blocco `DDL` estratto letteralmente dal file e le query
+della sentinella (stessa forma parametrizzata già in uso in
+`lib/settings.ts`) contro un Postgres reale locale (non un endpoint Neon, non
+raggiungibile da questo ambiente): su DB vergine la lettura della sentinella
+fallisce come atteso (`relation "app_config" does not exist"`) e il bootstrap
+crea correttamente le 14 tabelle e i 10 indici/unique attesi; la lettura
+successiva della sentinella restituisce `1` in un solo round-trip; una
+seconda esecuzione dell'intero blocco DDL su DB già popolato è completamente
+idempotente (nessun errore). La generazione automatica del blocco `DDL` da
+`drizzle/*.sql` resta backlog (menzionata nel `GOAL`), non necessaria per
+chiudere questo intervento.
 
 ---
 

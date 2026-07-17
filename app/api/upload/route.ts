@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { parseFile, type FileKind, type ParseOutput } from '@/lib/parsers';
 import { upsertInterventiFromUpload, listInterventi } from '@/lib/store';
 import { persistBefFromUpload } from '@/lib/befStore';
@@ -10,6 +11,7 @@ import { persistReportPdcFromUpload } from '@/lib/reportPdcStore';
 import { setSeniority } from '@/lib/portfolio';
 import { updateMeta } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type {
   BefRecord,
   DocStatus,
@@ -299,6 +301,7 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
   }
   // Allinea la data "dati al" mostrata nell'header al momento del caricamento.
   await updateMeta({ generato: new Date().toISOString() });
+  revalidateTag(DASHBOARD_DATA_TAG);
   return {
     inserted,
     updated,

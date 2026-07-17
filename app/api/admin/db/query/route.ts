@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { sql } from 'drizzle-orm';
+import { revalidateTag } from 'next/cache';
 import { getSessionUser, isAdmin } from '@/lib/auth';
 import { getDb, hasDB } from '@/lib/db';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,6 +44,13 @@ export async function POST(req: Request) {
   try {
     const started = Date.now();
     const result = await db.execute(sql.raw(query));
+    // This console can run arbitrary SQL (any table, any statement type), so
+    // there's no reliable way to tell from the query text alone whether it
+    // touched something the dashboard cache reads. Revalidate defensively on
+    // every successful execution — an admin-only, low-frequency tool, so the
+    // cost of an occasional unnecessary cache miss is negligible next to the
+    // risk of stale dashboard data after an admin edit made through here.
+    revalidateTag(DASHBOARD_DATA_TAG);
     return NextResponse.json({
       ok: true,
       rows: result.rows,

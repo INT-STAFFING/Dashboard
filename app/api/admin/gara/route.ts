@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { getSessionUser, isAdmin } from '@/lib/auth';
 import { getMeta, updateMeta, getRtiConfig, updateRtiConfig, type RtiUpdate } from '@/lib/config';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type { Meta } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +31,7 @@ export async function PUT(req: Request) {
   try {
     const meta = body.meta ? await updateMeta(body.meta) : await getMeta();
     const rti = body.rti ? await updateRtiConfig(body.rti) : await getRtiConfig();
+    if (body.meta || body.rti) revalidateTag(DASHBOARD_DATA_TAG);
     return NextResponse.json({ ok: true, meta, rti });
   } catch (e) {
     return NextResponse.json(

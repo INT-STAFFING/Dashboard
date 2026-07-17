@@ -28,7 +28,7 @@ solo se emerge un bisogno reale.
 | R-3 | Console SQL admin senza audit trail | Security | Alto | S | P1 | ⬜ Aperto |
 | R-4 | Doppia fonte di verità per lo schema DB (DDL bootstrap vs migration) | DB/Manutenibilità | Medio | M | P2 | ✅ Completato |
 | R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 | ✅ Completato (riduzione -120 righe, sotto l'obiettivo indicativo — vedi nota) |
-| R-6 | Cache assente sul payload SSR della dashboard | Rete/Performance | Medio | L | P2 | ⬜ Aperto |
+| R-6 | Cache assente sul payload SSR della dashboard | Rete/Performance | Medio | L | P2 | ✅ Completato |
 | R-7 | Nessun vincolo referenziale/di dominio a livello DB | DB/Integrità | Medio | M | P2 | ✅ Completato (solo CHECK; FK debole resta backlog) |
 | R-8 | Vocabolario doppio dominio↔DB per gli stati documentali | App/Manutenibilità | Basso | S | P3 | ⬜ Aperto |
 | R-9 | Duplicazione colonne tra le 5 tabelle "report" | DB/Modellazione | Basso | L | P3 | ⬜ Aperto |
@@ -385,7 +385,7 @@ comportamento.
 
 ---
 
-## R-6 — Cache assente sul payload SSR della dashboard
+## R-6 — Cache assente sul payload SSR della dashboard ✅ Completato
 
 **Categoria:** Rete/Performance · **Impatto:** Medio · **Effort:** L · **Priorità:** P2
 
@@ -409,13 +409,77 @@ siano coperte (fai un elenco esplicito prima di iniziare, non fidarti solo
 della memoria) per evitare dati stantii dopo una modifica non taggata.
 
 **Criteri di accettazione:**
-- [ ] Il TTFB di `/dashboard` in lettura ripetuta (nessuna mutazione nel
+- [x] Il TTFB di `/dashboard` in lettura ripetuta (nessuna mutazione nel
       mezzo) è misurabilmente più basso.
-- [ ] Ogni mutazione (creazione/modifica/cancellazione intervento, upload,
+- [x] Ogni mutazione (creazione/modifica/cancellazione intervento, upload,
       modifica admin, modifica config RTI) invalida correttamente la cache:
       il dato aggiornato è visibile all'utente entro la richiesta successiva.
-- [ ] Nessuna route di mutazione dimenticata (verifica incrociata con
+- [x] Nessuna route di mutazione dimenticata (verifica incrociata con
       l'elenco in `app/api/**`).
+
+**Implementazione:** `lib/getDashboardData.ts` — la logica di assemblaggio è
+stata rinominata `assembleDashboardData` (privata) e avvolta con
+`unstable_cache(assembleDashboardData, ['dashboard-data'], { tags:
+[DASHBOARD_DATA_TAG] })`; `getDashboardData` resta il nome esportato, quindi
+`app/dashboard/page.tsx` (unico chiamante) non è stato toccato. Nessun
+`revalidate` a tempo: l'invalidazione è solo su tag, coerente con il fatto che
+i dati cambiano solo su mutazione esplicita.
+
+**Elenco esplicito delle route in `app/api/**`** (costruito a inizio
+intervento leggendo ogni `route.ts`, non a memoria) e decisione presa per
+ciascuna:
+
+| Route | Metodo | Cosa scrive | Nel payload di `getDashboardData()`? | `revalidateTag` aggiunto |
+|---|---|---|---|---|
+| `interventi/route.ts` | POST | `interventi` | Sì (interventi, kpi, revenue_mensile, distribuzione_ambito) | ✅ |
+| `interventi/[num_if]/route.ts` | PUT | `interventi` | Sì | ✅ |
+| `interventi/[num_if]/route.ts` | DELETE | `interventi` (soft-delete) | Sì | ✅ |
+| `upload/route.ts` | POST | interventi + bef/report_bdo/report_rdi/verbali_apertura/verbali_sal/report_pdc + seniority + meta | Sì (interventi, bef_monthly/aggregates, seniority, meta) | ✅ |
+| `admin/gara/route.ts` | PUT | `meta` (app_config) + `config_rti` | Sì (meta, rti, quota_val) | ✅ (solo se `body.meta`/`body.rti` presenti) |
+| `admin/tariffe/route.ts` | PUT | `seniority` (app_config) — nome route fuorviante, non tocca la tabella `tariffe` | Sì (seniority) | ✅ |
+| `admin/risorse/[num_if]/route.ts` | PUT | `if_risorse` | **No** (non è nel payload oggi) | ✅ comunque, in modo difensivo — nominata esplicitamente nel `GOAL`, costo di un'invalidazione superflua trascurabile su una route admin a bassa frequenza |
+| `admin/timeline/route.ts` | PUT | `timeline` (app_config, singolo anno legacy) | Sì (timeline) | ✅ |
+| `admin/timeline/anno/route.ts` | PUT | `timeline_mensile` (multi-anno) | Sì (timeline_my) | ✅ |
+| `admin/bef/[num_if]/route.ts` | PUT | `bef_records` | Sì (bef_monthly, bef_aggregates) | ✅ |
+| `config/rti/route.ts` | PUT | `config_rti` | Sì (rti, quota_val) | ✅ |
+| `admin/db/query/route.ts` | POST | SQL arbitrario (qualunque tabella) | Potenzialmente sì, non determinabile staticamente | ✅ sempre su esecuzione riuscita, in modo difensivo (vedi nota) |
+| `admin/users/route.ts`, `admin/users/[id]/route.ts` | POST/PATCH/DELETE | tabella `users` | No (utenti non fanno parte del payload) | non necessario |
+| `auth/login`, `auth/logout`, `auth/register` | POST | sessione/utenti | No | non necessario |
+| `admin/db/table/[name]/route.ts`, `admin/db/tables/route.ts` | GET | — | N/A (sola lettura) | non necessario |
+| `me/route.ts`, `data/route.ts`, `interventi/[num_if]/monthly/route.ts` | GET | — | N/A (sola lettura; `data/route.ts` non chiama nemmeno `getDashboardData()` — query proprie, non risulta invocato da alcun codice client in questo repo) | non necessario |
+
+Nota sulla console SQL admin (`admin/db/query`): poiché esegue SQL arbitrario,
+non è possibile determinare staticamente dal testo della query se abbia
+toccato una tabella letta dal payload dashboard — invalida quindi la cache
+dopo **ogni** esecuzione riuscita, indipendentemente dal tipo di istruzione.
+
+**Verifica:** `tsc --noEmit` e `next build` puliti. Eseguita end-to-end contro
+un `next start` reale (fallback in-memory, nessun DB configurato in questo
+ambiente) con login come admin di default e cookie di sessione reale:
+- **Meccanismo cache:** una sonda temporanea (rimossa prima del commit) ha
+  contato le esecuzioni reali di `assembleDashboardData`. Su 3 richieste
+  consecutive a `/dashboard` senza mutazioni: **1 sola esecuzione** (le altre
+  due sono state servite dalla cache).
+- **Criterio 1 (TTFB):** poiché questo ambiente non ha una latenza di rete
+  Neon reale da eliminare (fallback in-memory), è stato simulato
+  temporaneamente un round-trip realistico (150ms, coerente con quanto
+  descritto in `docs/performance-audit.md` sul costo dominante del driver
+  `neon-http`) dentro `assembleDashboardData`. Risultato: prima richiesta
+  (cache miss) **240ms**, richieste successive (cache hit) **~22–25ms** — una
+  riduzione di circa 10×. La simulazione è stata rimossa subito dopo la
+  misura, insieme alla sonda di conteggio.
+- **Criterio 2 (invalidazione):** verificato end-to-end su tre famiglie di
+  mutazione distinte — `PUT /api/admin/gara` (con un marcatore custom su
+  `meta.generato`, comparso subito nell'HTML della dashboard dopo la
+  mutazione), `POST`/`DELETE /api/interventi` (un nuovo IF di test è comparso
+  e poi scomparso dalla dashboard esattamente al giro successivo), e
+  `PUT /api/config/rti`. In tutti e tre i casi: la richiesta immediatamente
+  successiva alla mutazione ha rieseguito `assembleDashboardData` (cache
+  invalidata correttamente) e il dato aggiornato era visibile senza bisogno
+  di richieste ripetute; le richieste successive sono tornate rapide (cache
+  ri-popolata). Le rimanenti route dell'elenco condividono lo stesso identico
+  pattern (`revalidateTag(DASHBOARD_DATA_TAG)` dopo la scrittura) verificato
+  a livello di codice, non ripetuto singolarmente via HTTP.
 
 ---
 

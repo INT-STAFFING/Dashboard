@@ -39,8 +39,15 @@ export async function persistReportPdcFromUpload(
   if (hasDB) {
     await ensureSchema();
     const db = getDb();
-    await db.delete(report_pdc).where(inArray(report_pdc.num_bdo, bdoList));
-    await db.insert(report_pdc).values(kept.map(toRow));
+    // db.batch() runs delete + insert as a single Postgres transaction in one
+    // HTTP round-trip (Neon's transactional batch endpoint), so a failure
+    // partway through can't leave the table without these rows — neon-http
+    // itself has no interactive db.transaction() (see
+    // drizzle-orm/neon-http/session.js).
+    await db.batch([
+      db.delete(report_pdc).where(inArray(report_pdc.num_bdo, bdoList)),
+      db.insert(report_pdc).values(kept.map(toRow)),
+    ]);
     return { saved: kept.length, ignored };
   }
 

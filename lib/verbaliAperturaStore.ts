@@ -26,10 +26,17 @@ export async function persistVerbaliAperturaFromUpload(
   if (hasDB) {
     await ensureSchema();
     const db = getDb();
+    const ins = db.insert(verbali_apertura).values(rows.map(toRow));
     if (bdoList.length) {
-      await db.delete(verbali_apertura).where(inArray(verbali_apertura.num_bdo, bdoList));
+      // db.batch() runs delete + insert as a single Postgres transaction in
+      // one HTTP round-trip (Neon's transactional batch endpoint), so a
+      // failure partway through can't leave the table without these rows —
+      // neon-http itself has no interactive db.transaction() (see
+      // drizzle-orm/neon-http/session.js).
+      await db.batch([db.delete(verbali_apertura).where(inArray(verbali_apertura.num_bdo, bdoList)), ins]);
+    } else {
+      await ins;
     }
-    await db.insert(verbali_apertura).values(rows.map(toRow));
     return { saved: rows.length };
   }
 

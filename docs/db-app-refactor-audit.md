@@ -24,7 +24,7 @@ solo se emerge un bisogno reale.
 | ID | Titolo | Categoria | Impatto | Effort | Priorità | Stato |
 |----|--------|-----------|---------|--------|----------|-------|
 | R-1 | Fallback insicuro per `AUTH_SECRET` in produzione | Security | Alto | S | P1 | ⬜ Aperto |
-| R-2 | Scritture non atomiche (delete+insert) nelle store di snapshot | DB/Integrità | Alto | M | P1 | ⬜ Aperto |
+| R-2 | Scritture non atomiche (delete+insert) nelle store di snapshot | DB/Integrità | Alto | M | P1 | ✅ Completato |
 | R-3 | Console SQL admin senza audit trail | Security | Alto | S | P1 | ⬜ Aperto |
 | R-4 | Doppia fonte di verità per lo schema DB (DDL bootstrap vs migration) | DB/Manutenibilità | Medio | M | P2 | ✅ Completato |
 | R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 | ⬜ Aperto |
@@ -64,12 +64,13 @@ che ne segnali l'uso. Verifica che il fail-fast avvenga al primo utilizzo
 
 ---
 
-## R-2 — Scritture non atomiche (delete+insert) nelle store di snapshot
+## R-2 — Scritture non atomiche (delete+insert) nelle store di snapshot ✅ Completato
 
 **Categoria:** DB/Integrità dati · **Impatto:** Alto · **Effort:** M · **Priorità:** P1
 
-**File:** `lib/verbaliAperturaStore.ts:29-32`, `lib/verbaliSalStore.ts`,
-`lib/reportPdcStore.ts:42-43`, `lib/befStore.ts:114-129` (`replaceBef`)
+**File:** `lib/verbaliAperturaStore.ts:29-32`, `lib/reportPdcStore.ts:42-43`,
+`lib/befStore.ts:114-129` (`replaceBef`) — `lib/verbaliSalStore.ts` era
+elencato nella formulazione originale ma ne è stato escluso, vedi nota sotto.
 
 **Problema:** per rendere idempotente il ri-upload di un file, queste store
 eseguono `DELETE ... WHERE num_bdo IN (...)` seguito da un `INSERT` separato —
@@ -91,13 +92,58 @@ path di scrittura. Aggiorna anche le migration in `drizzle/*.sql` e il blocco
 DDL in `lib/db.ts` con le nuove unique constraint.
 
 **Criteri di accettazione:**
-- [ ] Un fallimento simulato a metà della fase "insert" lascia la tabella nello
+- [x] Un fallimento simulato a metà della fase "insert" lascia la tabella nello
       stato precedente (nessuna riga persa), verificato con un test manuale o
       automatico che inietta un errore.
-- [ ] Il comportamento funzionale dell'upload (stesso file ricaricato più
+- [x] Il comportamento funzionale dell'upload (stesso file ricaricato più
       volte → stesso risultato finale) resta invariato.
-- [ ] Schema e migration aggiornati e coerenti tra `lib/schema.ts`,
+- [x] Schema e migration aggiornati e coerenti tra `lib/schema.ts`,
       `lib/db.ts` e `drizzle/*.sql`.
+
+**Correzione allo scope originale:** `lib/verbaliSalStore.ts` è stato
+**escluso** dall'intervento. Verificando il codice prima di modificarlo è
+emerso che `verbali_sal`, a differenza delle altre tre tabelle, non fa mai
+`DELETE` — è append-only per design esplicito (righe multiple per `num_bdo`
+sono attese e intenzionali: "periodic SAL over time", vedi il commento in
+`lib/verbaliSalStore.ts` e nel parser `lib/parsers/parseVerbaliSal.ts`: "no
+dedup here"). Include-la nel pattern delete+insert→upsert avrebbe introdotto
+una regressione reale (deduplica di righe che devono poter coesistere).
+`persistVerbaliSalFromUpload` esegue già un singolo `INSERT` — un solo
+statement SQL è atomico di per sé, senza bisogno di intervento. L'inclusione
+di questa tabella nella formulazione originale del problema era un errore
+dell'audit, corretto qui.
+
+**Implementazione (diversa dal `GOAL` originale, tecnicamente equivalente e
+senza modifiche di schema):** invece di un upsert `ON CONFLICT DO UPDATE` su
+chiave naturale (che avrebbe richiesto nuove unique constraint e avrebbe
+cambiato la semantica "il batch in arrivo sostituisce integralmente le righe
+esistenti per quella chiave" in una semantica additiva), `lib/verbaliAperturaStore.ts`,
+`lib/reportPdcStore.ts` e `replaceBef` in `lib/befStore.ts` ora usano
+`db.batch([delete, insert])`. Il driver `neon-http` non supporta
+`db.transaction()` interattivo (`drizzle-orm/neon-http/session.js`: *"No
+transactions support in neon-http driver"*), ma **`db.batch()` è supportato**:
+internamente chiama `client.transaction([...])` di `@neondatabase/serverless`,
+che invia l'intero batch come un unico `POST` HTTP al Data API di Neon
+(header `Neon-Batch-Isolation-Level` / `Neon-Batch-Read-Only` /
+`Neon-Batch-Deferrable`, propri di una vera transazione lato server). Risultato:
+`DELETE` + `INSERT` restano un solo round-trip HTTP **e** sono atomici — o si
+applicano entrambi o nessuno dei due — senza bisogno di chiavi naturali,
+nuove unique constraint, né di cambiare driver. Per questo lo schema
+(`lib/schema.ts`, `lib/db.ts`, `drizzle/*.sql`) resta invariato: non c'era
+nulla da rendere coerente perché non è stata introdotta alcuna divergenza.
+
+**Verifica:** `tsc --noEmit` e `next build` puliti. Il driver `neon-http`
+richiede un vero endpoint Neon (non raggiungibile da questo ambiente), quindi
+la verifica è stata fatta estraendo con `.toSQL()` l'SQL realmente compilato
+da Drizzle per le query `delete`/`insert` di ciascuna tabella e
+riproducendo l'esatto comportamento di `db.batch()` (un `BEGIN` seguito dalle
+query, `COMMIT` o rollback in caso di errore) contro un Postgres reale
+locale. Per tutte e tre le tabelle (`verbali_apertura`, `report_pdc`,
+`bef_records`): (a) un errore iniettato dopo il `DELETE` e prima del
+`COMMIT` lascia la riga preesistente intatta — nessuna perdita di dati; (b)
+lo stesso batch rieseguito 3 volte di seguito produce sempre lo stesso stato
+finale (nessuna riga duplicata, nessuna deriva); (c) una riga non correlata
+(chiave diversa) non viene mai toccata.
 
 ---
 

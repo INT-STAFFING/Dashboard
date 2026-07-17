@@ -111,9 +111,10 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
 
   if (hasDB) {
     await ensureSchema();
-    await getDb().delete(bef_records).where(eq(bef_records.numero_if, numeroIf));
+    const db = getDb();
+    const del = db.delete(bef_records).where(eq(bef_records.numero_if, numeroIf));
     if (clean.length) {
-      await getDb().insert(bef_records).values(
+      const ins = db.insert(bef_records).values(
         clean.map((r) => ({
           numero_if: r.numero_if,
           num_bdo: r.num_bdo,
@@ -126,6 +127,13 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
           data_pagamento: r.data_pagamento,
         })),
       );
+      // db.batch() sends both statements to Neon's transactional batch
+      // endpoint in a single HTTP round-trip: either both apply or neither
+      // does. neon-http has no interactive db.transaction() (see session.js),
+      // but batch() is backed by a real Postgres transaction server-side.
+      await db.batch([del, ins]);
+    } else {
+      await del;
     }
     return listBef(numeroIf);
   }

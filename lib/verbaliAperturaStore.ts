@@ -1,12 +1,15 @@
-import { inArray } from 'drizzle-orm';
-import { getDb, hasDB, ensureSchema } from './db';
+import { and, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import type { RunnableQuery } from 'drizzle-orm/runnable-query';
+import { getDb, hasDB, ensureSchema, excludedSet } from './db';
 import { verbali_apertura } from './schema';
 import type { VerbaleAperturaRecord } from './types';
 
-// Snapshot of the "REPORT Apertura" export. No natural UNIQUE key (num_bdo can
-// legitimately repeat), so re-running the same upload is made idempotent by
-// deleting every row whose num_bdo appears in the incoming batch before
-// re-inserting it. DB-backed with an in-memory fallback.
+// Snapshot of the "REPORT Apertura" export. Natural key (num_bdo,
+// codifica_documento) — see the unique index in lib/schema.ts. Rows missing
+// codifica_documento aren't deduplicable and are always fully replaced for
+// their num_bdo instead of being matched by key. DB-backed with an in-memory
+// fallback.
+type AperturaBatchItem = RunnableQuery<unknown, 'pg'>;
 const g = globalThis as unknown as { __ARIA_VERBALI_APERTURA__?: VerbaleAperturaRecord[] };
 function mem(): VerbaleAperturaRecord[] {
   if (!g.__ARIA_VERBALI_APERTURA__) g.__ARIA_VERBALI_APERTURA__ = [];
@@ -26,16 +29,56 @@ export async function persistVerbaliAperturaFromUpload(
   if (hasDB) {
     await ensureSchema();
     const db = getDb();
-    const ins = db.insert(verbali_apertura).values(rows.map(toRow));
+
+    const isKeyed = (r: VerbaleAperturaRecord) => r.codifica_documento != null && r.codifica_documento !== '';
+    const keyed = rows.filter(isKeyed);
+    const unkeyed = rows.filter((r) => !isKeyed(r));
+
+    const statements: AperturaBatchItem[] = [];
     if (bdoList.length) {
-      // db.batch() runs delete + insert as a single Postgres transaction in
-      // one HTTP round-trip (Neon's transactional batch endpoint), so a
-      // failure partway through can't leave the table without these rows —
-      // neon-http itself has no interactive db.transaction() (see
+      // Drop keyed rows whose (num_bdo, codifica_documento) pair is no
+      // longer in the new set for that BDO — removed/superseded in this
+      // upload.
+      const keyedPairs = keyed.map((r) => sql`(${r.num_bdo}, ${r.codifica_documento})`);
+      statements.push(
+        db
+          .delete(verbali_apertura)
+          .where(
+            keyedPairs.length
+              ? and(
+                  inArray(verbali_apertura.num_bdo, bdoList),
+                  isNotNull(verbali_apertura.codifica_documento),
+                  sql`(${verbali_apertura.num_bdo}, ${verbali_apertura.codifica_documento}) NOT IN (${sql.join(keyedPairs, sql`, `)})`,
+                )
+              : and(inArray(verbali_apertura.num_bdo, bdoList), isNotNull(verbali_apertura.codifica_documento)),
+          ),
+      );
+      // Unkeyed rows have no stable identity, so this upload's list is
+      // always their full replacement for the BDOs it touches.
+      statements.push(
+        db
+          .delete(verbali_apertura)
+          .where(and(inArray(verbali_apertura.num_bdo, bdoList), or(isNull(verbali_apertura.codifica_documento), sql`${verbali_apertura.codifica_documento} = ''`))),
+      );
+    }
+    if (unkeyed.length) statements.push(db.insert(verbali_apertura).values(unkeyed.map(toRow)));
+    if (keyed.length) {
+      statements.push(
+        db
+          .insert(verbali_apertura)
+          .values(keyed.map(toRow))
+          .onConflictDoUpdate({
+            target: [verbali_apertura.num_bdo, verbali_apertura.codifica_documento],
+            set: excludedSet(verbali_apertura, ['id', 'num_bdo', 'codifica_documento']),
+          }),
+      );
+    }
+    if (statements.length) {
+      // db.batch() sends every statement to Neon's transactional batch
+      // endpoint in a single HTTP round-trip: either all apply or none do.
+      // neon-http has no interactive db.transaction() (see
       // drizzle-orm/neon-http/session.js).
-      await db.batch([db.delete(verbali_apertura).where(inArray(verbali_apertura.num_bdo, bdoList)), ins]);
-    } else {
-      await ins;
+      await db.batch(statements as [AperturaBatchItem, ...AperturaBatchItem[]]);
     }
     return { saved: rows.length };
   }

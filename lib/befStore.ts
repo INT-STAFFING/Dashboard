@@ -1,8 +1,13 @@
-import { eq } from 'drizzle-orm';
-import { getDb, hasDB, ensureSchema } from './db';
+import { and, eq, isNotNull, isNull, notInArray } from 'drizzle-orm';
+import type { RunnableQuery } from 'drizzle-orm/runnable-query';
+import { getDb, hasDB, ensureSchema, excludedSet } from './db';
 import { bef_records } from './schema';
 import type { BefRow, BefRecord, BefMonthly, BefAggregates } from './types';
 import { bdoFromBef } from './codes';
+
+// Batch items for replaceBef: a mix of PgDelete and PgInsert query builders,
+// all runnable against the 'pg' dialect (what db.batch() requires).
+type BefBatchItem = RunnableQuery<unknown, 'pg'>;
 
 // Per-IF/BO BEF rows. DB-backed with an in-memory fallback.
 const g = globalThis as unknown as { __ARIA_BEF__?: Record<string, BefRow[]> };
@@ -112,29 +117,67 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
   if (hasDB) {
     await ensureSchema();
     const db = getDb();
-    const del = db.delete(bef_records).where(eq(bef_records.numero_if, numeroIf));
-    if (clean.length) {
-      const ins = db.insert(bef_records).values(
-        clean.map((r) => ({
-          numero_if: r.numero_if,
-          num_bdo: r.num_bdo,
-          descrizione: r.descrizione,
-          periodo_competenza: r.periodo_competenza,
-          fornitore_reale: r.fornitore_reale,
-          importo_ricezione: r.importo_ricezione == null ? null : String(r.importo_ricezione),
-          num_fattura: r.num_fattura,
-          data_fattura: r.data_fattura,
-          data_pagamento: r.data_pagamento,
-        })),
+
+    // Natural key (numero_if, num_fattura) — see the unique index on
+    // bef_records in lib/schema.ts. Rows without num_fattura aren't
+    // deduplicable (pre-existing "Decisione 2B" rule in upsertBef below), so
+    // they're bucketed separately and always fully replaced for this
+    // numero_if instead of being matched by key.
+    const keyed = clean.filter((r) => r.num_fattura != null);
+    const unkeyed = clean.filter((r) => r.num_fattura == null);
+    const keyedInvoices = keyed.map((r) => r.num_fattura as string);
+
+    const toInsertRow = (r: (typeof clean)[number]) => ({
+      numero_if: r.numero_if,
+      num_bdo: r.num_bdo,
+      descrizione: r.descrizione,
+      periodo_competenza: r.periodo_competenza,
+      fornitore_reale: r.fornitore_reale,
+      importo_ricezione: r.importo_ricezione == null ? null : String(r.importo_ricezione),
+      num_fattura: r.num_fattura,
+      data_fattura: r.data_fattura,
+      data_pagamento: r.data_pagamento,
+    });
+
+    // Drop invoiced rows whose invoice number is no longer in the new set
+    // (removed from this IF's BEF list); unkeyed rows have no stable
+    // identity, so this call's list is always their full replacement.
+    const dropStaleKeyed = db
+      .delete(bef_records)
+      .where(
+        keyedInvoices.length
+          ? and(
+              eq(bef_records.numero_if, numeroIf),
+              isNotNull(bef_records.num_fattura),
+              notInArray(bef_records.num_fattura, keyedInvoices),
+            )
+          : and(eq(bef_records.numero_if, numeroIf), isNotNull(bef_records.num_fattura)),
       );
-      // db.batch() sends both statements to Neon's transactional batch
-      // endpoint in a single HTTP round-trip: either both apply or neither
-      // does. neon-http has no interactive db.transaction() (see session.js),
-      // but batch() is backed by a real Postgres transaction server-side.
-      await db.batch([del, ins]);
-    } else {
-      await del;
+    const dropUnkeyed = db
+      .delete(bef_records)
+      .where(and(eq(bef_records.numero_if, numeroIf), isNull(bef_records.num_fattura)));
+
+    const statements: BefBatchItem[] = [dropStaleKeyed, dropUnkeyed];
+    if (unkeyed.length) {
+      statements.push(db.insert(bef_records).values(unkeyed.map(toInsertRow)));
     }
+    if (keyed.length) {
+      statements.push(
+        db
+          .insert(bef_records)
+          .values(keyed.map(toInsertRow))
+          .onConflictDoUpdate({
+            target: [bef_records.numero_if, bef_records.num_fattura],
+            set: excludedSet(bef_records, ['id', 'numero_if', 'num_fattura']),
+          }),
+      );
+    }
+    // db.batch() sends every statement to Neon's transactional batch
+    // endpoint in a single HTTP round-trip: either all apply or none do.
+    // neon-http has no interactive db.transaction() (see
+    // drizzle-orm/neon-http/session.js), but batch() is backed by a real
+    // Postgres transaction server-side.
+    await db.batch(statements as [BefBatchItem, ...BefBatchItem[]]);
     return listBef(numeroIf);
   }
   mem()[numeroIf] = clean.map((r, i) => ({ id: i + 1, ...r }));

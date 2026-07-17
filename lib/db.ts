@@ -1,6 +1,7 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { sql } from 'drizzle-orm';
+import { getTableColumns, sql, type SQL } from 'drizzle-orm';
+import type { PgTable } from 'drizzle-orm/pg-core';
 import * as schema from './schema';
 
 // Neon serverless Postgres connection string. The Vercel ⇄ Neon integration
@@ -295,6 +296,23 @@ const DDL: string[] = [
   // existed (CREATE TABLE IF NOT EXISTS won't add columns to an existing table).
   `ALTER TABLE "interventi" ADD COLUMN IF NOT EXISTS "cons_mesi" jsonb`,
   `ALTER TABLE "bef_records" ADD COLUMN IF NOT EXISTS "numero_if" text`,
+  // Natural keys for upsert-on-replace (see lib/befStore.ts, lib/reportPdcStore.ts,
+  // lib/verbaliAperturaStore.ts). De-duplicate first: a DB populated by the old
+  // (non-deduplicating) delete-all-per-num_bdo pattern can already have rows
+  // sharing what's about to become a natural key — keep the most recently
+  // written row (highest id) per duplicate group, matching drizzle/0007_organic_odin.sql.
+  `DELETE FROM "bef_records" a USING "bef_records" b
+    WHERE a."numero_if" = b."numero_if" AND a."num_fattura" = b."num_fattura"
+      AND a."num_fattura" IS NOT NULL AND a."id" < b."id"`,
+  `DELETE FROM "report_pdc" a USING "report_pdc" b
+    WHERE a."num_bdo" = b."num_bdo" AND a."posizione_bdo" = b."posizione_bdo" AND a."periodo_pdc" = b."periodo_pdc"
+      AND a."posizione_bdo" IS NOT NULL AND a."periodo_pdc" IS NOT NULL AND a."id" < b."id"`,
+  `DELETE FROM "verbali_apertura" a USING "verbali_apertura" b
+    WHERE a."num_bdo" = b."num_bdo" AND a."codifica_documento" = b."codifica_documento"
+      AND a."codifica_documento" IS NOT NULL AND a."id" < b."id"`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "bef_records_numero_if_num_fattura_unique" ON "bef_records" ("numero_if","num_fattura")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "report_pdc_num_bdo_posizione_periodo_unique" ON "report_pdc" ("num_bdo","posizione_bdo","periodo_pdc")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "verbali_apertura_num_bdo_codifica_unique" ON "verbali_apertura" ("num_bdo","codifica_documento")`,
 ];
 
 // Bump this whenever the DDL array above changes (new table, new column, new
@@ -304,7 +322,9 @@ const DDL: string[] = [
 // let a warm instance skip the 28 round-trips when nothing changed since the
 // last successful bootstrap.
 //   1 — initial versioned baseline (schema as of the R-4 refactor)
-const SCHEMA_VERSION = 1;
+//   2 — natural-key unique indexes for upsert-on-replace on bef_records,
+//       report_pdc, verbali_apertura (R-2), with duplicate cleanup first
+const SCHEMA_VERSION = 2;
 const SCHEMA_VERSION_KEY = 'schema_version';
 
 // Reads the current schema_version from app_config with a single round-trip.
@@ -362,6 +382,22 @@ export async function ensureSchema(): Promise<void> {
     });
   }
   return schemaPromise;
+}
+
+// Builds the `set` clause for `.onConflictDoUpdate()`: every column of
+// `table` except `exclude` (typically the id and the natural-key columns
+// targeted by the conflict), mapped to `excluded."<column>"` so the incoming
+// row's values win on conflict. Shared by the upsert-on-replace stores
+// (befStore, reportPdcStore, verbaliAperturaStore — see R-2) so the update
+// set can't drift out of sync with the table's actual columns.
+export function excludedSet<T extends PgTable>(table: T, exclude: string[]): Record<string, SQL> {
+  const columns = getTableColumns(table);
+  const set: Record<string, SQL> = {};
+  for (const [key, col] of Object.entries(columns)) {
+    if (exclude.includes(key)) continue;
+    set[key] = sql.raw(`excluded."${col.name}"`);
+  }
+  return set;
 }
 
 export { schema };

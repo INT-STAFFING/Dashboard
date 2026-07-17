@@ -51,18 +51,33 @@ export const interventi = pgTable('interventi', {
   deleted_at: timestamp('deleted_at'), // NULL = active record (soft-delete)
 });
 
-export const bef_records = pgTable('bef_records', {
-  id: serial('id').primaryKey(),
-  numero_if: text('numero_if'), // links a BEF row to its IF/BO
-  num_bdo: text('num_bdo'),
-  descrizione: text('descrizione'),
-  periodo_competenza: text('periodo_competenza'),
-  fornitore_reale: text('fornitore_reale'),
-  importo_ricezione: numeric('importo_ricezione', { precision: 15, scale: 4 }),
-  num_fattura: text('num_fattura'),
-  data_fattura: date('data_fattura'),
-  data_pagamento: date('data_pagamento'),
-});
+// Natural key for upsert-on-replace (lib/befStore.ts replaceBef): a BEF row
+// is identified by (numero_if, num_fattura) — mirrors the pre-existing merge
+// rule ("Decisione 2B") that rows sharing an invoice number are the same
+// logical entry. Rows without num_fattura aren't deduplicable; Postgres never
+// treats two NULLs as conflicting under a UNIQUE index, so they're naturally
+// exempt and are always replaced wholesale for that numero_if instead.
+export const bef_records = pgTable(
+  'bef_records',
+  {
+    id: serial('id').primaryKey(),
+    numero_if: text('numero_if'), // links a BEF row to its IF/BO
+    num_bdo: text('num_bdo'),
+    descrizione: text('descrizione'),
+    periodo_competenza: text('periodo_competenza'),
+    fornitore_reale: text('fornitore_reale'),
+    importo_ricezione: numeric('importo_ricezione', { precision: 15, scale: 4 }),
+    num_fattura: text('num_fattura'),
+    data_fattura: date('data_fattura'),
+    data_pagamento: date('data_pagamento'),
+  },
+  (t) => ({
+    numero_if_num_fattura_unique: uniqueIndex('bef_records_numero_if_num_fattura_unique').on(
+      t.numero_if,
+      t.num_fattura,
+    ),
+  }),
+);
 
 export const verbali_chiusura = pgTable('verbali_chiusura', {
   id: serial('id').primaryKey(),
@@ -134,30 +149,42 @@ export const report_rdi = pgTable('report_rdi', {
   updated_at: timestamp('updated_at').defaultNow(),
 });
 
-// Snapshot of the "REPORT Apertura" export (verbali di apertura). No natural
-// UNIQUE key: uploads replace rows per num_bdo (delete + insert) for
-// re-runnability — see lib/verbaliAperturaStore.ts.
-export const verbali_apertura = pgTable('verbali_apertura', {
-  id: serial('id').primaryKey(),
-  num_bdo: text('num_bdo'),
-  descrizione: text('descrizione'),
-  nome_file: text('nome_file'),
-  codifica_documento: text('codifica_documento'),
-  stato_verbale: text('stato_verbale'),
-  periodo_competenza: text('periodo_competenza'),
-  divisione: text('divisione'),
-  centro_costo: text('centro_costo'),
-  fornitore: text('fornitore'),
-  utente_caricamento_fornitore: text('utente_caricamento_fornitore'),
-  data_firma_fornitore: date('data_firma_fornitore'),
-  roi: text('roi'),
-  data_inserimento_verbale_non_sottomesso: date('data_inserimento_verbale_non_sottomesso'),
-  data_sottomissione_verbale_fornitore: date('data_sottomissione_verbale_fornitore'),
-  data_firma_roi: date('data_firma_roi'),
-  data_rifiuto_roi: date('data_rifiuto_roi'),
-  data_invio_roi: date('data_invio_roi'),
-  updated_at: timestamp('updated_at').defaultNow(),
-});
+// Snapshot of the "REPORT Apertura" export (verbali di apertura). Natural key
+// for upsert-on-replace: (num_bdo, codifica_documento) — codifica_documento
+// is the source system's per-document identifier, so it's the closest thing
+// to a stable row identity here. Rows missing it (rare/edge-case exports)
+// aren't deduplicable and are always replaced wholesale for that num_bdo —
+// see lib/verbaliAperturaStore.ts.
+export const verbali_apertura = pgTable(
+  'verbali_apertura',
+  {
+    id: serial('id').primaryKey(),
+    num_bdo: text('num_bdo'),
+    descrizione: text('descrizione'),
+    nome_file: text('nome_file'),
+    codifica_documento: text('codifica_documento'),
+    stato_verbale: text('stato_verbale'),
+    periodo_competenza: text('periodo_competenza'),
+    divisione: text('divisione'),
+    centro_costo: text('centro_costo'),
+    fornitore: text('fornitore'),
+    utente_caricamento_fornitore: text('utente_caricamento_fornitore'),
+    data_firma_fornitore: date('data_firma_fornitore'),
+    roi: text('roi'),
+    data_inserimento_verbale_non_sottomesso: date('data_inserimento_verbale_non_sottomesso'),
+    data_sottomissione_verbale_fornitore: date('data_sottomissione_verbale_fornitore'),
+    data_firma_roi: date('data_firma_roi'),
+    data_rifiuto_roi: date('data_rifiuto_roi'),
+    data_invio_roi: date('data_invio_roi'),
+    updated_at: timestamp('updated_at').defaultNow(),
+  },
+  (t) => ({
+    num_bdo_codifica_unique: uniqueIndex('verbali_apertura_num_bdo_codifica_unique').on(
+      t.num_bdo,
+      t.codifica_documento,
+    ),
+  }),
+);
 
 // Snapshot of the "REPORT Sal" export (verbali SAL). Multiple rows per
 // num_bdo are expected (periodic SAL) so uploads always append — see
@@ -191,37 +218,49 @@ export const verbali_sal = pgTable('verbali_sal', {
 
 // Snapshot of the "REPORT Pdc" export (Prese in Carico). Multiple rows per
 // num_bdo are expected (one per posizione BDO x periodo di competenza) — the
-// monthly detail behind interventi.pdc. No natural UNIQUE key, so uploads
-// replace rows per num_bdo (delete + insert), same pattern as verbali_apertura.
-export const report_pdc = pgTable('report_pdc', {
-  id: serial('id').primaryKey(),
-  num_bdo: text('num_bdo'),
-  posizione_bdo: text('posizione_bdo'),
-  descrizione_posizione: text('descrizione_posizione'),
-  importo_posizione: numeric('importo_posizione', { precision: 15, scale: 4 }),
-  codice_pdc: text('codice_pdc'),
-  periodo_pdc: text('periodo_pdc'),
-  data_creazione: date('data_creazione'),
-  utente_caricamento: text('utente_caricamento'),
-  codifica_documento: text('codifica_documento'),
-  stato_pdc: text('stato_pdc'),
-  divisione: text('divisione'),
-  centro_costo: text('centro_costo'),
-  fornitore_rti: text('fornitore_rti'),
-  roi: text('roi'),
-  data_invio_roi: date('data_invio_roi'),
-  data_rifiuto_roi: date('data_rifiuto_roi'),
-  data_approvazione_roi: date('data_approvazione_roi'),
-  fornitore_prestazione: text('fornitore_prestazione'),
-  service_line: text('service_line'),
-  tipo_fornitura: text('tipo_fornitura'),
-  rdi: text('rdi'),
-  posizione_rdi: text('posizione_rdi'),
-  subappalto: text('subappalto'),
-  subappaltatore: text('subappaltatore'),
-  costo_subappalto: numeric('costo_subappalto', { precision: 15, scale: 4 }),
-  updated_at: timestamp('updated_at').defaultNow(),
-});
+// monthly detail behind interventi.pdc. Natural key for upsert-on-replace:
+// (num_bdo, posizione_bdo, periodo_pdc), per that documented cardinality.
+// Rows missing posizione_bdo or periodo_pdc aren't deduplicable and are
+// always replaced wholesale for that num_bdo — see lib/reportPdcStore.ts.
+export const report_pdc = pgTable(
+  'report_pdc',
+  {
+    id: serial('id').primaryKey(),
+    num_bdo: text('num_bdo'),
+    posizione_bdo: text('posizione_bdo'),
+    descrizione_posizione: text('descrizione_posizione'),
+    importo_posizione: numeric('importo_posizione', { precision: 15, scale: 4 }),
+    codice_pdc: text('codice_pdc'),
+    periodo_pdc: text('periodo_pdc'),
+    data_creazione: date('data_creazione'),
+    utente_caricamento: text('utente_caricamento'),
+    codifica_documento: text('codifica_documento'),
+    stato_pdc: text('stato_pdc'),
+    divisione: text('divisione'),
+    centro_costo: text('centro_costo'),
+    fornitore_rti: text('fornitore_rti'),
+    roi: text('roi'),
+    data_invio_roi: date('data_invio_roi'),
+    data_rifiuto_roi: date('data_rifiuto_roi'),
+    data_approvazione_roi: date('data_approvazione_roi'),
+    fornitore_prestazione: text('fornitore_prestazione'),
+    service_line: text('service_line'),
+    tipo_fornitura: text('tipo_fornitura'),
+    rdi: text('rdi'),
+    posizione_rdi: text('posizione_rdi'),
+    subappalto: text('subappalto'),
+    subappaltatore: text('subappaltatore'),
+    costo_subappalto: numeric('costo_subappalto', { precision: 15, scale: 4 }),
+    updated_at: timestamp('updated_at').defaultNow(),
+  },
+  (t) => ({
+    num_bdo_posizione_periodo_unique: uniqueIndex('report_pdc_num_bdo_posizione_periodo_unique').on(
+      t.num_bdo,
+      t.posizione_bdo,
+      t.periodo_pdc,
+    ),
+  }),
+);
 
 export const tariffe = pgTable('tariffe', {
   id: serial('id').primaryKey(),

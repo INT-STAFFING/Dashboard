@@ -1,13 +1,15 @@
-import { eq, inArray } from 'drizzle-orm';
-import { getDb, hasDB, ensureSchema } from './db';
+import { and, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import type { RunnableQuery } from 'drizzle-orm/runnable-query';
+import { getDb, hasDB, ensureSchema, excludedSet } from './db';
 import { report_pdc } from './schema';
 import type { ReportPdcRecord } from './types';
 
-// Snapshot of the "REPORT Pdc" export. No natural UNIQUE key (num_bdo repeats
-// once per posizione BDO x periodo di competenza), so re-running the same
-// upload is made idempotent by deleting every row whose num_bdo appears in
-// the incoming batch before re-inserting it (mirrors verbaliAperturaStore).
+// Snapshot of the "REPORT Pdc" export. Natural key (num_bdo, posizione_bdo,
+// periodo_pdc) — see the unique index in lib/schema.ts. Rows missing
+// posizione_bdo or periodo_pdc aren't deduplicable and are always fully
+// replaced for their num_bdo instead of being matched by key.
 // DB-backed with an in-memory fallback.
+type PdcBatchItem = RunnableQuery<unknown, 'pg'>;
 const g = globalThis as unknown as { __ARIA_REPORT_PDC__?: ReportPdcRecord[] };
 function mem(): ReportPdcRecord[] {
   if (!g.__ARIA_REPORT_PDC__) g.__ARIA_REPORT_PDC__ = [];
@@ -39,15 +41,53 @@ export async function persistReportPdcFromUpload(
   if (hasDB) {
     await ensureSchema();
     const db = getDb();
-    // db.batch() runs delete + insert as a single Postgres transaction in one
-    // HTTP round-trip (Neon's transactional batch endpoint), so a failure
-    // partway through can't leave the table without these rows — neon-http
-    // itself has no interactive db.transaction() (see
+
+    const isKeyed = (r: ReportPdcRecord) =>
+      r.posizione_bdo != null && r.posizione_bdo !== '' && r.periodo_pdc != null && r.periodo_pdc !== '';
+    const keyed = kept.filter(isKeyed);
+    const unkeyed = kept.filter((r) => !isKeyed(r));
+
+    // Drop keyed rows whose (num_bdo, posizione_bdo, periodo_pdc) triple is
+    // no longer in the new set for that BDO — removed/superseded in this
+    // upload. Postgres row-value IN is used since Drizzle has no typed
+    // "tuple not in" helper.
+    const keyedTriples = keyed.map((r) => sql`(${r.num_bdo}, ${r.posizione_bdo}, ${r.periodo_pdc})`);
+    const dropStaleKeyed = db
+      .delete(report_pdc)
+      .where(
+        keyedTriples.length
+          ? and(
+              inArray(report_pdc.num_bdo, bdoList),
+              isNotNull(report_pdc.posizione_bdo),
+              isNotNull(report_pdc.periodo_pdc),
+              sql`(${report_pdc.num_bdo}, ${report_pdc.posizione_bdo}, ${report_pdc.periodo_pdc}) NOT IN (${sql.join(keyedTriples, sql`, `)})`,
+            )
+          : and(inArray(report_pdc.num_bdo, bdoList), isNotNull(report_pdc.posizione_bdo), isNotNull(report_pdc.periodo_pdc)),
+      );
+    // Unkeyed rows have no stable identity, so this upload's list is always
+    // their full replacement for the BDOs it touches.
+    const dropUnkeyed = db
+      .delete(report_pdc)
+      .where(and(inArray(report_pdc.num_bdo, bdoList), or(isNull(report_pdc.posizione_bdo), isNull(report_pdc.periodo_pdc))));
+
+    const statements: PdcBatchItem[] = [dropStaleKeyed, dropUnkeyed];
+    if (unkeyed.length) statements.push(db.insert(report_pdc).values(unkeyed.map(toRow)));
+    if (keyed.length) {
+      statements.push(
+        db
+          .insert(report_pdc)
+          .values(keyed.map(toRow))
+          .onConflictDoUpdate({
+            target: [report_pdc.num_bdo, report_pdc.posizione_bdo, report_pdc.periodo_pdc],
+            set: excludedSet(report_pdc, ['id', 'num_bdo', 'posizione_bdo', 'periodo_pdc']),
+          }),
+      );
+    }
+    // db.batch() sends every statement to Neon's transactional batch
+    // endpoint in a single HTTP round-trip: either all apply or none do.
+    // neon-http has no interactive db.transaction() (see
     // drizzle-orm/neon-http/session.js).
-    await db.batch([
-      db.delete(report_pdc).where(inArray(report_pdc.num_bdo, bdoList)),
-      db.insert(report_pdc).values(kept.map(toRow)),
-    ]);
+    await db.batch(statements as [PdcBatchItem, ...PdcBatchItem[]]);
     return { saved: kept.length, ignored };
   }
 

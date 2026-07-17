@@ -113,37 +113,75 @@ statement SQL è atomico di per sé, senza bisogno di intervento. L'inclusione
 di questa tabella nella formulazione originale del problema era un errore
 dell'audit, corretto qui.
 
-**Implementazione (diversa dal `GOAL` originale, tecnicamente equivalente e
-senza modifiche di schema):** invece di un upsert `ON CONFLICT DO UPDATE` su
-chiave naturale (che avrebbe richiesto nuove unique constraint e avrebbe
-cambiato la semantica "il batch in arrivo sostituisce integralmente le righe
-esistenti per quella chiave" in una semantica additiva), `lib/verbaliAperturaStore.ts`,
-`lib/reportPdcStore.ts` e `replaceBef` in `lib/befStore.ts` ora usano
-`db.batch([delete, insert])`. Il driver `neon-http` non supporta
-`db.transaction()` interattivo (`drizzle-orm/neon-http/session.js`: *"No
-transactions support in neon-http driver"*), ma **`db.batch()` è supportato**:
-internamente chiama `client.transaction([...])` di `@neondatabase/serverless`,
-che invia l'intero batch come un unico `POST` HTTP al Data API di Neon
-(header `Neon-Batch-Isolation-Level` / `Neon-Batch-Read-Only` /
-`Neon-Batch-Deferrable`, propri di una vera transazione lato server). Risultato:
-`DELETE` + `INSERT` restano un solo round-trip HTTP **e** sono atomici — o si
-applicano entrambi o nessuno dei due — senza bisogno di chiavi naturali,
-nuove unique constraint, né di cambiare driver. Per questo lo schema
-(`lib/schema.ts`, `lib/db.ts`, `drizzle/*.sql`) resta invariato: non c'era
-nulla da rendere coerente perché non è stata introdotta alcuna divergenza.
+**Implementazione:** un vero upsert `ON CONFLICT DO UPDATE` su chiave naturale
+composta, per ciascuna tabella:
+- `bef_records`: `(numero_if, num_fattura)` — mirror della regola di business
+  già codificata in `upsertBef` ("Decisione 2B": righe con la stessa fattura
+  sono la stessa riga logica; Postgres non fa mai collidere due `NULL` in un
+  indice unique, quindi le righe senza fattura restano "non deduplicabili"
+  esattamente come nella semantica originale).
+- `report_pdc`: `(num_bdo, posizione_bdo, periodo_pdc)` — la cardinalità già
+  documentata nel commento della tabella ("one per posizione BDO x periodo
+  di competenza").
+- `verbali_apertura`: `(num_bdo, codifica_documento)` — `codifica_documento`
+  è l'identificativo di documento della fonte, il candidato più solido come
+  identità di riga stabile.
+
+Nuove unique index in `lib/schema.ts` (`uniqueIndex(...).on(...)`), propagate
+sia al blocco DDL di self-provisioning in `lib/db.ts` (`SCHEMA_VERSION` 1→2)
+sia alla migration `drizzle/0007_organic_odin.sql` (generata con
+`drizzle-kit generate`). Poiché il vecchio pattern non deduplicava mai le
+righe, un DB Neon già in uso può avere duplicati che violerebbero le nuove
+unique index: entrambi i file eseguono prima una `DELETE` di pulizia
+idempotente (tiene la riga con `id` più alto per ogni gruppo di duplicati),
+poi creano l'indice — verificato che il bootstrap non vada in errore su un
+DB con dati preesistenti (vedi Verifica).
+
+Righe il cui campo chiave è assente (`num_fattura`/`codifica_documento`/
+`posizione_bdo`+`periodo_pdc` mancanti) restano "non deduplicabili": vengono
+bucketizzate a parte e sostituite per intero ad ogni upload per lo stesso
+`num_bdo`/`numero_if` (stesso comportamento del vecchio delete-all, solo
+ristretto a quel sottoinsieme). Per le righe con chiave, una seconda `DELETE`
+mirata rimuove solo quelle il cui valore-chiave non è più presente nel nuovo
+batch (riga rimossa/sostituita in un caricamento più recente) — a differenza
+del vecchio "cancella tutto e reinserisci", qui le righe non toccate dal
+nuovo upload restano *fisicamente* la stessa riga (stesso `id`), aggiornata
+in place via `ON CONFLICT DO UPDATE`.
+
+Le due `DELETE` mirate e l'`INSERT ... ON CONFLICT DO UPDATE` restano comunque
+tre/quattro statement separati: per renderli atomici (il problema originale
+di R-2) sono inviati con `db.batch([...])`, che il driver `neon-http`
+supporta anche se non supporta `db.transaction()` interattivo
+(`drizzle-orm/neon-http/session.js`: *"No transactions support in neon-http
+driver"*) — `db.batch()` chiama `client.transaction([...])` di
+`@neondatabase/serverless`, che invia l'intero batch come un solo `POST` al
+Data API di Neon (header `Neon-Batch-Isolation-Level` ecc., propri di una
+vera transazione lato server): o si applicano tutti gli statement o nessuno.
+Helper condiviso `excludedSet()` in `lib/db.ts` costruisce la clausola `set`
+di `onConflictDoUpdate` da tutte le colonne della tabella meno la chiave,
+evitando di elencarle a mano tre volte.
 
 **Verifica:** `tsc --noEmit` e `next build` puliti. Il driver `neon-http`
 richiede un vero endpoint Neon (non raggiungibile da questo ambiente), quindi
-la verifica è stata fatta estraendo con `.toSQL()` l'SQL realmente compilato
-da Drizzle per le query `delete`/`insert` di ciascuna tabella e
-riproducendo l'esatto comportamento di `db.batch()` (un `BEGIN` seguito dalle
-query, `COMMIT` o rollback in caso di errore) contro un Postgres reale
-locale. Per tutte e tre le tabelle (`verbali_apertura`, `report_pdc`,
-`bef_records`): (a) un errore iniettato dopo il `DELETE` e prima del
-`COMMIT` lascia la riga preesistente intatta — nessuna perdita di dati; (b)
-lo stesso batch rieseguito 3 volte di seguito produce sempre lo stesso stato
-finale (nessuna riga duplicata, nessuna deriva); (c) una riga non correlata
-(chiave diversa) non viene mai toccata.
+la verifica è stata fatta in due parti contro un Postgres reale locale:
+1. **Migrazione su DB con duplicati preesistenti:** applicate le migration
+   `0000`-`0006` (schema pre-R-2), seminati duplicati che violerebbero le
+   nuove unique index, poi applicata `0007_organic_odin.sql` — la
+   deduplicazione rimuove correttamente solo la riga più vecchia di ogni
+   gruppo (le righe BEF senza fattura, non deduplicabili, restano intatte) e
+   le 3 `CREATE UNIQUE INDEX` vanno a buon fine senza errori.
+2. **Comportamento a runtime:** estratto con `.toSQL()` l'SQL realmente
+   compilato da Drizzle per ciascuno statement (delete mirata, delete
+   unkeyed, insert, upsert) ed eseguito contro un DB popolato con uno
+   scenario realistico (riga da aggiornare, riga obsoleta da rimuovere, riga
+   unkeyed da sostituire, riga non correlata) avvolto in `BEGIN/COMMIT` (lo
+   stesso comportamento di `db.batch()`). Per tutte e tre le tabelle:
+   la riga con chiave esistente viene aggiornata **in place** (stesso `id`);
+   la riga obsoleta e quella unkeyed vengono rimosse; la nuova riga unkeyed
+   viene inserita; la riga non correlata (chiave/scope diversi) non viene mai
+   toccata; un errore iniettato dopo le `DELETE` e prima del `COMMIT` lascia
+   intatto lo stato precedente (nessuna perdita dati); lo stesso batch
+   rieseguito più volte di seguito produce sempre lo stesso stato finale.
 
 ---
 

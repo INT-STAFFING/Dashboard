@@ -9,47 +9,79 @@ import {
   integer,
   jsonb,
   uniqueIndex,
+  check,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 // Field names mirror the canonical domain model (see lib/types.ts).
 // `numero_if` is the natural/business key used by the CRUD API routes.
-export const interventi = pgTable('interventi', {
-  id: serial('id').primaryKey(),
-  numero_if: text('numero_if').unique().notNull(),
-  bdo: text('bdo'),
-  titolo: text('titolo').notNull(),
-  ambito: text('ambito'),
-  fornitore: text('fornitore'),
-  ref_aria: text('ref_aria'),
-  ref_fornitore: text('ref_fornitore'),
-  importo: numeric('importo', { precision: 15, scale: 4 }),
-  revenue_2026: numeric('revenue_2026', { precision: 15, scale: 4 }),
-  rev_mesi: jsonb('rev_mesi').$type<number[]>(),
-  // Consuntivazione (actuals) per month, calendar order Gen..Dic (length 12).
-  cons_mesi: jsonb('cons_mesi').$type<number[]>(),
-  modalita_if: text('modalita_if'),
-  attivazione: text('attivazione'), // 'SI' | 'NO'
-  stato: text('stato'), // 'approvato' | 'non elaborato'
-  has_bo: boolean('has_bo').default(false),
-  pdc: text('pdc'), // 'OK' | 'Mancante' | 'InCorso' | 'ND'
-  v_apertura: text('v_apertura'),
-  v_sal: text('v_sal'),
-  bef_status: text('bef_status'),
-  subappalto: boolean('subappalto').default(false),
-  subappaltatore: jsonb('subappaltatore').$type<string[]>(),
-  costo_subappalto: numeric('costo_subappalto', { precision: 15, scale: 4 }),
-  data_assegnazione: date('data_assegnazione'),
-  data_inizio: date('data_inizio'),
-  data_fine: date('data_fine'),
-  azione: text('azione'),
-  note_operative: text('note_operative'),
-  // Manual-edit tracking (drives merge-on-upload behaviour)
-  edited_manually: boolean('edited_manually').default(false),
-  last_edited_by: text('last_edited_by'),
-  last_edited_at: timestamp('last_edited_at'),
-  updated_at: timestamp('updated_at').defaultNow(),
-  deleted_at: timestamp('deleted_at'), // NULL = active record (soft-delete)
-});
+//
+// Doc-status columns (pdc, v_apertura, v_sal, bef_status) and `attivazione`
+// are enum-like text columns whose valid values were previously enforced
+// only in application code (docToDb/docFromDb in lib/store.ts — see R-7 in
+// docs/db-app-refactor-audit.md). The CHECK constraints below make the DB
+// itself reject an out-of-domain value, including writes that bypass the
+// store layer (e.g. the admin SQL console). NULL is always allowed: every
+// one of these columns is nullable, and `x IN (...)` already evaluates to
+// NULL (not FALSE) when x IS NULL, so it never blocks a missing value — the
+// explicit `IS NULL OR` makes that intent readable rather than relying on
+// three-valued-logic trivia.
+export const interventi = pgTable(
+  'interventi',
+  {
+    id: serial('id').primaryKey(),
+    numero_if: text('numero_if').unique().notNull(),
+    bdo: text('bdo'),
+    titolo: text('titolo').notNull(),
+    ambito: text('ambito'),
+    fornitore: text('fornitore'),
+    ref_aria: text('ref_aria'),
+    ref_fornitore: text('ref_fornitore'),
+    importo: numeric('importo', { precision: 15, scale: 4 }),
+    revenue_2026: numeric('revenue_2026', { precision: 15, scale: 4 }),
+    rev_mesi: jsonb('rev_mesi').$type<number[]>(),
+    // Consuntivazione (actuals) per month, calendar order Gen..Dic (length 12).
+    cons_mesi: jsonb('cons_mesi').$type<number[]>(),
+    modalita_if: text('modalita_if'),
+    attivazione: text('attivazione'), // 'SI' | 'NO'
+    stato: text('stato'), // 'approvato' | 'non elaborato'
+    has_bo: boolean('has_bo').default(false),
+    pdc: text('pdc'), // 'OK' | 'Mancante' | 'InCorso' | 'ND'
+    v_apertura: text('v_apertura'),
+    v_sal: text('v_sal'),
+    bef_status: text('bef_status'),
+    subappalto: boolean('subappalto').default(false),
+    subappaltatore: jsonb('subappaltatore').$type<string[]>(),
+    costo_subappalto: numeric('costo_subappalto', { precision: 15, scale: 4 }),
+    data_assegnazione: date('data_assegnazione'),
+    data_inizio: date('data_inizio'),
+    data_fine: date('data_fine'),
+    azione: text('azione'),
+    note_operative: text('note_operative'),
+    // Manual-edit tracking (drives merge-on-upload behaviour)
+    edited_manually: boolean('edited_manually').default(false),
+    last_edited_by: text('last_edited_by'),
+    last_edited_at: timestamp('last_edited_at'),
+    updated_at: timestamp('updated_at').defaultNow(),
+    deleted_at: timestamp('deleted_at'), // NULL = active record (soft-delete)
+  },
+  (t) => ({
+    pdcCheck: check('interventi_pdc_check', sql`${t.pdc} is null or ${t.pdc} in ('OK','Mancante','InCorso','ND')`),
+    vAperturaCheck: check(
+      'interventi_v_apertura_check',
+      sql`${t.v_apertura} is null or ${t.v_apertura} in ('OK','Mancante','InCorso','ND')`,
+    ),
+    vSalCheck: check('interventi_v_sal_check', sql`${t.v_sal} is null or ${t.v_sal} in ('OK','Mancante','InCorso','ND')`),
+    befStatusCheck: check(
+      'interventi_bef_status_check',
+      sql`${t.bef_status} is null or ${t.bef_status} in ('OK','Mancante','InCorso','ND')`,
+    ),
+    attivazioneCheck: check(
+      'interventi_attivazione_check',
+      sql`${t.attivazione} is null or ${t.attivazione} in ('SI','NO')`,
+    ),
+  }),
+);
 
 // Natural key for upsert-on-replace (lib/befStore.ts replaceBef): a BEF row
 // is identified by (numero_if, num_fattura) — mirrors the pre-existing merge
@@ -274,16 +306,25 @@ export const tariffe = pgTable('tariffe', {
 // Application users with role-based access control.
 //  - role:   'ADMIN' (full access, undeletable) | 'USERPLUS' (view+edit) | 'USER' (view only)
 //  - status: 'pending' (awaiting admin approval) | 'approved' | 'rejected'
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  email: text('email').unique().notNull(),
-  name: text('name'),
-  password_hash: text('password_hash').notNull(),
-  role: text('role').notNull().default('USER'),
-  status: text('status').notNull().default('pending'),
-  created_at: timestamp('created_at').defaultNow(),
-  approved_at: timestamp('approved_at'),
-});
+export const users = pgTable(
+  'users',
+  {
+    id: serial('id').primaryKey(),
+    email: text('email').unique().notNull(),
+    name: text('name'),
+    password_hash: text('password_hash').notNull(),
+    role: text('role').notNull().default('USER'),
+    status: text('status').notNull().default('pending'),
+    created_at: timestamp('created_at').defaultNow(),
+    approved_at: timestamp('approved_at'),
+  },
+  (t) => ({
+    // See R-7 in docs/db-app-refactor-audit.md: these were previously
+    // validated only in application code.
+    roleCheck: check('users_role_check', sql`${t.role} in ('ADMIN','USERPLUS','USER')`),
+    statusCheck: check('users_status_check', sql`${t.status} in ('pending','approved','rejected')`),
+  }),
+);
 
 // Per-IF/BO resource allocation: professional figures, working groups,
 // man-days (giorni uomo) and daily rates for each intervento.

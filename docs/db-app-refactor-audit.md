@@ -29,7 +29,7 @@ solo se emerge un bisogno reale.
 | R-4 | Doppia fonte di verità per lo schema DB (DDL bootstrap vs migration) | DB/Manutenibilità | Medio | M | P2 | ✅ Completato |
 | R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 | ⬜ Aperto |
 | R-6 | Cache assente sul payload SSR della dashboard | Rete/Performance | Medio | L | P2 | ⬜ Aperto |
-| R-7 | Nessun vincolo referenziale/di dominio a livello DB | DB/Integrità | Medio | M | P2 | ⬜ Aperto |
+| R-7 | Nessun vincolo referenziale/di dominio a livello DB | DB/Integrità | Medio | M | P2 | ✅ Completato (solo CHECK; FK debole resta backlog) |
 | R-8 | Vocabolario doppio dominio↔DB per gli stati documentali | App/Manutenibilità | Basso | S | P3 | ⬜ Aperto |
 | R-9 | Duplicazione colonne tra le 5 tabelle "report" | DB/Modellazione | Basso | L | P3 | ⬜ Aperto |
 
@@ -347,7 +347,7 @@ della memoria) per evitare dati stantii dopo una modifica non taggata.
 
 ---
 
-## R-7 — Nessun vincolo referenziale/di dominio a livello DB
+## R-7 — Nessun vincolo referenziale/di dominio a livello DB ✅ Completato (parziale)
 
 **Categoria:** DB/Integrità dati · **Impatto:** Medio · **Effort:** M · **Priorità:** P2
 
@@ -377,13 +377,61 @@ solo dove la sentinella di versione lo richiede). Valuta separatamente
 FK.
 
 **Criteri di accettazione:**
-- [ ] Un tentativo di scrivere un valore fuori dominio in una delle colonne
+- [x] Un tentativo di scrivere un valore fuori dominio in una delle colonne
       sopra elencate (via SQL diretto) viene rifiutato dal DB con un errore
       di constraint violation.
-- [ ] Tutte le scritture esistenti dall'applicazione (drawer, inline edit,
+- [x] Tutte le scritture esistenti dall'applicazione (drawer, inline edit,
       upload, admin) continuano a funzionare senza modifiche, perché scrivono
       già solo valori validi.
-- [ ] Migration e DDL di bootstrap coerenti tra loro.
+- [x] Migration e DDL di bootstrap coerenti tra loro.
+
+**Implementazione:** 7 vincoli `CHECK` aggiunti in `lib/schema.ts` (helper
+`check()` di `drizzle-orm/pg-core`, nel terzo argomento di `pgTable` per
+`users` e `interventi`) — `users_role_check`, `users_status_check`,
+`interventi_pdc_check`, `interventi_v_apertura_check`,
+`interventi_v_sal_check`, `interventi_bef_status_check`,
+`interventi_attivazione_check`. Le colonne doc-status/`attivazione` sono
+nullable, quindi ogni CHECK è scritto come `IS NULL OR ... IN (...)` per
+rendere esplicito che un valore mancante resta sempre ammesso.
+
+Propagati in due punti, tenuti volutamente identici:
+- `drizzle/0008_abandoned_captain_cross.sql`, generata con
+  `npx drizzle-kit generate` dal nuovo `lib/schema.ts` (stesso flusso già
+  usato per la migration di R-2);
+- il blocco `DDL` di bootstrap in `lib/db.ts` (`SCHEMA_VERSION` 2 → 3, R-4).
+  Postgres non supporta `ADD CONSTRAINT IF NOT EXISTS`, quindi ogni
+  statement è avvolto in un blocco `DO $$ ... EXCEPTION WHEN
+  duplicate_object THEN NULL; END $$` per restare idempotente come il resto
+  dell'array.
+
+In entrambi i punti ogni `ADD CONSTRAINT` usa `NOT VALID`: un DB Neon già in
+uso può contenere righe storiche fuori dominio mai validate prima (typo,
+dati pre-app, scritture dirette via la console SQL di R-3) che questo
+codebase non può ispezionare in anticipo — `NOT VALID` aggiunge il vincolo
+senza scansionare/validare le righe esistenti, ma lo applica comunque a
+**ogni nuova** scrittura da quel momento in poi. Una successiva
+`VALIDATE CONSTRAINT` (fuori scope qui, non blocca letture/scritture) può
+ripulire i dati storici quando servirà. La FK "debole"
+`if_risorse.numero_if → interventi.numero_if` menzionata nel `GOAL` è stata
+esplicitamente lasciata fuori da questo intervento, come richiesto, e resta
+un intervento futuro separato.
+
+**Verifica:** `tsc --noEmit` e `next build` puliti. Contro un Postgres reale
+locale (l'endpoint Neon non è raggiungibile da questo ambiente): (1) il
+blocco DDL completo applicato a un DB vergine crea tutti e 7 i vincoli, ed è
+idempotente su una seconda esecuzione; (2) un insert diretto con un valore
+fuori dominio su ciascuna delle 4 colonne testate (`users.role`,
+`users.status`, `interventi.pdc`, `interventi.attivazione`) viene rifiutato
+con `violates check constraint`, mentre gli stessi identici valori che
+scrive l'app oggi (`ADMIN`/`USERPLUS`/`USER`, `pending`/`approved`/`rejected`,
+`OK`/`Mancante`/`InCorso`/`ND`, `SI`/`NO`/`NULL`) vengono accettati; (3) uno
+scenario con dati "sporchi" preesistenti (valori fuori dominio già in tabella
+prima del bootstrap, per simulare un DB Neon già in produzione) conferma che
+sia il blocco DDL sia la migration `0008` si applicano **senza errori** e
+senza toccare le righe storiche, mentre una nuova scrittura fuori dominio
+successiva viene comunque rifiutata; (4) i vincoli prodotti dal blocco DDL e
+dalla migration sono stati confrontati (`pg_get_constraintdef`) e sono
+byte-per-byte identici.
 
 ---
 

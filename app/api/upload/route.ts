@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { parseFile, type FileKind, type ParseOutput } from '@/lib/parsers';
 import { upsertInterventiFromUpload, listInterventi } from '@/lib/store';
 import { persistBefFromUpload } from '@/lib/befStore';
@@ -10,6 +11,7 @@ import { persistReportPdcFromUpload } from '@/lib/reportPdcStore';
 import { setSeniority } from '@/lib/portfolio';
 import { updateMeta } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type {
   BefRecord,
   DocStatus,
@@ -42,189 +44,116 @@ const docStatus = (v: unknown): DocStatus =>
 const sval = (v: unknown): string | null =>
   typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
 
-// Normalize an untrusted BEF row (client-side parse) into the canonical shape.
-// A BEF row is meaningful only if it carries the BDO it reports on.
+// Generic normalizer for the "REPORT *" upload shapes below: every field is
+// a trimmed string (sval) unless listed in `numeric`, in which case it's a
+// number (num) or null when absent. `requireAllOf`/`requireAnyOf` decide
+// whether the row carries anything meaningful at all — a row failing that
+// check is dropped (returns null) exactly like the previous hand-written
+// early-return per function.
+function normalizeRow<T>(
+  raw: unknown,
+  fields: readonly string[],
+  opts: { requireAllOf?: string[]; requireAnyOf?: string[]; numeric?: string[] } = {},
+): T | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const numeric = opts.numeric ?? [];
+  const out: Record<string, unknown> = {};
+  for (const f of fields) {
+    if (numeric.includes(f)) {
+      const v = r[f];
+      out[f] = v == null || v === '' ? null : num(v);
+    } else {
+      out[f] = sval(r[f]);
+    }
+  }
+  if (opts.requireAllOf?.some((f) => out[f] == null)) return null;
+  if (opts.requireAnyOf && opts.requireAnyOf.every((f) => out[f] == null)) return null;
+  return out as T;
+}
+
+// A BEF row is meaningful only if it carries the BDO it reports on (or, as a
+// fallback, its own invoice number).
 function normalizeBef(raw: unknown): BefRecord | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as Record<string, unknown>;
-  const num_bdo = sval(r.num_bdo);
-  const num_fattura = sval(r.num_fattura);
-  if (!num_bdo && !num_fattura) return null;
-  const imp = r.importo_ricezione;
-  return {
-    num_bdo,
-    descrizione: sval(r.descrizione),
-    periodo_competenza: sval(r.periodo_competenza),
-    fornitore_reale: sval(r.fornitore_reale),
-    importo_ricezione: imp == null || imp === '' ? null : num(imp),
-    num_fattura,
-    data_fattura: sval(r.data_fattura),
-    data_pagamento: sval(r.data_pagamento),
-  };
+  return normalizeRow<BefRecord>(
+    raw,
+    ['num_bdo', 'descrizione', 'periodo_competenza', 'fornitore_reale', 'importo_ricezione', 'num_fattura', 'data_fattura', 'data_pagamento'],
+    { requireAnyOf: ['num_bdo', 'num_fattura'], numeric: ['importo_ricezione'] },
+  );
 }
 
-// Normalize an untrusted "REPORT Bdo" row (client-side parse) into the
-// canonical shape. Numero BDO is the business key, so a row without it is
-// meaningless.
+// Numero BDO is the business key for a "REPORT Bdo" row, so one without it
+// is meaningless.
 function normalizeReportBdo(raw: unknown): ReportBdoRecord | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as Record<string, unknown>;
-  const num_bdo = sval(r.num_bdo);
-  if (!num_bdo) return null;
-  return {
-    num_bdo,
-    descrizione_bdo: sval(r.descrizione_bdo),
-    nome_file_pif_if: sval(r.nome_file_pif_if),
-    descrizione_pif_if: sval(r.descrizione_pif_if),
-    codifica_documento: sval(r.codifica_documento),
-    stato_documento: sval(r.stato_documento),
-    divisione: sval(r.divisione),
-    centro_costo: sval(r.centro_costo),
-    ultima_pif_approvata: sval(r.ultima_pif_approvata),
-    data_caricamento: sval(r.data_caricamento),
-    utente_caricamento: sval(r.utente_caricamento),
-    fornitore: sval(r.fornitore),
-    roi: sval(r.roi),
-    data_invio_roi: sval(r.data_invio_roi),
-    data_approvazione_roi: sval(r.data_approvazione_roi),
-    data_rifiuto_roi: sval(r.data_rifiuto_roi),
-    pmo: sval(r.pmo),
-    data_invio_pmo: sval(r.data_invio_pmo),
-    data_approvazione_pmo: sval(r.data_approvazione_pmo),
-    data_rifiuto_pmo: sval(r.data_rifiuto_pmo),
-    ctrm: sval(r.ctrm),
-    data_invio_ctrm: sval(r.data_invio_ctrm),
-    data_approvazione_ctrm: sval(r.data_approvazione_ctrm),
-    data_rifiuto_ctrm: sval(r.data_rifiuto_ctrm),
-    versione_corrente: sval(r.versione_corrente),
-    data_versione_corrente: sval(r.data_versione_corrente),
-    data_decorrenza: sval(r.data_decorrenza),
-  };
+  return normalizeRow<ReportBdoRecord>(
+    raw,
+    [
+      'num_bdo', 'descrizione_bdo', 'nome_file_pif_if', 'descrizione_pif_if', 'codifica_documento',
+      'stato_documento', 'divisione', 'centro_costo', 'ultima_pif_approvata', 'data_caricamento',
+      'utente_caricamento', 'fornitore', 'roi', 'data_invio_roi', 'data_approvazione_roi', 'data_rifiuto_roi',
+      'pmo', 'data_invio_pmo', 'data_approvazione_pmo', 'data_rifiuto_pmo', 'ctrm', 'data_invio_ctrm',
+      'data_approvazione_ctrm', 'data_rifiuto_ctrm', 'versione_corrente', 'data_versione_corrente', 'data_decorrenza',
+    ],
+    { requireAllOf: ['num_bdo'] },
+  );
 }
 
-// Normalize an untrusted "REPORT Rdi" row (client-side parse) into the
-// canonical shape. Numero RDI is the business key, so a row without it is
-// meaningless.
+// Numero RDI is the business key for a "REPORT Rdi" row, so one without it
+// is meaningless.
 function normalizeReportRdi(raw: unknown): ReportRdiRecord | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as Record<string, unknown>;
-  const numero_rdi = sval(r.numero_rdi);
-  if (!numero_rdi) return null;
-  return {
-    numero_rdi,
-    descrizione_rdi: sval(r.descrizione_rdi),
-    nome_file_pif_if: sval(r.nome_file_pif_if),
-    codifica_documento: sval(r.codifica_documento),
-    stato_documento: sval(r.stato_documento),
-    divisione: sval(r.divisione),
-    centro_costo: sval(r.centro_costo),
-    ultima_pif_approvata: sval(r.ultima_pif_approvata),
-    descrizione_pif_if: sval(r.descrizione_pif_if),
-    data_caricamento: sval(r.data_caricamento),
-    utente_caricamento: sval(r.utente_caricamento),
-    fornitore: sval(r.fornitore),
-    roi: sval(r.roi),
-    data_invio_roi: sval(r.data_invio_roi),
-    data_rifiuto_roi: sval(r.data_rifiuto_roi),
-    data_approvazione_roi: sval(r.data_approvazione_roi),
-  };
+  return normalizeRow<ReportRdiRecord>(
+    raw,
+    [
+      'numero_rdi', 'descrizione_rdi', 'nome_file_pif_if', 'codifica_documento', 'stato_documento', 'divisione',
+      'centro_costo', 'ultima_pif_approvata', 'descrizione_pif_if', 'data_caricamento', 'utente_caricamento',
+      'fornitore', 'roi', 'data_invio_roi', 'data_rifiuto_roi', 'data_approvazione_roi',
+    ],
+    { requireAllOf: ['numero_rdi'] },
+  );
 }
 
-// Normalize an untrusted "REPORT Apertura" row (client-side parse) into the
-// canonical shape. A row without a BDO carries no useful information.
+// A "REPORT Apertura" row without a BDO carries no useful information.
 function normalizeVerbaleApertura(raw: unknown): VerbaleAperturaRecord | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as Record<string, unknown>;
-  const num_bdo = sval(r.num_bdo);
-  if (!num_bdo) return null;
-  return {
-    num_bdo,
-    descrizione: sval(r.descrizione),
-    nome_file: sval(r.nome_file),
-    codifica_documento: sval(r.codifica_documento),
-    stato_verbale: sval(r.stato_verbale),
-    periodo_competenza: sval(r.periodo_competenza),
-    divisione: sval(r.divisione),
-    centro_costo: sval(r.centro_costo),
-    fornitore: sval(r.fornitore),
-    utente_caricamento_fornitore: sval(r.utente_caricamento_fornitore),
-    data_firma_fornitore: sval(r.data_firma_fornitore),
-    roi: sval(r.roi),
-    data_inserimento_verbale_non_sottomesso: sval(r.data_inserimento_verbale_non_sottomesso),
-    data_sottomissione_verbale_fornitore: sval(r.data_sottomissione_verbale_fornitore),
-    data_firma_roi: sval(r.data_firma_roi),
-    data_rifiuto_roi: sval(r.data_rifiuto_roi),
-    data_invio_roi: sval(r.data_invio_roi),
-  };
+  return normalizeRow<VerbaleAperturaRecord>(
+    raw,
+    [
+      'num_bdo', 'descrizione', 'nome_file', 'codifica_documento', 'stato_verbale', 'periodo_competenza',
+      'divisione', 'centro_costo', 'fornitore', 'utente_caricamento_fornitore', 'data_firma_fornitore', 'roi',
+      'data_inserimento_verbale_non_sottomesso', 'data_sottomissione_verbale_fornitore', 'data_firma_roi',
+      'data_rifiuto_roi', 'data_invio_roi',
+    ],
+    { requireAllOf: ['num_bdo'] },
+  );
 }
 
-// Normalize an untrusted "REPORT Sal" row (client-side parse) into the
-// canonical shape. A row without a BDO carries no useful information.
+// A "REPORT Sal" row without a BDO carries no useful information.
 function normalizeVerbaleSal(raw: unknown): VerbaleSalRecord | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as Record<string, unknown>;
-  const num_bdo = sval(r.num_bdo);
-  if (!num_bdo) return null;
-  return {
-    num_bdo,
-    descrizione: sval(r.descrizione),
-    nome_file: sval(r.nome_file),
-    codifica_documento: sval(r.codifica_documento),
-    stato_verbale: sval(r.stato_verbale),
-    periodo_competenza: sval(r.periodo_competenza),
-    conforme: sval(r.conforme),
-    motivo_conformita: sval(r.motivo_conformita),
-    criticita: sval(r.criticita),
-    motivazione_criticita: sval(r.motivazione_criticita),
-    livelli_servizio_rispettati: sval(r.livelli_servizio_rispettati),
-    divisione: sval(r.divisione),
-    centro_costo: sval(r.centro_costo),
-    fornitore: sval(r.fornitore),
-    utente_caricamento_fornitore: sval(r.utente_caricamento_fornitore),
-    data_firma_fornitore: sval(r.data_firma_fornitore),
-    roi: sval(r.roi),
-    data_inserimento_verbale_non_sottomesso: sval(r.data_inserimento_verbale_non_sottomesso),
-    data_sottomissione_verbale_fornitore: sval(r.data_sottomissione_verbale_fornitore),
-    data_firma_roi: sval(r.data_firma_roi),
-    data_rifiuto_roi: sval(r.data_rifiuto_roi),
-    data_invio_roi: sval(r.data_invio_roi),
-  };
+  return normalizeRow<VerbaleSalRecord>(
+    raw,
+    [
+      'num_bdo', 'descrizione', 'nome_file', 'codifica_documento', 'stato_verbale', 'periodo_competenza',
+      'conforme', 'motivo_conformita', 'criticita', 'motivazione_criticita', 'livelli_servizio_rispettati',
+      'divisione', 'centro_costo', 'fornitore', 'utente_caricamento_fornitore', 'data_firma_fornitore', 'roi',
+      'data_inserimento_verbale_non_sottomesso', 'data_sottomissione_verbale_fornitore', 'data_firma_roi',
+      'data_rifiuto_roi', 'data_invio_roi',
+    ],
+    { requireAllOf: ['num_bdo'] },
+  );
 }
 
-// Normalize an untrusted "REPORT Pdc" row (client-side parse) into the
-// canonical shape. A row without a BDO carries no useful information.
+// A "REPORT Pdc" row without a BDO carries no useful information.
 function normalizeReportPdc(raw: unknown): ReportPdcRecord | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as Record<string, unknown>;
-  const num_bdo = sval(r.num_bdo);
-  if (!num_bdo) return null;
-  return {
-    num_bdo,
-    posizione_bdo: sval(r.posizione_bdo),
-    descrizione_posizione: sval(r.descrizione_posizione),
-    importo_posizione: r.importo_posizione == null ? null : num(r.importo_posizione),
-    codice_pdc: sval(r.codice_pdc),
-    periodo_pdc: sval(r.periodo_pdc),
-    data_creazione: sval(r.data_creazione),
-    utente_caricamento: sval(r.utente_caricamento),
-    codifica_documento: sval(r.codifica_documento),
-    stato_pdc: sval(r.stato_pdc),
-    divisione: sval(r.divisione),
-    centro_costo: sval(r.centro_costo),
-    fornitore_rti: sval(r.fornitore_rti),
-    roi: sval(r.roi),
-    data_invio_roi: sval(r.data_invio_roi),
-    data_rifiuto_roi: sval(r.data_rifiuto_roi),
-    data_approvazione_roi: sval(r.data_approvazione_roi),
-    fornitore_prestazione: sval(r.fornitore_prestazione),
-    service_line: sval(r.service_line),
-    tipo_fornitura: sval(r.tipo_fornitura),
-    rdi: sval(r.rdi),
-    posizione_rdi: sval(r.posizione_rdi),
-    subappalto: sval(r.subappalto),
-    subappaltatore: sval(r.subappaltatore),
-    costo_subappalto: r.costo_subappalto == null ? null : num(r.costo_subappalto),
-  };
+  return normalizeRow<ReportPdcRecord>(
+    raw,
+    [
+      'num_bdo', 'posizione_bdo', 'descrizione_posizione', 'importo_posizione', 'codice_pdc', 'periodo_pdc',
+      'data_creazione', 'utente_caricamento', 'codifica_documento', 'stato_pdc', 'divisione', 'centro_costo',
+      'fornitore_rti', 'roi', 'data_invio_roi', 'data_rifiuto_roi', 'data_approvazione_roi',
+      'fornitore_prestazione', 'service_line', 'tipo_fornitura', 'rdi', 'posizione_rdi', 'subappalto',
+      'subappaltatore', 'costo_subappalto',
+    ],
+    { requireAllOf: ['num_bdo'], numeric: ['importo_posizione', 'costo_subappalto'] },
+  );
 }
 
 // Normalize an untrusted intervento object (from a client-side parse) into the
@@ -372,6 +301,7 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
   }
   // Allinea la data "dati al" mostrata nell'header al momento del caricamento.
   await updateMeta({ generato: new Date().toISOString() });
+  revalidateTag(DASHBOARD_DATA_TAG);
   return {
     inserted,
     updated,

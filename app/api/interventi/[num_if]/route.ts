@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import {
   getIntervento,
   updateIntervento,
   softDeleteIntervento,
 } from '@/lib/store';
 import { getSessionUser, canView, canEdit } from '@/lib/auth';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type { InterventoInput } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -43,6 +45,7 @@ export async function PUT(req: Request, { params }: Params) {
     if (!updated) {
       return NextResponse.json({ ok: false, error: 'Non trovato' }, { status: 404 });
     }
+    revalidateTag(DASHBOARD_DATA_TAG);
     return NextResponse.json({ ok: true, updated });
   } catch (e) {
     return NextResponse.json(
@@ -59,5 +62,6 @@ export async function DELETE(_req: Request, { params }: Params) {
   if (!ok) {
     return NextResponse.json({ ok: false, error: 'Non trovato' }, { status: 404 });
   }
+  revalidateTag(DASHBOARD_DATA_TAG);
   return NextResponse.json({ ok: true });
 }

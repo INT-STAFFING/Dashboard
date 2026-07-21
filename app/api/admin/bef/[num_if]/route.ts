@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { getSessionUser, isAdmin } from '@/lib/auth';
 import { listBef, replaceBef } from '@/lib/befStore';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type { BefRow } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -28,5 +30,6 @@ export async function PUT(req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, error: 'JSON non valido' }, { status: 400 });
   }
   const saved = await replaceBef(params.num_if, body.bef || []);
+  revalidateTag(DASHBOARD_DATA_TAG);
   return NextResponse.json({ ok: true, bef: saved });
 }

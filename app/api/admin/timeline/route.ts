@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { getSessionUser, isAdmin } from '@/lib/auth';
 import { getTimeline, setTimeline } from '@/lib/portfolio';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type { Timeline } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -40,5 +42,7 @@ export async function PUT(req: Request) {
       : cur.consuntivazione_2026,
     anno: body.anno ?? cur.anno,
   };
-  return NextResponse.json({ ok: true, timeline: await setTimeline(next) });
+  const saved = await setTimeline(next);
+  revalidateTag(DASHBOARD_DATA_TAG);
+  return NextResponse.json({ ok: true, timeline: saved });
 }

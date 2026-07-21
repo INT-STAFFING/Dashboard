@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createIntervento, listInterventi } from '@/lib/store';
 import { getSessionUser, canView, canEdit } from '@/lib/auth';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type { InterventoInput } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -37,6 +39,7 @@ export async function POST(req: Request) {
   }
   try {
     const created = await createIntervento(body, me!.email);
+    revalidateTag(DASHBOARD_DATA_TAG);
     return NextResponse.json({ ok: true, created }, { status: 201 });
   } catch (e) {
     return NextResponse.json(

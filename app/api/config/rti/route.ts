@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { updateRtiConfig, type RtiUpdate } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,6 +22,7 @@ export async function PUT(req: Request) {
   }
   try {
     const updated = await updateRtiConfig(body);
+    revalidateTag(DASHBOARD_DATA_TAG);
     return NextResponse.json({ ok: true, rti: updated });
   } catch (e) {
     return NextResponse.json(

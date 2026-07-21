@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { getSessionUser, isAdmin } from '@/lib/auth';
 import { getSeniority, setSeniority } from '@/lib/portfolio';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type { Seniority } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -32,5 +34,6 @@ export async function PUT(req: Request) {
     tariffa: r.tariffa == null || (r.tariffa as unknown) === '' ? null : Number(r.tariffa),
   }));
   const saved = await setSeniority(rows);
+  revalidateTag(DASHBOARD_DATA_TAG);
   return NextResponse.json({ ok: true, seniority: saved });
 }

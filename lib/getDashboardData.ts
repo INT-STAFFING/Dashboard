@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { listInterventi } from './store';
 import { quotaValFromRti } from './config';
 import { getMultiYearTimeline } from './timelineStore';
@@ -7,12 +8,22 @@ import { SEED_FORNITORI, SEED_RTI, SEED_META, SEED_SENIORITY, SEED_MODALITA, SEE
 import { computeKpi, revenueMensile, distribuzioneAmbito, rtiSummary } from './queries';
 import type { DashboardData, RtiConfig, Meta, Seniority, ModalitaAgg, Timeline } from './types';
 
-// Server-side assembly of the full dashboard payload (used by SSR + GET /api/data).
-// With the neon-http driver every query is an HTTP round-trip, so the payload
-// is assembled from 4 parallel fetches instead of 10: the five app_config keys
+// Cache tag for the assembled dashboard payload (R-6, see
+// docs/db-app-refactor-audit.md). The data only changes on an explicit
+// mutation (upload, interventi CRUD, admin gara/tariffe/risorse/timeline,
+// config RTI) — never on a schedule — so this is invalidated exclusively via
+// `revalidateTag(DASHBOARD_DATA_TAG)` from every route handler that writes to
+// any table this payload reads from. Every one of those call sites is listed
+// in docs/db-app-refactor-audit.md (R-6) so a future table added to this
+// payload can be cross-checked against the same list.
+export const DASHBOARD_DATA_TAG = 'dashboard-data';
+
+// Server-side assembly of the full dashboard payload (used by SSR). With the
+// neon-http driver every query is an HTTP round-trip, so the payload is
+// assembled from 4 parallel fetches instead of 10: the five app_config keys
 // travel in one batched select, quota_val is derived from the rti config
 // already in hand, and both BEF aggregates share a single bef_records read.
-export async function getDashboardData(): Promise<DashboardData & {
+async function assembleDashboardData(): Promise<DashboardData & {
   revenue_mensile: ReturnType<typeof revenueMensile>;
 }> {
   const [all, settings, timeline_my, befRows] = await Promise.all([
@@ -45,3 +56,11 @@ export async function getDashboardData(): Promise<DashboardData & {
     distribuzione_ambito: distribuzioneAmbito(all),
   };
 }
+
+// `unstable_cache` persists the payload (per deployment/runtime) until
+// `revalidateTag(DASHBOARD_DATA_TAG)` is called, instead of re-running the 4
+// parallel DB fetches above on every `/dashboard` render. No time-based
+// `revalidate` is set — see the tag comment above for why.
+export const getDashboardData = unstable_cache(assembleDashboardData, ['dashboard-data'], {
+  tags: [DASHBOARD_DATA_TAG],
+});

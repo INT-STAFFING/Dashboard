@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { getSessionUser, isAdmin } from '@/lib/auth';
 import { setTimelineYear, getMultiYearTimeline } from '@/lib/timelineStore';
+import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -31,6 +33,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: false, error: 'Anno non valido' }, { status: 400 });
   }
   await setTimelineYear(anno, v12(body.revenue), v12(body.consuntivato));
+  revalidateTag(DASHBOARD_DATA_TAG);
   return NextResponse.json({ ok: true, timeline_my: await getMultiYearTimeline() });
 }
 

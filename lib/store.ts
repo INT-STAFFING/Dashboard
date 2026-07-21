@@ -4,24 +4,6 @@ import { interventi as interventiTable } from './schema';
 import { SEED_INTERVENTI } from './seed';
 import type { DocStatus, Intervento, InterventoInput } from './types';
 
-// ---------------------------------------------------------------------------
-// Doc-status mapping (domain <-> DB text)
-// ---------------------------------------------------------------------------
-const DOC_TO_DB: Record<DocStatus, string> = {
-  ok: 'OK',
-  ko: 'Mancante',
-  prog: 'InCorso',
-  nd: 'ND',
-};
-const DOC_FROM_DB: Record<string, DocStatus> = {
-  OK: 'ok',
-  Mancante: 'ko',
-  InCorso: 'prog',
-  ND: 'nd',
-};
-const docToDb = (s: DocStatus) => DOC_TO_DB[s] ?? 'ND';
-const docFromDb = (s: string | null): DocStatus => (s ? DOC_FROM_DB[s] ?? 'nd' : 'nd');
-
 const num = (v: unknown): number => (v == null ? 0 : Number(v) || 0);
 
 type Row = typeof interventiTable.$inferSelect;
@@ -43,10 +25,10 @@ function rowToIntervento(r: Row): Intervento {
     attivazione: r.attivazione,
     stato: r.stato ?? 'non elaborato',
     has_bo: Boolean(r.has_bo),
-    pdc: docFromDb(r.pdc),
-    v_apertura: docFromDb(r.v_apertura),
-    v_sal: docFromDb(r.v_sal),
-    bef: docFromDb(r.bef_status),
+    pdc: (r.pdc as DocStatus) ?? 'nd',
+    v_apertura: (r.v_apertura as DocStatus) ?? 'nd',
+    v_sal: (r.v_sal as DocStatus) ?? 'nd',
+    bef: (r.bef_status as DocStatus) ?? 'nd',
     subappalto: Boolean(r.subappalto),
     subappaltatore: Array.isArray(r.subappaltatore) ? r.subappaltatore : [],
     costo_subappalto: num(r.costo_subappalto),
@@ -78,10 +60,10 @@ function interventoToRow(i: Intervento): typeof interventiTable.$inferInsert {
     attivazione: i.attivazione,
     stato: i.stato,
     has_bo: i.has_bo,
-    pdc: docToDb(i.pdc),
-    v_apertura: docToDb(i.v_apertura),
-    v_sal: docToDb(i.v_sal),
-    bef_status: docToDb(i.bef),
+    pdc: i.pdc,
+    v_apertura: i.v_apertura,
+    v_sal: i.v_sal,
+    bef_status: i.bef,
     subappalto: i.subappalto,
     subappaltatore: i.subappaltatore,
     costo_subappalto: String(i.costo_subappalto),

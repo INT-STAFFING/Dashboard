@@ -31,7 +31,7 @@ export const interventi = pgTable('interventi', {
   attivazione: text('attivazione'), // 'SI' | 'NO'
   stato: text('stato'), // 'approvato' | 'non elaborato'
   has_bo: boolean('has_bo').default(false),
-  pdc: text('pdc'), // 'OK' | 'Mancante' | 'InCorso' | 'ND'
+  pdc: text('pdc'), // 'ok' | 'ko' | 'prog' | 'nd' (DocStatus)
   v_apertura: text('v_apertura'),
   v_sal: text('v_sal'),
   bef_status: text('bef_status'),

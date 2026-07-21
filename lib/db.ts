@@ -360,6 +360,51 @@ const DDL: string[] = [
       CHECK ("attivazione" IS NULL OR "attivazione" IN ('SI','NO')) NOT VALID;
   EXCEPTION WHEN duplicate_object THEN NULL;
   END $$`,
+  // Doc-status columns now persist the DocStatus domain directly
+  // ('ok'|'ko'|'prog'|'nd') instead of the legacy display strings
+  // ('OK'|'Mancante'|'InCorso'|'ND') — see R-8 in
+  // docs/db-app-refactor-audit.md. The v3 DO blocks above added the CHECK
+  // constraints by name against the old domain, so simply re-running an
+  // "ADD CONSTRAINT" with the same name would be swallowed by
+  // duplicate_object without ever loosening it — each constraint is dropped
+  // first (idempotent via IF EXISTS), the column backfilled, then the
+  // constraint re-added against the new domain.
+  `ALTER TABLE "interventi" DROP CONSTRAINT IF EXISTS "interventi_pdc_check"`,
+  `ALTER TABLE "interventi" DROP CONSTRAINT IF EXISTS "interventi_v_apertura_check"`,
+  `ALTER TABLE "interventi" DROP CONSTRAINT IF EXISTS "interventi_v_sal_check"`,
+  `ALTER TABLE "interventi" DROP CONSTRAINT IF EXISTS "interventi_bef_status_check"`,
+  `UPDATE "interventi" SET "pdc" = CASE "pdc"
+      WHEN 'OK' THEN 'ok' WHEN 'Mancante' THEN 'ko' WHEN 'InCorso' THEN 'prog' WHEN 'ND' THEN 'nd' ELSE 'nd' END
+    WHERE "pdc" IS NULL OR "pdc" NOT IN ('ok','ko','prog','nd')`,
+  `UPDATE "interventi" SET "v_apertura" = CASE "v_apertura"
+      WHEN 'OK' THEN 'ok' WHEN 'Mancante' THEN 'ko' WHEN 'InCorso' THEN 'prog' WHEN 'ND' THEN 'nd' ELSE 'nd' END
+    WHERE "v_apertura" IS NULL OR "v_apertura" NOT IN ('ok','ko','prog','nd')`,
+  `UPDATE "interventi" SET "v_sal" = CASE "v_sal"
+      WHEN 'OK' THEN 'ok' WHEN 'Mancante' THEN 'ko' WHEN 'InCorso' THEN 'prog' WHEN 'ND' THEN 'nd' ELSE 'nd' END
+    WHERE "v_sal" IS NULL OR "v_sal" NOT IN ('ok','ko','prog','nd')`,
+  `UPDATE "interventi" SET "bef_status" = CASE "bef_status"
+      WHEN 'OK' THEN 'ok' WHEN 'Mancante' THEN 'ko' WHEN 'InCorso' THEN 'prog' WHEN 'ND' THEN 'nd' ELSE 'nd' END
+    WHERE "bef_status" IS NULL OR "bef_status" NOT IN ('ok','ko','prog','nd')`,
+  `DO $$ BEGIN
+    ALTER TABLE "interventi" ADD CONSTRAINT "interventi_pdc_check"
+      CHECK ("pdc" IS NULL OR "pdc" IN ('ok','ko','prog','nd')) NOT VALID;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END $$`,
+  `DO $$ BEGIN
+    ALTER TABLE "interventi" ADD CONSTRAINT "interventi_v_apertura_check"
+      CHECK ("v_apertura" IS NULL OR "v_apertura" IN ('ok','ko','prog','nd')) NOT VALID;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END $$`,
+  `DO $$ BEGIN
+    ALTER TABLE "interventi" ADD CONSTRAINT "interventi_v_sal_check"
+      CHECK ("v_sal" IS NULL OR "v_sal" IN ('ok','ko','prog','nd')) NOT VALID;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END $$`,
+  `DO $$ BEGIN
+    ALTER TABLE "interventi" ADD CONSTRAINT "interventi_bef_status_check"
+      CHECK ("bef_status" IS NULL OR "bef_status" IN ('ok','ko','prog','nd')) NOT VALID;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END $$`,
 ];
 
 // Bump this whenever the DDL array above changes (new table, new column, new
@@ -373,7 +418,11 @@ const DDL: string[] = [
 //       report_pdc, verbali_apertura (R-2), with duplicate cleanup first
 //   3 — CHECK constraints on enum-like columns: users.role, users.status,
 //       interventi.pdc/v_apertura/v_sal/bef_status/attivazione (R-7)
-const SCHEMA_VERSION = 3;
+//   4 — doc-status columns backfilled from the legacy display strings
+//       ('OK'/'Mancante'/'InCorso'/'ND') to the DocStatus domain values
+//       ('ok'/'ko'/'prog'/'nd'), with the R-7 CHECK constraints updated to
+//       match (R-8)
+const SCHEMA_VERSION = 4;
 const SCHEMA_VERSION_KEY = 'schema_version';
 
 // Reads the current schema_version from app_config with a single round-trip.

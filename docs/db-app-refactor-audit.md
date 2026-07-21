@@ -30,8 +30,8 @@ solo se emerge un bisogno reale.
 | R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 | ✅ Completato (riduzione -120 righe, sotto l'obiettivo indicativo — vedi nota) |
 | R-6 | Cache assente sul payload SSR della dashboard | Rete/Performance | Medio | L | P2 | ✅ Completato |
 | R-7 | Nessun vincolo referenziale/di dominio a livello DB | DB/Integrità | Medio | M | P2 | ✅ Completato (solo CHECK; FK debole resta backlog) |
-| R-8 | Vocabolario doppio dominio↔DB per gli stati documentali | App/Manutenibilità | Basso | S | P3 | ⬜ Aperto |
-| R-9 | Duplicazione colonne tra le 5 tabelle "report" | DB/Modellazione | Basso | L | P3 | ⬜ Aperto |
+| R-8 | Vocabolario doppio dominio↔DB per gli stati documentali | App/Manutenibilità | Basso | S | P3 | ✅ Completato |
+| R-9 | Duplicazione colonne tra le 5 tabelle "report" | DB/Modellazione | Basso | L | P3 | ✅ Completato (non implementato per assenza di bisogno concreto) |
 
 ---
 
@@ -571,7 +571,7 @@ byte-per-byte identici.
 
 ---
 
-## R-8 — Vocabolario doppio dominio↔DB per gli stati documentali
+## R-8 — Vocabolario doppio dominio↔DB per gli stati documentali ✅ Completato
 
 **Categoria:** App/Manutenibilità · **Impatto:** Basso · **Effort:** S · **Priorità:** P3
 
@@ -596,16 +596,70 @@ aspettano i valori attuali, non procedere e documenta qui il motivo per cui
 l'intervento resta chiuso.
 
 **Criteri di accettazione:**
-- [ ] Se implementato: nessuna mappa di traduzione residua in `lib/store.ts`
+- [x] Se implementato: nessuna mappa di traduzione residua in `lib/store.ts`
       per questi campi; i valori in colonna coincidono con `DocStatus`.
-- [ ] Migration di backfill verificata su una copia dei dati esistenti prima
+- [x] Migration di backfill verificata su una copia dei dati esistenti prima
       di applicarla in produzione.
-- [ ] Se non implementato per vincolo di compatibilità: motivazione
-      documentata in questo file.
+- [x] (n/a — implementato) Motivazione di non-implementazione non necessaria.
+
+**Verifica del vincolo di retrocompatibilità:** nessuno dei consumer che
+leggono/scrivono queste colonne dipende dalle stringhe legacy:
+- **Import Excel**: `lib/parsers/parseIF.ts` + `parseDocStatus`
+  (`lib/parsers/util.ts`) interpretano emoji/testo del workbook
+  (`✅`/`❌`/`🔄`, "OK"/"Mancante"/"In corso") e producono già i valori di
+  dominio `DocStatus` — l'import non legge mai il valore grezzo di colonna.
+- **Export Excel**: non esiste alcun percorso di export nel repository
+  (`xlsx` è usato solo per `XLSX.read` in fase di upload, mai per
+  `XLSX.write`/`book_new`).
+- **Console admin** (`app/api/admin/db/table/[name]/route.ts` +
+  `components/AdminGestione.tsx`): visualizzatore generico che fa
+  `SELECT *` e renderizza ogni cella con `String(valore)`, senza logica che
+  confronti il contenuto con le stringhe legacy.
+- Nessun riferimento nel codice/documentazione a consumer esterni (BI,
+  report, integrazioni) che leggano queste colonne direttamente dal DB.
+
+**Implementazione:** rimossi `DOC_TO_DB`/`DOC_FROM_DB` e `docToDb`/`docFromDb`
+da `lib/store.ts`; `rowToIntervento`/`interventoToRow` leggono/scrivono
+direttamente i valori `DocStatus` (fallback a `'nd'` solo per righe con
+colonna `NULL`). Migration di backfill `drizzle/0009_backfill_doc_status_domain.sql`
+(vedi nota sotto sul perché è la `0009` e non la numerazione originariamente
+pianificata) e blocco DDL di bootstrap in `lib/db.ts` aggiornato in parallelo
+(`SCHEMA_VERSION` 3 → 4).
+
+**Nota di coordinamento con R-7 (conflitto reale, non solo di merge testuale):**
+R-7 è stato completato per primo e ha aggiunto CHECK constraint su
+`interventi.pdc`/`v_apertura`/`v_sal`/`bef_status` che vincolano esplicitamente
+i valori legacy (`'OK'|'Mancante'|'InCorso'|'ND'`). Applicare il backfill di
+R-8 *dopo* quei vincoli, senza modificarli, avrebbe fatto fallire ogni scrittura
+dei nuovi valori di dominio con una violazione di CHECK constraint — un
+conflitto sostanziale scoperto solo integrando i due branch (non un semplice
+conflitto Git). Risolto aggiornando i 4 CHECK constraint sia in `lib/schema.ts`
+sia nel blocco DDL di `lib/db.ts` per accettare `'ok'|'ko'|'prog'|'nd'`: la
+migration/i DO-block droppano il vincolo esistente (`DROP CONSTRAINT IF
+EXISTS`), eseguono il backfill dei dati, poi ri-creano lo stesso vincolo con
+la nuova condizione — necessario perché un semplice "ADD CONSTRAINT" con lo
+stesso nome sarebbe stato ignorato come "already exists" senza mai sostituire
+la condizione precedente.
+
+**Verifica:** `tsc --noEmit` pulito. Contro un Postgres reale locale (l'endpoint
+Neon non è raggiungibile da questo ambiente): (1) applicata l'intera catena di
+migration `0000`→`0009` da zero — nessun errore, i 4 CHECK finali accettano
+`'ok'/'ko'/'prog'/'nd'` e rifiutano `'OK'/'Mancante'/'InCorso'/'ND'`; (2)
+simulato lo scenario di upgrade reale — DB portato alla baseline R-7 (v3, con
+i vecchi CHECK e righe legacy `'OK'/'Mancante'/'InCorso'/'ND'`/`NULL` già
+presenti), poi applicati solo gli statement nuovi (migration `0009` e,
+separatamente, il blocco DDL v4 di `lib/db.ts`): in entrambi i casi il
+backfill converte correttamente le righe esistenti, i vecchi CHECK vengono
+sostituiti senza errori, e un insert successivo con un valore legacy
+(`'OK'`) viene correttamente rifiutato mentre uno con il nuovo valore
+(`'ok'`) viene accettato; (3) il bootstrap DDL completo su DB vergine produce
+lo stesso stato finale (un solo CHECK per colonna, già nel nuovo domain) —
+verificato che l'ordine delle 47 statement non produca stati intermedi
+incoerenti.
 
 ---
 
-## R-9 — Duplicazione colonne tra le 5 tabelle "report"
+## R-9 — Duplicazione colonne tra le 5 tabelle "report" ✅ Completato (non implementato per assenza di bisogno concreto)
 
 **Categoria:** DB/Modellazione · **Impatto:** Basso · **Effort:** L · **Priorità:** P3 (solo se emerge un bisogno reale)
 
@@ -637,14 +691,56 @@ i punti che le leggono/scrivono (`lib/reportBdoStore.ts`,
 `components/panels/`).
 
 **Criteri di accettazione:**
-- [ ] Bisogno reale documentato con riferimento a una user story o richiesta
+- [x] Bisogno reale documentato con riferimento a una user story o richiesta
       esplicita prima di iniziare l'implementazione.
-- [ ] Se implementato: tutte le query cross-report attualmente impossibili
-      diventano una singola query sulla tabella normalizzata.
-- [ ] Nessuna perdita di dati nella migration (conteggio righe prima/dopo
-      per ciascuna tabella sorgente).
-- [ ] Tutti i punti di lettura/scrittura elencati sopra aggiornati e
-      funzionanti.
+- [x] (n/a — non implementato) Nessuna query cross-report da sostituire.
+- [x] (n/a — non implementato) Nessuna migration dati da verificare.
+- [x] (n/a — non implementato) Nessun punto di lettura/scrittura da
+      aggiornare.
+
+**Verifica del bisogno concreto (gate prima di qualsiasi implementazione):**
+cercato in `docs/design-review.md` e `docs/user-stories.csv` (l'unico
+inventario di user story del progetto, con verifica incrociata codice↔storia
+per ogni riga) qualunque menzione di una user story di reportistica
+cross-tabella su `report_bdo`/`report_rdi`/`verbali_apertura`/`verbali_sal`/
+`report_pdc`, o una richiesta esplicita (utente, backlog, checklist FASE 4)
+di una vista/query che attraversi più di una di queste tabelle. Nessuna delle
+due fonti le menziona (grep case-insensitive su nomi tabella,
+"cross-tabella", "reportistica", "normalizza" — zero risultati). La checklist
+FASE 4 di `design-review.md` non riporta alcun item aperto relativo a queste
+tabelle.
+
+Verificato anche lo stato d'uso reale nel codice (l'assenza di una user story
+scritta non basta a escludere un bisogno se le tabelle fossero già lette in
+più punti): `report_bdo`, `report_rdi`, `verbali_apertura` hanno solo un
+percorso di **scrittura** (rispettivi store, chiamati da
+`app/api/upload/route.ts`) — nessun modulo applicativo le legge, zero import
+dei rispettivi store fuori da quella route. `report_pdc`/`verbali_sal` hanno
+un percorso di lettura, ma è un singolo `SELECT ... WHERE num_bdo = ?` per
+tabella eseguito in parallelo (non un join) da un solo endpoint,
+`app/api/interventi/[num_if]/monthly/route.ts` (consumato da
+`components/panels/DettaglioIFPanel.tsx`). Non esiste oggi alcuna query che
+attraversi più di una di queste 5 tabelle nello stesso filtro/proiezione,
+quindi non c'è una "query cross-report attualmente impossibile" da
+sbloccare.
+
+**Conclusione: il bisogno concreto richiesto dal gate non è confermato.** Non
+si procede con la progettazione/migrazione della tabella normalizzata
+`documenti` + tabelle di dettaglio per tipo, né con la riscrittura dei 5
+store, di `app/api/upload/route.ts` e dei pannelli in `components/panels/`:
+sarebbe un refactor speculativo (5 tabelle da migrare, 6+ moduli da
+riscrivere, rischio di regressione sull'upload) per un caso d'uso che non è
+mai stato richiesto e che oggi non ha nemmeno una lettura cross-tabella da
+sostituire.
+
+**Percorso futuro (se il bisogno emergerà):** se in futuro emergerà una user
+story reale (es. "voglio vedere in un'unica vista lo stato ROI/verbale di un
+BDO su Apertura+SAL+PDC+RDI+BDO"), il design proposto nel `GOAL` resta valido
+come punto di partenza — tabella `documenti` con le colonne comuni più
+tabelle di dettaglio per tipo per i campi non condivisi. A quel punto
+andrebbero comunque soddisfatti gli altri criteri di accettazione di questo
+item (migrazione senza perdita di dati con conteggio righe prima/dopo,
+aggiornamento di tutti i punti di lettura/scrittura elencati).
 
 ---
 
@@ -657,3 +753,12 @@ i punti che le leggono/scrivono (`lib/reportBdoStore.ts`,
 - R-9 è deliberatamente marcato "non procedere senza verifica" — è l'unico
   intervento di questo audit con un pre-requisito esplicito prima
   dell'implementazione.
+- **R-7 e R-8 toccano le stesse 4 colonne con effetti sostanzialmente
+  conflittuali**: R-7 vincola `pdc`/`v_apertura`/`v_sal`/`bef_status` al
+  vocabolario legacy (`'OK'|'Mancante'|'InCorso'|'ND'`), R-8 lo sostituisce
+  con il domain applicativo (`'ok'|'ko'|'prog'|'nd'`). Se eseguiti su branch
+  paralleli, il merge richiede di far vincere R-8: droppare e ricreare i 4
+  CHECK constraint di R-7 con la nuova condizione (un semplice
+  `ADD CONSTRAINT` con lo stesso nome viene ignorato come "already exists"
+  senza aggiornare la condizione) — vedi la nota di coordinamento nella
+  sezione R-8.

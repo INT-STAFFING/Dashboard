@@ -64,6 +64,13 @@
       "when": 1784279276645,
       "tag": "0008_abandoned_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784636208396,
+      "tag": "0009_backfill_doc_status_domain",
+      "breakpoints": true
     }
   ]
 }

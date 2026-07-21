@@ -25,7 +25,8 @@ import { sql } from 'drizzle-orm';
 // one of these columns is nullable, and `x IN (...)` already evaluates to
 // NULL (not FALSE) when x IS NULL, so it never blocks a missing value — the
 // explicit `IS NULL OR` makes that intent readable rather than relying on
-// three-valued-logic trivia.
+// three-valued-logic trivia. Doc-status values are the DocStatus domain
+// itself (`'ok'|'ko'|'prog'|'nd'`), not the legacy display strings — see R-8.
 export const interventi = pgTable(
   'interventi',
   {
@@ -46,7 +47,7 @@ export const interventi = pgTable(
     attivazione: text('attivazione'), // 'SI' | 'NO'
     stato: text('stato'), // 'approvato' | 'non elaborato'
     has_bo: boolean('has_bo').default(false),
-    pdc: text('pdc'), // 'OK' | 'Mancante' | 'InCorso' | 'ND'
+    pdc: text('pdc'), // 'ok' | 'ko' | 'prog' | 'nd' (DocStatus)
     v_apertura: text('v_apertura'),
     v_sal: text('v_sal'),
     bef_status: text('bef_status'),
@@ -66,15 +67,15 @@ export const interventi = pgTable(
     deleted_at: timestamp('deleted_at'), // NULL = active record (soft-delete)
   },
   (t) => ({
-    pdcCheck: check('interventi_pdc_check', sql`${t.pdc} is null or ${t.pdc} in ('OK','Mancante','InCorso','ND')`),
+    pdcCheck: check('interventi_pdc_check', sql`${t.pdc} is null or ${t.pdc} in ('ok','ko','prog','nd')`),
     vAperturaCheck: check(
       'interventi_v_apertura_check',
-      sql`${t.v_apertura} is null or ${t.v_apertura} in ('OK','Mancante','InCorso','ND')`,
+      sql`${t.v_apertura} is null or ${t.v_apertura} in ('ok','ko','prog','nd')`,
     ),
-    vSalCheck: check('interventi_v_sal_check', sql`${t.v_sal} is null or ${t.v_sal} in ('OK','Mancante','InCorso','ND')`),
+    vSalCheck: check('interventi_v_sal_check', sql`${t.v_sal} is null or ${t.v_sal} in ('ok','ko','prog','nd')`),
     befStatusCheck: check(
       'interventi_bef_status_check',
-      sql`${t.bef_status} is null or ${t.bef_status} in ('OK','Mancante','InCorso','ND')`,
+      sql`${t.bef_status} is null or ${t.bef_status} in ('ok','ko','prog','nd')`,
     ),
     attivazioneCheck: check(
       'interventi_attivazione_check',

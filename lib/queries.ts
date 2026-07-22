@@ -1,5 +1,40 @@
-import type { Intervento, Kpi, RtiConfig } from './types';
+import type { Intervento, Kpi, RtiConfig, MultiYearTimeline } from './types';
 import { MESI } from './format';
+
+// Fornitore matcher tolerant to free-text variants ("Intellera", "Intellera
+// Consulting"): the interventi domain uses the controlled value 'Intellera',
+// while bef_records.fornitore_reale is free text coming from uploads.
+export const isIntellera = (f: string | null | undefined) =>
+  (f ?? '').toLowerCase().includes('intellera');
+
+// Per-fornitore monthly revenue/consuntivato timeline, anchored to a single
+// calendar year (each intervento carries one Gen..Dic profile in rev_mesi /
+// cons_mesi with no year of its own). Built by summing the per-IF profiles of
+// the matching fornitore, so the Timeline tab reflects a single supplier —
+// unlike the portfolio-wide timeline_mensile table, which stores no fornitore
+// breakdown and therefore cannot be filtered by supplier.
+export function fornitoreTimeline(
+  IFs: Intervento[],
+  anno: number,
+  match: (fornitore: string) => boolean = isIntellera,
+): MultiYearTimeline {
+  const rev = Array(12).fill(0) as number[];
+  const cons = Array(12).fill(0) as number[];
+  for (const i of IFs) {
+    if (!match(i.fornitore)) continue;
+    for (let m = 0; m < 12; m++) {
+      rev[m] += (i.rev_mesi && i.rev_mesi[m]) || 0;
+      cons[m] += (i.cons_mesi && i.cons_mesi[m]) || 0;
+    }
+  }
+  const months = Array.from({ length: 12 }, (_, m) => ({
+    anno,
+    mese: m + 1,
+    revenue: rev[m],
+    consuntivato: cons[m],
+  }));
+  return { months, years: [anno] };
+}
 
 // Multi-select dimensions use string[] (OR semantics within a dimension, AND
 // across dimensions). Single-select / boolean dimensions stay scalar.

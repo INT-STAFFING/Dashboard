@@ -1,11 +1,17 @@
 import { unstable_cache } from 'next/cache';
 import { listInterventi } from './store';
 import { quotaValFromRti } from './config';
-import { getMultiYearTimeline } from './timelineStore';
 import { listAllBef, computeBefMonthlyTotals, computeBefAggregates } from './befStore';
 import { getSettingsBulk } from './settings';
 import { SEED_FORNITORI, SEED_RTI, SEED_META, SEED_SENIORITY, SEED_MODALITA, SEED_TIMELINE } from './seed';
-import { computeKpi, revenueMensile, distribuzioneAmbito, rtiSummary } from './queries';
+import {
+  computeKpi,
+  revenueMensile,
+  distribuzioneAmbito,
+  rtiSummary,
+  fornitoreTimeline,
+  isIntellera,
+} from './queries';
 import type { DashboardData, RtiConfig, Meta, Seniority, ModalitaAgg, Timeline } from './types';
 
 // Cache tag for the assembled dashboard payload (R-6, see
@@ -26,7 +32,7 @@ export const DASHBOARD_DATA_TAG = 'dashboard-data';
 async function assembleDashboardData(): Promise<DashboardData & {
   revenue_mensile: ReturnType<typeof revenueMensile>;
 }> {
-  const [all, settings, timeline_my, befRows] = await Promise.all([
+  const [all, settings, befRows] = await Promise.all([
     listInterventi(),
     getSettingsBulk({
       rti: SEED_RTI,
@@ -35,10 +41,19 @@ async function assembleDashboardData(): Promise<DashboardData & {
       modalita: SEED_MODALITA,
       timeline: SEED_TIMELINE,
     }),
-    getMultiYearTimeline(),
     listAllBef(),
   ]);
   const rti = settings.rti as RtiConfig;
+  const timeline = settings.timeline as Timeline;
+  // Timeline tab is scoped to a single supplier (Intellera Consulting): the
+  // revenue/consuntivato series is rebuilt from the per-IF rev_mesi/cons_mesi
+  // profiles of the Intellera interventi instead of the portfolio-wide
+  // timeline_mensile table (which stores no fornitore breakdown), and the BEF
+  // rows are filtered to fornitore_reale = Intellera before aggregation. Every
+  // number shown in the tab therefore excludes the other RTI partners.
+  const anno = timeline.anno || new Date().getFullYear();
+  const timeline_my = fornitoreTimeline(all, anno);
+  const intelleraBef = befRows.filter((r) => isIntellera(r.fornitore_reale));
   return {
     meta: settings.meta as Meta,
     fornitori_filter: SEED_FORNITORI,
@@ -47,10 +62,10 @@ async function assembleDashboardData(): Promise<DashboardData & {
     modalita: settings.modalita as ModalitaAgg[],
     rti: { ...rti, ...rtiSummary(all, rti) },
     quota_val: quotaValFromRti(rti),
-    timeline: settings.timeline as Timeline,
+    timeline,
     timeline_my,
-    bef_monthly: computeBefMonthlyTotals(befRows),
-    bef_aggregates: computeBefAggregates(befRows),
+    bef_monthly: computeBefMonthlyTotals(intelleraBef),
+    bef_aggregates: computeBefAggregates(intelleraBef),
     kpi: computeKpi(all),
     revenue_mensile: revenueMensile(all),
     distribuzione_ambito: distribuzioneAmbito(all),

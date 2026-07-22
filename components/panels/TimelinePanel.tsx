@@ -92,14 +92,14 @@ function TimelinePanel({
     ['Revenue totale', EUR(totR), `competenza · ${calTxt} ${periodLabel}`],
     ['Valore IF Attivate', EUR(totF), 'consuntivato/fatturabile'],
     ['Revenue maturata ad oggi', EUR(matR), 'avanzamento ' + PCT(totR ? (matR / totR) * 100 : 0)],
-    ['Fatturabile ad oggi', EUR2(befAggregates.fatturabile), 'bef_records senza numero e data fattura'],
-    ['Fatturato emesso', EUR2(befAggregates.fatturatoEmesso), 'bef_records con numero e data fattura'],
+    ['Fatturabile ad oggi', EUR2(befAggregates.fatturabile), 'BEF senza numero e data fattura · Intellera'],
+    ['Fatturato emesso', EUR2(befAggregates.fatturatoEmesso), 'BEF con numero e data fattura · Intellera'],
   ];
 
   return (
     <div className="panel on" data-p="2">
       <div className="phead">
-        <h2>Timeline finanziaria</h2>
+        <h2>Timeline finanziaria — Intellera Consulting</h2>
         <div className="tl-controls">
           <select
             className="tl-year"
@@ -137,7 +137,7 @@ function TimelinePanel({
           Revenue vs Fatturazione — {modeTxt} · {calTxt} {periodLabel}
         </h3>
         <div className="cap">
-          Barre: valori per periodo · Linee: cumulati · intero portafoglio contrattuale
+          Barre: valori per periodo · Linee: cumulati · solo fornitore Intellera Consulting
         </div>
         <Html
           ariaLabel={`Revenue vs fatturazione (${modeTxt}, ${calTxt} ${periodLabel}). Revenue totale ${EUR(totR)}, fatturazione totale ${EUR(totF)}${

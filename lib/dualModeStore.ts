@@ -175,5 +175,16 @@ export function createSnapshotStore<TTable extends PgTable, TRecord extends Reco
     return mem().filter((r) => getScopeValue(r) === scopeValue);
   }
 
-  return { persistFromUpload, listByScope };
+  // Every row of the table, unscoped — used by the full-database export so the
+  // downloaded workbook contains the actual data in both DB and in-memory modes.
+  async function listAll(): Promise<TRecord[]> {
+    if (hasDB) {
+      await ensureSchema();
+      const rows = await getDb().select().from(table);
+      return (rows as (typeof table)['$inferSelect'][]).map(fromRow);
+    }
+    return mem().map((r) => ({ ...r }));
+  }
+
+  return { persistFromUpload, listByScope, listAll };
 }

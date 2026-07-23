@@ -37,6 +37,17 @@ export async function listRisorse(numeroIf: string): Promise<IfRisorsa[]> {
   return (mem()[numeroIf] || []).map((r) => ({ ...r }));
 }
 
+// Every resource row across all IF (full-database export). DB-backed with an
+// in-memory fallback.
+export async function listAllRisorse(): Promise<IfRisorsa[]> {
+  if (hasDB) {
+    await ensureSchema();
+    const rows = await getDb().select().from(if_risorse);
+    return rows.map(rowTo);
+  }
+  return Object.values(mem()).flat().map((r) => ({ ...r }));
+}
+
 // Replace the full set of resource rows for an intervento (idempotent save).
 export async function replaceRisorse(
   numeroIf: string,

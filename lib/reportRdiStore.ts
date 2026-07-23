@@ -38,3 +38,13 @@ export async function persistReportRdiFromUpload(
   }
   return { saved };
 }
+
+// Every RDI row (full-database export). DB-backed with in-memory fallback.
+export async function listAllReportRdi(): Promise<ReportRdiRecord[]> {
+  if (hasDB) {
+    await ensureSchema();
+    const rows = await getDb().select().from(report_rdi);
+    return rows.map(({ id: _id, updated_at: _u, ...rest }) => rest as ReportRdiRecord);
+  }
+  return [...mem().values()].map((r) => ({ ...r }));
+}

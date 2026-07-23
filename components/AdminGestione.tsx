@@ -1385,15 +1385,12 @@ function ExportSection({ show }: { show: (m: string, bad?: boolean) => void }) {
         <div className="cap">
           Scarica un file <b>.xlsx</b> con una copia integrale di tutte le tabelle del database:
           un foglio per tabella (intestazioni di colonna e contenuto completo delle righe) più un
-          foglio indice riepilogativo. Le colonne JSON vengono serializzate come testo.
+          foglio indice riepilogativo. I dati vengono scritti dentro il file scaricato (nessun
+          collegamento al database); le colonne JSON sono serializzate come testo.
         </div>
         <button className="exp-save" disabled={busyXlsx} onClick={exportDbXlsx}>
           {busyXlsx ? 'Generazione in corso…' : '⤓ Esporta database (.xlsx)'}
         </button>
-        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)' }}>
-          L’export richiede un database configurato. In modalità dimostrativa senza database
-          l’operazione non è disponibile.
-        </div>
       </div>
 
       <div className="card">

@@ -35,3 +35,6 @@ export async function persistReportPdcFromUpload(
 
 // Monthly PDC rows for a single BDO (Dettaglio IF drill-down).
 export const listPdcByBdo = store.listByScope;
+
+// Every PDC row (full-database export).
+export const listAllPdc = store.listAll;

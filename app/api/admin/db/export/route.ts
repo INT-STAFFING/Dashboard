@@ -1,7 +1,6 @@
-import { sql } from 'drizzle-orm';
 import * as XLSX from 'xlsx';
 import { getSessionUser, isAdmin } from '@/lib/auth';
-import { getDb, hasDB } from '@/lib/db';
+import { collectAllTables } from '@/lib/dbExport';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -9,7 +8,7 @@ export const runtime = 'nodejs';
 // Excel sheet names are capped at 31 chars and can't contain []:*?/\ — sanitise
 // table names and disambiguate collisions so every table lands on its own sheet.
 function sheetName(raw: string, used: Set<string>): string {
-  let base = raw.replace(/[[\]:*?/\\]/g, '_').slice(0, 31) || 'tabella';
+  const base = raw.replace(/[[\]:*?/\\]/g, '_').slice(0, 31) || 'tabella';
   let name = base;
   let i = 2;
   while (used.has(name.toLowerCase())) {
@@ -20,7 +19,7 @@ function sheetName(raw: string, used: Set<string>): string {
   return name;
 }
 
-// Flatten a DB value to something Excel can render: JSON columns (jsonb/arrays)
+// Flatten a value to something Excel can render: JSON columns (jsonb/arrays)
 // become their JSON text, dates/timestamps stay as-is (SheetJS handles Date),
 // everything else passes through. null/undefined become an empty cell.
 function cell(v: unknown): string | number | boolean | Date | null {
@@ -31,8 +30,10 @@ function cell(v: unknown): string | number | boolean | Date | null {
   return String(v);
 }
 
-// GET -> .xlsx workbook with one sheet per table of the public schema, each
-// containing that table's columns (header row) and full contents.
+// GET -> .xlsx workbook with one sheet per table, each containing that table's
+// columns (header row) and full contents. The data is materialized into the
+// file (no external/database link). Works with a Neon database or the
+// zero-config in-memory store.
 export async function GET() {
   if (!isAdmin(await getSessionUser())) {
     return new Response(JSON.stringify({ ok: false, error: 'Riservato agli amministratori' }), {
@@ -40,44 +41,16 @@ export async function GET() {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  if (!hasDB) {
-    return new Response(JSON.stringify({ ok: false, error: 'Database non configurato' }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
 
-  const db = getDb();
   try {
-    // All base tables of the public schema, alphabetically.
-    const tablesRes = await db.execute(sql.raw(`
-      SELECT c.relname AS table_name
-      FROM pg_class c
-      JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = 'public' AND c.relkind = 'r'
-      ORDER BY c.relname
-    `));
-    const tableNames = (tablesRes.rows as Array<{ table_name: string }>).map((r) => r.table_name);
+    const tables = await collectAllTables();
 
     const wb = XLSX.utils.book_new();
     const used = new Set<string>();
     // Index sheet: overview of every exported table and its row count.
     const summary: (string | number)[][] = [['Tabella', 'Colonne', 'Righe']];
 
-    for (const table of tableNames) {
-      const colsRes = await db.execute(
-        sql`SELECT column_name FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = ${table}
-            ORDER BY ordinal_position`,
-      );
-      const columns = (colsRes.rows as Array<{ column_name: string }>).map((c) => c.column_name);
-
-      // Table name already comes from pg_class, so it's a real identifier —
-      // quote it defensively for the raw SELECT.
-      const ident = '"' + table.replace(/"/g, '""') + '"';
-      const dataRes = await db.execute(sql.raw(`SELECT * FROM ${ident}`));
-      const rows = dataRes.rows as Array<Record<string, unknown>>;
-
+    for (const { table, columns, rows } of tables) {
       const aoa: (string | number | boolean | Date | null)[][] = [columns];
       for (const row of rows) {
         aoa.push(columns.map((c) => cell(row[c])));

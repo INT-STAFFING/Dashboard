@@ -40,6 +40,58 @@ export function getDb() {
 }
 
 // ---------------------------------------------------------------------------
+// One-off repair: IF numbers stored as a JS Date string
+// ---------------------------------------------------------------------------
+// A source workbook that left a date number-format on the "N° IF" column made
+// xlsx (cellDates) hand back a Date instead of the number, so an IF like
+// 20260323 was read as its Excel serial date and persisted as
+// "Fri Nov 16 57370 00:00:00 GMT+0100 (…)". lib/parsers/util.ts#strId now
+// prevents that at ingest; these statements repair what already landed in the
+// DB by converting the calendar parts back to the Excel serial — the number
+// the cell actually held.
+//
+// Date.prototype.toString() is fixed-shape and always English for the weekday
+// and month ("Fri Nov 16 57370 …"), whatever the uploader's locale, so this
+// pattern matches the corruption and nothing else. Once a value is repaired it
+// no longer matches, which keeps every statement a no-op on re-run.
+const DATE_ID_RE =
+  '^[A-Z][a-z]{2} ([A-Z][a-z]{2}) ([0-9]{2}) ([0-9]{4,}) [0-9]{2}:[0-9]{2}:[0-9]{2} GMT';
+
+// Excel's day-zero is 1899-12-30 (serial 1 = 1900-01-01, plus the phantom
+// 1900-02-29), matching EXCEL_EPOCH_UTC in lib/parsers/util.ts.
+const repairedId = (col: string) => `(make_date(
+    (regexp_match(${col}, '${DATE_ID_RE}'))[3]::int,
+    array_position(
+      ARRAY['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      (regexp_match(${col}, '${DATE_ID_RE}'))[1]
+    ),
+    (regexp_match(${col}, '${DATE_ID_RE}'))[2]::int
+  ) - DATE '1899-12-30')::text`;
+
+// The NOT EXISTS guards keep the repair from colliding with a row that already
+// carries the correct id (a clean re-upload landed before this ran): such a
+// duplicate is left alone rather than failing the whole bootstrap.
+const DATE_ID_REPAIRS: string[] = [
+  `UPDATE "interventi" a SET "numero_if" = ${repairedId('a."numero_if"')}
+    WHERE a."numero_if" ~ '${DATE_ID_RE}'
+      AND NOT EXISTS (
+        SELECT 1 FROM "interventi" b
+         WHERE b."numero_if" = ${repairedId('a."numero_if"')}
+      )`,
+  `UPDATE "interventi" a SET "bdo" = ${repairedId('a."bdo"')}
+    WHERE a."bdo" ~ '${DATE_ID_RE}'`,
+  `UPDATE "bef_records" a SET "numero_if" = ${repairedId('a."numero_if"')}
+    WHERE a."numero_if" ~ '${DATE_ID_RE}'
+      AND NOT EXISTS (
+        SELECT 1 FROM "bef_records" b
+         WHERE b."numero_if" = ${repairedId('a."numero_if"')}
+           AND b."num_fattura" IS NOT DISTINCT FROM a."num_fattura"
+      )`,
+  `UPDATE "if_risorse" a SET "numero_if" = ${repairedId('a."numero_if"')}
+    WHERE a."numero_if" ~ '${DATE_ID_RE}'`,
+];
+
+// ---------------------------------------------------------------------------
 // Self-provisioning schema
 // ---------------------------------------------------------------------------
 // Idempotent CREATE TABLE IF NOT EXISTS statements. Running these on first DB
@@ -405,6 +457,8 @@ const DDL: string[] = [
       CHECK ("bef_status" IS NULL OR "bef_status" IN ('ok','ko','prog','nd')) NOT VALID;
   EXCEPTION WHEN duplicate_object THEN NULL;
   END $$`,
+  // Repair IF/BO identifiers persisted as a JS Date string (DATE_ID_REPAIRS above).
+  ...DATE_ID_REPAIRS,
 ];
 
 // Bump this whenever the DDL array above changes (new table, new column, new
@@ -422,7 +476,10 @@ const DDL: string[] = [
 //       ('OK'/'Mancante'/'InCorso'/'ND') to the DocStatus domain values
 //       ('ok'/'ko'/'prog'/'nd'), with the R-7 CHECK constraints updated to
 //       match (R-8)
-const SCHEMA_VERSION = 4;
+//   5 — IF/BO identifiers persisted as a JS Date string ("Fri Nov 16 57370 …")
+//       converted back to the Excel serial they really are, on interventi,
+//       bef_records and if_risorse
+const SCHEMA_VERSION = 5;
 const SCHEMA_VERSION_KEY = 'schema_version';
 
 // Reads the current schema_version from app_config with a single round-trip.

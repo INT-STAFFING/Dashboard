@@ -113,11 +113,47 @@ export function str(v: unknown): string | null {
   return s === '' || s === '—' || s === 'nan' ? null : s;
 }
 
-// Identifier columns (Numero BDO, Numero RDI, …) sometimes arrive as a float
-// (e.g. 2017331334.0) because Excel/xlsx reads a numeric-looking cell as a
-// number. Always render them as an integer string, never with a decimal tail.
+// Excel's day-zero. Serial 1 is 1900-01-01 and Excel keeps the phantom
+// 1900-02-29, so every serial from 61 on lines up with a 1899-12-30 epoch.
+const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
+
+// Undo the `cellDates` coercion of a cell that only *looks* like a date.
+// When a numeric cell carries a date number-format, xlsx hands back a Date
+// instead of the number — an IF like 20260323 becomes "Fri Nov 16 57370".
+// xlsx builds that Date from the serial's calendar parts in local time, so
+// reading the same parts back recovers the number Excel actually stores.
+// Returns null when the round trip isn't a whole positive number of days —
+// including a serial so large it overflows the Date range (xlsx hands back an
+// Invalid Date and the number is gone), where dropping the value beats keeping
+// a bogus "Invalid Date" identifier.
+export function excelSerialFromDate(d: Date): number | null {
+  if (isNaN(d.getTime())) return null;
+  const utc = Date.UTC(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    d.getHours(),
+    d.getMinutes(),
+    d.getSeconds(),
+    d.getMilliseconds(),
+  );
+  const serial = (utc - EXCEL_EPOCH_UTC) / 86400000;
+  return Number.isInteger(serial) && serial > 0 ? serial : null;
+}
+
+// Identifier columns (N° IF, Numero BDO, Numero RDI, …) sometimes arrive as a
+// float (e.g. 2017331334.0) because Excel/xlsx reads a numeric-looking cell as
+// a number, or as a Date when the source sheet left a date number-format on the
+// column. Always render them as an integer string, never with a decimal tail
+// and never as a timestamp.
 export function strId(v: unknown): string | null {
   if (v == null) return null;
+  // An identifier never legitimately holds a date: a Date here is always a
+  // mis-formatted number, so put it back the way Excel stored it.
+  if (v instanceof Date) {
+    const serial = excelSerialFromDate(v);
+    return serial == null ? null : String(serial);
+  }
   if (typeof v === 'number') {
     return Number.isFinite(v) ? String(Math.trunc(v)) : null;
   }

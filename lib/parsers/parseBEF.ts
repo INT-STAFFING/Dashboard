@@ -1,5 +1,5 @@
 import type { BefRecord } from '../types';
-import { readWorkbook, sheetRows, findSheet, toNumber, toISODate, str } from './util';
+import { readWorkbook, sheetRows, findSheet, toNumber, toISODate, str, strId } from './util';
 
 // Solo le righe del RTI Intellera vanno importate: le altre righe del report
 // (altri fornitori del raggruppamento) devono essere scartate.
@@ -14,7 +14,7 @@ export function parseBEF(input: ArrayBuffer | Buffer): BefRecord[] {
   for (const r of sheetRows(wb, sheet, 0)) {
     const fornitoreRti = str(r['Fornitore RTI']);
     if (!fornitoreRti || !fornitoreRti.toLowerCase().includes(RTI_INTELLERA)) continue;
-    const num_bdo = str(r['Numero BDO']);
+    const num_bdo = strId(r['Numero BDO']);
     if (!num_bdo && !str(r['Descrizione'])) continue;
     out.push({
       num_bdo,

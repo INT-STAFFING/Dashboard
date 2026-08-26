@@ -7,6 +7,7 @@ import {
   toNumber,
   toISODate,
   str,
+  strId,
   type Workbook,
 } from './util';
 
@@ -25,7 +26,7 @@ export function parseIF(input: ArrayBuffer | Buffer | Workbook): Intervento[] {
   const notesByIf = new Map<string, string>();
   if (noteSheet) {
     for (const n of sheetRows(wb, noteSheet, 1)) {
-      const id = str(n['N° IF']);
+      const id = strId(n['N° IF']);
       const note = str(n['Note Operative']);
       if (id && note) notesByIf.set(id, note);
     }
@@ -33,7 +34,7 @@ export function parseIF(input: ArrayBuffer | Buffer | Workbook): Intervento[] {
 
   const out: Intervento[] = [];
   for (const r of rows) {
-    const numero_if = str(r['N° IF']);
+    const numero_if = strId(r['N° IF']);
     const titolo = str(r['Titolo Intervento']);
     if (!numero_if || !titolo) continue;
 
@@ -44,7 +45,7 @@ export function parseIF(input: ArrayBuffer | Buffer | Workbook): Intervento[] {
 
     out.push({
       numero_if,
-      bdo: str(r['N° BO']),
+      bdo: strId(r['N° BO']),
       titolo,
       ambito,
       fornitore: str(r['Fornitore']) || 'Intellera',

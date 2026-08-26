@@ -479,7 +479,12 @@ const DDL: string[] = [
 //   5 — IF/BO identifiers persisted as a JS Date string ("Fri Nov 16 57370 …")
 //       converted back to the Excel serial they really are, on interventi,
 //       bef_records and if_risorse
-const SCHEMA_VERSION = 5;
+// Exported so cached payloads assembled from these tables can key off it: a
+// bootstrap that rewrites existing rows (the DATE_ID_REPAIRS above) changes what
+// a read returns without going through any app write path, so nothing calls
+// `revalidateTag`. Cache keys that include this version rebuild on the bump
+// instead of serving data assembled before the repair — see lib/getDashboardData.ts.
+export const SCHEMA_VERSION = 5;
 const SCHEMA_VERSION_KEY = 'schema_version';
 
 // Reads the current schema_version from app_config with a single round-trip.

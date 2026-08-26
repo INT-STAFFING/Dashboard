@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache';
+import { SCHEMA_VERSION } from './db';
 import { listInterventi } from './store';
 import { quotaValFromRti } from './config';
 import { listAllBef, computeBefMonthlyTotals, computeBefAggregates } from './befStore';
@@ -72,10 +73,21 @@ async function assembleDashboardData(): Promise<DashboardData & {
   };
 }
 
-// `unstable_cache` persists the payload (per deployment/runtime) until
-// `revalidateTag(DASHBOARD_DATA_TAG)` is called, instead of re-running the 4
-// parallel DB fetches above on every `/dashboard` render. No time-based
-// `revalidate` is set — see the tag comment above for why.
-export const getDashboardData = unstable_cache(assembleDashboardData, ['dashboard-data'], {
-  tags: [DASHBOARD_DATA_TAG],
-});
+// `unstable_cache` persists the payload until `revalidateTag(DASHBOARD_DATA_TAG)`
+// is called, instead of re-running the 4 parallel DB fetches above on every
+// `/dashboard` render. No time-based `revalidate` is set — see the tag comment
+// above for why.
+//
+// The schema version is part of the cache key because the tag alone doesn't
+// cover every way this payload can go stale. On Vercel the Data Cache is durable
+// and survives deployments, so a bootstrap that *rewrites existing rows* (the
+// IF-number repair in lib/db.ts) would otherwise keep serving the payload
+// assembled before the repair: it goes straight to the tables, so none of the
+// `revalidateTag` call sites listed in R-6 fire. Worse, while that payload stays
+// cached nothing reads the interventi table, so the bootstrap that performs the
+// repair never runs either. Bumping SCHEMA_VERSION now busts this key too.
+export const getDashboardData = unstable_cache(
+  assembleDashboardData,
+  ['dashboard-data', `schema-v${SCHEMA_VERSION}`],
+  { tags: [DASHBOARD_DATA_TAG] },
+);

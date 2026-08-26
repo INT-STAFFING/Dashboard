@@ -6,6 +6,7 @@ import {
   toNumber,
   toISODate,
   str,
+  strId,
   type Workbook,
 } from './util';
 import { codeFor } from './parseAggregatore';
@@ -61,7 +62,7 @@ function revenueByIf(wb: Workbook): Map<string, number[]> {
   for (let r = hr + 1; r < m.length; r++) {
     const row = m[r] as unknown[];
     if (!row) continue;
-    const id = str(row[ifCol]);
+    const id = strId(row[ifCol]);
     if (!id) continue;
     const arr = out.get(id) ?? Array(12).fill(0);
     for (let mi = 0; mi < 12; mi++) {
@@ -135,7 +136,7 @@ export function parseDashboard(input: ArrayBuffer | Buffer | Workbook): Dashboar
   const order: string[] = [];
   for (let r = hr + 1; r < m.length; r++) {
     const row = m[r] as unknown[];
-    const numero_if = str(row?.[col('Numero IF')]);
+    const numero_if = strId(row?.[col('Numero IF')]);
     if (!numero_if) continue;
 
     let a = acc.get(numero_if);
@@ -178,7 +179,7 @@ export function parseDashboard(input: ArrayBuffer | Buffer | Workbook): Dashboar
     const df = toISODate(row[col('Data Fine/Consegna')]);
     if (df && (a.dataFine == null || df > a.dataFine)) a.dataFine = df;
 
-    const bo = str(row[col('BO')]);
+    const bo = strId(row[col('BO')]);
     if (bo) a.bdo = bo;
   }
 

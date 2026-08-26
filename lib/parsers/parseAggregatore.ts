@@ -1,5 +1,5 @@
 import type { Intervento, Seniority } from '../types';
-import { readWorkbook, sheetRows, findSheet, toNumber, toISODate, str } from './util';
+import { readWorkbook, sheetRows, findSheet, toNumber, toISODate, str, strId } from './util';
 
 export type AggregatoreResult = {
   seniority: Seniority[];
@@ -79,7 +79,7 @@ export function parseAggregatore(input: ArrayBuffer | Buffer): AggregatoreResult
   const genSheet = findSheet(wb, 'Generalità Intervento', 'Generalità');
   if (genSheet) {
     for (const r of sheetRows(wb, genSheet, 0)) {
-      const numero_if = str(r['Numero IF']);
+      const numero_if = strId(r['Numero IF']);
       const titolo = str(r['Titolo Intervento']);
       if (!numero_if || !titolo) continue;
       const file = str(r['File Sorgente']);
@@ -87,11 +87,11 @@ export function parseAggregatore(input: ArrayBuffer | Buffer): AggregatoreResult
       const refMail = String(r['Ref. Fornitore - Mail'] ?? '');
       const fornitore =
         of?.fornitore || (/deloitte/i.test(refMail) ? 'Deloitte' : 'Intellera');
-      const hasBdo = str(r['Codice Ultimo BDO']) != null;
+      const hasBdo = strId(r['Codice Ultimo BDO']) != null;
 
       interventi.push({
         numero_if,
-        bdo: str(r['Codice Ultimo BDO']),
+        bdo: strId(r['Codice Ultimo BDO']),
         titolo,
         ambito: str(r['Macro Classe']) ? `Macro ${str(r['Macro Classe'])}` : 'Altro',
         fornitore,

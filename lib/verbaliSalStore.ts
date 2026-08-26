@@ -17,3 +17,6 @@ export const persistVerbaliSalFromUpload = store.persistFromUpload;
 
 // Monthly SAL rows for a single BDO (Dettaglio IF drill-down).
 export const listSalByBdo = store.listByScope;
+
+// Every verbale SAL (full-database export).
+export const listAllVerbaliSal = store.listAll;

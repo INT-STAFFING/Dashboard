@@ -17,3 +17,6 @@ const store = createSnapshotStore<typeof verbali_apertura, VerbaleAperturaRecord
 });
 
 export const persistVerbaliAperturaFromUpload = store.persistFromUpload;
+
+// Every verbale di apertura (full-database export).
+export const listAllVerbaliApertura = store.listAll;

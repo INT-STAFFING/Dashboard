@@ -47,3 +47,13 @@ export async function persistReportBdoFromUpload(
   }
   return { saved, ignored };
 }
+
+// Every BDO row (full-database export). DB-backed with in-memory fallback.
+export async function listAllReportBdo(): Promise<ReportBdoRecord[]> {
+  if (hasDB) {
+    await ensureSchema();
+    const rows = await getDb().select().from(report_bdo);
+    return rows.map(({ id: _id, updated_at: _u, ...rest }) => rest as ReportBdoRecord);
+  }
+  return [...mem().values()].map((r) => ({ ...r }));
+}

@@ -71,6 +71,13 @@
       "when": 1784636208396,
       "tag": "0009_backfill_doc_status_domain",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788272861622,
+      "tag": "0010_bef_drop_fattura_unique",
+      "breakpoints": true
     }
   ]
 }

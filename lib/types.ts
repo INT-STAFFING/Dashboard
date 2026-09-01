@@ -102,8 +102,10 @@ export type MultiYearTimeline = {
   years: number[]; // calendar years present, ascending
 };
 
-// Monthly total of `bef_records.importo_ricezione`, grouped by the calendar
-// month of `data_fattura` (rows without a `data_fattura` are excluded).
+// Monthly total of `bef_records.importo_ricezione` già fatturato, grouped by
+// the calendar month of `data_fattura` (rows without a `data_fattura` — ancora
+// da emettere o in attesa — are excluded: non hanno una data su cui
+// collocarle).
 export type BefMonthly = {
   anno: number;
   mese: number; // 1..12 (calendar)
@@ -111,9 +113,13 @@ export type BefMonthly = {
 };
 
 // Portfolio-level totals of `bef_records.importo_ricezione` (no period filter).
+// Le quattro voci sono mutuamente esclusive ed esaustive: ogni riga BEF ricade
+// in una e una sola (vedi computeBefAggregates in lib/befStore.ts).
 export type BefAggregates = {
-  fatturabile: number; // righe senza numero fattura e senza data fattura
-  fatturatoEmesso: number; // righe con numero fattura e data fattura
+  fatturabile: number; // senza numero fattura: da emettere
+  fatturatoInAttesa: number; // numero fattura, senza data fattura: emessa, non ancora approvata dal cliente
+  fatturatoEmesso: number; // numero + data fattura, senza data pagamento: emessa, non incassata
+  fatturatoIncassato: number; // numero + data fattura + data pagamento: emessa e incassata
 };
 
 export type Meta = {

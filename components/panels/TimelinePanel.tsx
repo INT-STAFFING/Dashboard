@@ -92,8 +92,16 @@ function TimelinePanel({
     ['Revenue totale', EUR(totR), `competenza · ${calTxt} ${periodLabel}`],
     ['Valore IF Attivate', EUR(totF), 'consuntivato/fatturabile'],
     ['Revenue maturata ad oggi', EUR(matR), 'avanzamento ' + PCT(totR ? (matR / totR) * 100 : 0)],
-    ['Fatturabile ad oggi', EUR2(befAggregates.fatturabile), 'BEF senza numero e data fattura · Intellera'],
-    ['Fatturato emesso', EUR2(befAggregates.fatturatoEmesso), 'BEF con numero e data fattura · Intellera'],
+    // I quattro indicatori BEF sono di portafoglio (tutte le annualità
+    // caricate), non filtrati sull'anno selezionato come il resto del
+    // pannello: le righe ancora da emettere non portano una data su cui
+    // bucketizzarle. Il sottotitolo lo dichiara per non lasciar leggere il
+    // valore come "del periodo mostrato nel grafico". I quattro stati sono
+    // mutuamente esclusivi: la loro somma è il totale BEF Intellera.
+    ['Fatturabile ad oggi', EUR2(befAggregates.fatturabile), 'da emettere · Intellera · tutti i periodi'],
+    ['Fatturato in attesa', EUR2(befAggregates.fatturatoInAttesa), 'emesso, non approvato dal cliente · tutti i periodi'],
+    ['Fatturato emesso', EUR2(befAggregates.fatturatoEmesso), 'emesso, non ancora incassato · tutti i periodi'],
+    ['Fatturato incassato', EUR2(befAggregates.fatturatoIncassato), 'emesso e incassato · tutti i periodi'],
   ];
 
   return (
@@ -138,6 +146,7 @@ function TimelinePanel({
         </h3>
         <div className="cap">
           Barre: valori per periodo · Linee: cumulati · solo fornitore Intellera Consulting
+          {hasBef ? ` · Fatturato BEF ${calTxt} ${periodLabel}: ${EUR2(totBef)}` : ''}
         </div>
         <Html
           ariaLabel={`Revenue vs fatturazione (${modeTxt}, ${calTxt} ${periodLabel}). Revenue totale ${EUR(totR)}, fatturazione totale ${EUR(totF)}${
@@ -160,6 +169,7 @@ function TimelinePanel({
             ...(hasBef ? [{ c: C.slate, t: 'Fatturato (BEF)' }] : []),
             { c: C.petrolD, t: 'Cum. Revenue', line: true },
             { c: C.amberD, t: 'Cum. Fatturazione', dash: true },
+            ...(hasBef ? [{ c: C.slate, t: 'Cum. Fatturato (BEF)', dash: true }] : []),
           ])}
         />
       </div>

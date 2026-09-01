@@ -292,10 +292,21 @@ export function chartRevFatt(
   const ticks = 4;
   const yL = (v: number) => pt + ph - (v / maxBar) * ph;
   let cr = 0,
-    cf = 0;
+    cf = 0,
+    cb = 0;
   const cumR = rev.map((v) => (cr += v)),
-    cumF = fatt.map((v) => (cf += v));
-  const maxCum = Math.max(1, cumR[cumR.length - 1], cumF[cumF.length - 1]);
+    cumF = fatt.map((v) => (cf += v)),
+    // Cumulato del fatturato emesso (righe BEF con numero E data fattura,
+    // collocate nel mese della fattura). È una serie distinta da `cumF`, che
+    // cumula la fatturazione consuntivata/attivata a piano: sono due grandezze
+    // diverse e il grafico deve mostrarle entrambe, non una al posto dell'altra.
+    cumB = bef.map((v) => (cb += v || 0));
+  const maxCum = Math.max(
+    1,
+    cumR[cumR.length - 1],
+    cumF[cumF.length - 1],
+    hasBef ? cumB[cumB.length - 1] : 0,
+  );
   const yR = (v: number) => pt + ph - (v / maxCum) * ph;
   const slot = pw / labels.length;
   const nBars = hasBef ? 3 : 2;
@@ -335,17 +346,26 @@ export function chartRevFatt(
       C.muted
     }">${esc(mn)}</text>`;
   });
-  const ptsR = labels.map((m, i) => `${(pl + slot * i + slot / 2).toFixed(1)},${yR(cumR[i]).toFixed(1)}`).join(' ');
-  const ptsF = labels.map((m, i) => `${(pl + slot * i + slot / 2).toFixed(1)},${yR(cumF[i]).toFixed(1)}`).join(' ');
-  let lines = `<polyline points="${ptsR}" fill="none" stroke="${C.petrolD}" stroke-width="2.6"/><polyline points="${ptsF}" fill="none" stroke="${C.amberD}" stroke-width="2.4" stroke-dasharray="6 4"/>`;
+  const cxAt = (i: number) => pl + slot * i + slot / 2;
+  const pts = (cum: number[]) => labels.map((m, i) => `${cxAt(i).toFixed(1)},${yR(cum[i]).toFixed(1)}`).join(' ');
+  let lines = `<polyline points="${pts(cumR)}" fill="none" stroke="${C.petrolD}" stroke-width="2.6"/><polyline points="${pts(
+    cumF,
+  )}" fill="none" stroke="${C.amberD}" stroke-width="2.4" stroke-dasharray="6 4"/>`;
+  if (hasBef) {
+    lines += `<polyline points="${pts(cumB)}" fill="none" stroke="${C.slate}" stroke-width="2.4" stroke-dasharray="2 3"/>`;
+  }
   labels.forEach((m, i) => {
-    const cx = pl + slot * i + slot / 2;
-    lines += `<circle cx="${cx.toFixed(1)}" cy="${yR(cumR[i]).toFixed(
+    lines += `<circle cx="${cxAt(i).toFixed(1)}" cy="${yR(cumR[i]).toFixed(
       1,
     )}" r="4" fill="#fff" stroke="${C.petrolD}" stroke-width="2"/>`;
-    lines += `<circle cx="${cx.toFixed(1)}" cy="${yR(cumF[i]).toFixed(
+    lines += `<circle cx="${cxAt(i).toFixed(1)}" cy="${yR(cumF[i]).toFixed(
       1,
     )}" r="3.5" fill="#fff" stroke="${C.amberD}" stroke-width="2"/>`;
+    if (hasBef) {
+      lines += `<circle cx="${cxAt(i).toFixed(1)}" cy="${yR(cumB[i]).toFixed(
+        1,
+      )}" r="3.5" fill="#fff" stroke="${C.slate}" stroke-width="2"/>`;
+    }
   });
   let mk = '';
   if (todayIdx >= 0 && todayIdx < labels.length) {
@@ -359,7 +379,9 @@ export function chartRevFatt(
     const x = pl + slot * i;
     const tipTxt = `${mn}${periodLabel ? ' ' + periodLabel : ''}\nRevenue: ${EUR(rev[i])}\nFatturazione: ${EUR(fatt[i])}\nCum. Revenue: ${EUR(
       cumR[i],
-    )}\nCum. Fatturazione: ${EUR(cumF[i])}${hasBef ? `\nFatturato (BEF): ${EUR(bef[i] || 0)}` : ''}`;
+    )}\nCum. Fatturazione: ${EUR(cumF[i])}${
+      hasBef ? `\nFatturato (BEF): ${EUR(bef[i] || 0)}\nCum. Fatturato (BEF): ${EUR(cumB[i])}` : ''
+    }`;
     hov += `<rect x="${x.toFixed(1)}" y="${pt}" width="${slot.toFixed(
       1,
     )}" height="${ph}" fill="transparent" style="pointer-events:all" class="hovcol" data-tip="${esc(tipTxt)}"/>`;

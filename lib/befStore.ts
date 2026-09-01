@@ -1,6 +1,6 @@
-import { and, eq, isNotNull, isNull, notInArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { RunnableQuery } from 'drizzle-orm/runnable-query';
-import { getDb, hasDB, ensureSchema, excludedSet } from './db';
+import { getDb, hasDB, ensureSchema } from './db';
 import { bef_records } from './schema';
 import type { BefRow, BefRecord, BefMonthly, BefAggregates } from './types';
 import { bdoFromBef } from './codes';
@@ -54,11 +54,36 @@ export async function listAllBef(): Promise<BefRow[]> {
   return Object.values(mem()).flat().map((r) => ({ ...r }));
 }
 
+// Ciclo di vita di una riga BEF (fonte: business owner). I quattro stati sono
+// mutuamente esclusivi ed esaustivi, così i quattro indicatori del tab
+// Timeline sommano esattamente al totale BEF:
+//
+//   num_fattura  data_fattura  data_pagamento  stato
+//   ───────────  ────────────  ──────────────  ──────────────────────────────
+//        no           no             —         da emettere      (fatturabile)
+//        sì           no             —         emessa, non ancora approvata
+//                                              dal cliente      (in attesa)
+//        sì           sì             no        emessa, non incassata (emesso)
+//        sì           sì             sì        emessa e incassata  (incassato)
+//
+// Lo stato "in attesa" è raro: di norma numero e data fattura sono entrambi
+// presenti o entrambi assenti. Una riga senza numero fattura resta fra le
+// fatturabili anche se porta una data: non può essere una fattura emessa.
+const isDaEmettere = (r: BefRow) => !r.num_fattura;
+const isInAttesa = (r: BefRow) => Boolean(r.num_fattura) && !r.data_fattura;
+const isEmessaNonIncassata = (r: BefRow) =>
+  Boolean(r.num_fattura) && Boolean(r.data_fattura) && !r.data_pagamento;
+const isIncassata = (r: BefRow) =>
+  Boolean(r.num_fattura) && Boolean(r.data_fattura) && Boolean(r.data_pagamento);
+
+// Righe la cui fattura è stata emessa (numero E data fattura), incassata o
+// meno: è il fatturato del mese, collocato nel mese di `data_fattura`.
 const isFatturata = (r: BefRow) => Boolean(r.num_fattura) && Boolean(r.data_fattura);
-const isNonFatturata = (r: BefRow) => !r.num_fattura && !r.data_fattura;
 
 // Sum of `importo_ricezione` grouped by calendar month of `data_fattura`, for
-// rows that have both a `num_fattura` and a `data_fattura` (i.e. fatturate).
+// rows già fatturate. Le righe ancora da emettere (e quelle in attesa, prive
+// di data fattura) non hanno una data su cui collocarle e non compaiono nella
+// serie mensile.
 // The compute* variants are pure so callers that already hold the rows (e.g.
 // getDashboardData) can derive both aggregates from a single fetch.
 export function computeBefMonthlyTotals(rows: BefRow[]): BefMonthly[] {
@@ -82,18 +107,25 @@ export async function getBefMonthlyTotals(): Promise<BefMonthly[]> {
   return computeBefMonthlyTotals(await listAllBef());
 }
 
-// Portfolio-level BEF totals (no year/period filtering):
-//  - fatturabile: righe senza numero fattura e senza data fattura (non ancora fatturate)
-//  - fatturatoEmesso: righe con numero fattura e data fattura (fatturate)
+// Portfolio-level BEF totals (no year/period filtering), uno per stato della
+// riga (vedi i predicati sopra):
+//  - fatturabile:        fattura ancora da emettere
+//  - fatturatoInAttesa:  emessa, in attesa di approvazione dal cliente
+//  - fatturatoEmesso:    emessa e approvata, incasso non ancora avvenuto
+//  - fatturatoIncassato: emessa e incassata
 export function computeBefAggregates(rows: BefRow[]): BefAggregates {
   let fatturabile = 0,
-    fatturatoEmesso = 0;
+    fatturatoInAttesa = 0,
+    fatturatoEmesso = 0,
+    fatturatoIncassato = 0;
   for (const r of rows) {
     if (r.importo_ricezione == null) continue;
-    if (isNonFatturata(r)) fatturabile += r.importo_ricezione;
-    else if (isFatturata(r)) fatturatoEmesso += r.importo_ricezione;
+    if (isDaEmettere(r)) fatturabile += r.importo_ricezione;
+    else if (isInAttesa(r)) fatturatoInAttesa += r.importo_ricezione;
+    else if (isEmessaNonIncassata(r)) fatturatoEmesso += r.importo_ricezione;
+    else if (isIncassata(r)) fatturatoIncassato += r.importo_ricezione;
   }
-  return { fatturabile, fatturatoEmesso };
+  return { fatturabile, fatturatoInAttesa, fatturatoEmesso, fatturatoIncassato };
 }
 
 export async function getBefAggregates(): Promise<BefAggregates> {
@@ -118,15 +150,10 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
     await ensureSchema();
     const db = getDb();
 
-    // Natural key (numero_if, num_fattura) — see the unique index on
-    // bef_records in lib/schema.ts. Rows without num_fattura aren't
-    // deduplicable (pre-existing "Decisione 2B" rule in upsertBef below), so
-    // they're bucketed separately and always fully replaced for this
-    // numero_if instead of being matched by key.
-    const keyed = clean.filter((r) => r.num_fattura != null);
-    const unkeyed = clean.filter((r) => r.num_fattura == null);
-    const keyedInvoices = keyed.map((r) => r.num_fattura as string);
-
+    // Sostituzione integrale delle righe di questo numero_if: `clean` è già
+    // l'elenco completo e deduplicato per l'IF (vedi upsertBef, che fonde
+    // esistenti e nuove prima di chiamare qui), quindi non serve — e non è
+    // corretto — deduplicare di nuovo lato DB su una chiave parziale.
     const toInsertRow = (r: (typeof clean)[number]) => ({
       numero_if: r.numero_if,
       num_bdo: r.num_bdo,
@@ -139,44 +166,18 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
       data_pagamento: r.data_pagamento,
     });
 
-    // Drop invoiced rows whose invoice number is no longer in the new set
-    // (removed from this IF's BEF list); unkeyed rows have no stable
-    // identity, so this call's list is always their full replacement.
-    const dropStaleKeyed = db
-      .delete(bef_records)
-      .where(
-        keyedInvoices.length
-          ? and(
-              eq(bef_records.numero_if, numeroIf),
-              isNotNull(bef_records.num_fattura),
-              notInArray(bef_records.num_fattura, keyedInvoices),
-            )
-          : and(eq(bef_records.numero_if, numeroIf), isNotNull(bef_records.num_fattura)),
-      );
-    const dropUnkeyed = db
-      .delete(bef_records)
-      .where(and(eq(bef_records.numero_if, numeroIf), isNull(bef_records.num_fattura)));
-
-    const statements: BefBatchItem[] = [dropStaleKeyed, dropUnkeyed];
-    if (unkeyed.length) {
-      statements.push(db.insert(bef_records).values(unkeyed.map(toInsertRow)));
-    }
-    if (keyed.length) {
-      statements.push(
-        db
-          .insert(bef_records)
-          .values(keyed.map(toInsertRow))
-          .onConflictDoUpdate({
-            target: [bef_records.numero_if, bef_records.num_fattura],
-            set: excludedSet(bef_records, ['id', 'numero_if', 'num_fattura']),
-          }),
-      );
+    const statements: BefBatchItem[] = [
+      db.delete(bef_records).where(eq(bef_records.numero_if, numeroIf)),
+    ];
+    if (clean.length) {
+      statements.push(db.insert(bef_records).values(clean.map(toInsertRow)));
     }
     // db.batch() sends every statement to Neon's transactional batch
     // endpoint in a single HTTP round-trip: either all apply or none do.
     // neon-http has no interactive db.transaction() (see
     // drizzle-orm/neon-http/session.js), but batch() is backed by a real
-    // Postgres transaction server-side.
+    // Postgres transaction server-side — la DELETE + INSERT resta quindi
+    // atomica come nella versione precedente basata su ON CONFLICT.
     await db.batch(statements as [BefBatchItem, ...BefBatchItem[]]);
     return listBef(numeroIf);
   }
@@ -184,22 +185,35 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
   return mem()[numeroIf].map((r) => ({ ...r }));
 }
 
-// Upsert per Numero Fattura (Decisione 2B): le righe in arrivo con la stessa
-// fattura sostituiscono quelle esistenti, le nuove si aggiungono, le altre si
-// conservano. Le righe senza Numero Fattura non sono deduplicabili e vengono
-// accodate.
+// Chiave naturale di una riga BEF all'interno di un IF.
+//
+// NON è il solo Numero Fattura: una fattura copre normalmente PIÙ righe BEF
+// dello stesso intervento (una per BDO e per periodo di competenza), quindi
+// deduplicare sul solo numero fattura le collassava in un'unica riga,
+// perdendo l'importo di tutte le altre e sottostimando il "Fatturato emesso".
+// La riga è identificata da BDO + periodo di competenza + fattura; le righe
+// prive di tutti e tre non sono deduplicabili.
+const befKey = (r: BefRow): string | null => {
+  const parts = [strN(r.num_bdo), strN(r.periodo_competenza), strN(r.num_fattura)];
+  return parts.some(Boolean) ? parts.map((p) => p ?? '').join('|') : null;
+};
+
+// Upsert per chiave naturale (Decisione 2B, corretta): le righe in arrivo con
+// la stessa chiave sostituiscono quelle esistenti, le nuove si aggiungono, le
+// altre si conservano. Le righe senza alcun elemento di chiave non sono
+// deduplicabili e vengono accodate.
 export async function upsertBef(numeroIf: string, incoming: BefRow[]): Promise<BefRow[]> {
   const existing = await listBef(numeroIf);
-  const byFattura = new Map<string, BefRow>();
+  const byKey = new Map<string, BefRow>();
   const noKey: BefRow[] = [];
   const place = (r: BefRow) => {
-    const k = strN(r.num_fattura);
-    if (k) byFattura.set(k, { ...r, numero_if: numeroIf });
+    const k = befKey(r);
+    if (k) byKey.set(k, { ...r, numero_if: numeroIf });
     else noKey.push({ ...r, numero_if: numeroIf });
   };
   existing.forEach(place);
   incoming.forEach(place);
-  return replaceBef(numeroIf, [...byFattura.values(), ...noKey]);
+  return replaceBef(numeroIf, [...byKey.values(), ...noKey]);
 }
 
 // Numero IF di default per le righe BEF il cui BDO non trova corrispondenza

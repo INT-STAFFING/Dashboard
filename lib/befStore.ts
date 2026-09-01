@@ -150,10 +150,10 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
     await ensureSchema();
     const db = getDb();
 
-    // Sostituzione integrale delle righe di questo numero_if: `clean` è già
-    // l'elenco completo e deduplicato per l'IF (vedi upsertBef, che fonde
-    // esistenti e nuove prima di chiamare qui), quindi non serve — e non è
-    // corretto — deduplicare di nuovo lato DB su una chiave parziale.
+    // Sostituzione integrale delle righe di questo numero_if: `rows` è già
+    // l'elenco completo per l'IF (lo snapshot del report, o la lista salvata
+    // dall'editor admin), quindi non serve — e non è corretto — deduplicare
+    // lato DB su una chiave che il report non garantisce univoca.
     const toInsertRow = (r: (typeof clean)[number]) => ({
       numero_if: r.numero_if,
       num_bdo: r.num_bdo,
@@ -185,37 +185,6 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
   return mem()[numeroIf].map((r) => ({ ...r }));
 }
 
-// Chiave naturale di una riga BEF all'interno di un IF.
-//
-// NON è il solo Numero Fattura: una fattura copre normalmente PIÙ righe BEF
-// dello stesso intervento (una per BDO e per periodo di competenza), quindi
-// deduplicare sul solo numero fattura le collassava in un'unica riga,
-// perdendo l'importo di tutte le altre e sottostimando il "Fatturato emesso".
-// La riga è identificata da BDO + periodo di competenza + fattura; le righe
-// prive di tutti e tre non sono deduplicabili.
-const befKey = (r: BefRow): string | null => {
-  const parts = [strN(r.num_bdo), strN(r.periodo_competenza), strN(r.num_fattura)];
-  return parts.some(Boolean) ? parts.map((p) => p ?? '').join('|') : null;
-};
-
-// Upsert per chiave naturale (Decisione 2B, corretta): le righe in arrivo con
-// la stessa chiave sostituiscono quelle esistenti, le nuove si aggiungono, le
-// altre si conservano. Le righe senza alcun elemento di chiave non sono
-// deduplicabili e vengono accodate.
-export async function upsertBef(numeroIf: string, incoming: BefRow[]): Promise<BefRow[]> {
-  const existing = await listBef(numeroIf);
-  const byKey = new Map<string, BefRow>();
-  const noKey: BefRow[] = [];
-  const place = (r: BefRow) => {
-    const k = befKey(r);
-    if (k) byKey.set(k, { ...r, numero_if: numeroIf });
-    else noKey.push({ ...r, numero_if: numeroIf });
-  };
-  existing.forEach(place);
-  incoming.forEach(place);
-  return replaceBef(numeroIf, [...byKey.values(), ...noKey]);
-}
-
 // Numero IF di default per le righe BEF il cui BDO non trova corrispondenza
 // in `interventi` (nessuna riga viene scartata: resta disponibile per un
 // successivo aggancio manuale una volta censito l'intervento).
@@ -224,6 +193,22 @@ const UNRESOLVED_IF = '';
 // Persiste le righe BEF di un upload risolvendo il numero IF dal BDO
 // (BEF.num_bdo -> intervento.bdo). Ogni BEF porta sempre il suo BDO; come
 // fallback estrae il BDO dal codice BEF a 20 cifre (posizioni 5-14).
+//
+// Il report BEF è uno SNAPSHOT completo: per ogni IF presente nell'upload le
+// righe caricate sono la verità corrente e sostituiscono integralmente quelle
+// già salvate (`replaceBef`). Gli IF non citati dall'upload restano intatti,
+// quindi anche un report parziale è sicuro.
+//
+// Non c'è più alcuna fusione riga-per-riga con quanto già in archivio: quella
+// deduplicava su una chiave naturale (BDO + periodo + fattura) che il report
+// non garantisce, e sbagliava in entrambe le direzioni —
+//  - una riga che cambiava stato fra due upload (fattura emessa nel
+//    frattempo) cambiava chiave e sopravviveva ACCANTO alla propria versione
+//    aggiornata, raddoppiando il suo importo ad ogni reimport;
+//  - due righe distinte con stesso BDO, periodo e fattura (posizioni diverse
+//    dello stesso buono) collassavano in una, perdendo un importo.
+// Sostituendo per intero, la somma degli importi salvati coincide sempre con
+// la colonna "Importo Ricezione" del report.
 export async function persistBefFromUpload(
   rows: BefRecord[],
   bdoToIf: Map<string, string>,
@@ -240,7 +225,7 @@ export async function persistBefFromUpload(
   }
   let saved = 0;
   for (const [numeroIf, list] of byIf) {
-    await upsertBef(numeroIf, list);
+    await replaceBef(numeroIf, list);
     saved += list.length;
   }
   return { saved, ifs: [...byIf.keys()].filter((k) => k !== UNRESOLVED_IF), unresolved };

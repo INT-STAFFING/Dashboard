@@ -84,14 +84,16 @@ export const interventi = pgTable(
   }),
 );
 
-// Multiple rows per (numero_if, num_fattura) are EXPECTED and must be kept: a
-// single invoice normally covers several BEF entries of the same intervento —
-// one per BDO and per periodo di competenza. The unique index this table used
-// to carry on that pair collapsed them into one row, silently dropping the
-// amount of all the others from "Fatturato emesso" (dropped in
-// drizzle/0010_bef_drop_fattura_unique.sql). Dedup on the real natural key
-// (num_bdo, periodo_competenza, num_fattura) happens in lib/befStore.ts
-// `upsertBef`, and replaceBef writes the resulting list wholesale per IF.
+// This table has NO natural key and no unique index: the "REPORT Bef" export
+// does not guarantee one. A single invoice normally covers several BEF rows of
+// the same intervento (one per BDO and per periodo di competenza), and even
+// (BDO, periodo, fattura) can repeat across distinct posizioni of the same
+// buono. The unique index this table used to carry on
+// (numero_if, num_fattura) collapsed those rows into one, silently dropping
+// the amount of all the others (dropped in
+// drizzle/0010_bef_drop_fattura_unique.sql). Rows are therefore never merged
+// row-by-row: lib/befStore.ts `replaceBef` rewrites the whole list of an IF at
+// once, so what is stored is exactly what the report carries.
 export const bef_records = pgTable('bef_records', {
   id: serial('id').primaryKey(),
   numero_if: text('numero_if'), // links a BEF row to its IF/BO

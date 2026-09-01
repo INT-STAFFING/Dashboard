@@ -80,11 +80,40 @@ export function parseDocStatus(raw: unknown): DocStatus {
   return 'nd';
 }
 
+// Quale fra '.' e ',' è il separatore DECIMALE di una stringa numerica.
+//  - se compaiono entrambi, il decimale è l'ultimo dei due:
+//    "1.234,56" (IT) -> ',' ; "1,234.56" (EN) -> '.'
+//  - con un solo tipo di separatore, un gruppo finale di esattamente 3 cifre
+//    è un separatore delle migliaia ("1.234" -> 1234), qualsiasi altra
+//    lunghezza è la parte decimale ("216425,15", "216425.15" -> 216425.15);
+//  - separatori ripetuti sono sempre migliaia ("1.234.567").
+// Restituisce null quando non c'è parte decimale.
+function decimalSep(s: string): '.' | ',' | null {
+  const lastDot = s.lastIndexOf('.');
+  const lastComma = s.lastIndexOf(',');
+  if (lastDot < 0 && lastComma < 0) return null;
+  if (lastDot >= 0 && lastComma >= 0) return lastDot > lastComma ? '.' : ',';
+  const sep = lastDot >= 0 ? '.' : ',';
+  if (s.split(sep).length > 2) return null;
+  return s.length - Math.max(lastDot, lastComma) - 1 === 3 ? null : sep;
+}
+
+// Importi e quantità -> number. Accetta il numero già tipizzato da xlsx e le
+// stringhe nei formati che gli export producono ("€ 1.234,56", "1,234.56",
+// "1234.56"). Il separatore decimale è dedotto (vedi decimalSep) invece di
+// assumere sempre la convenzione italiana: trattare il punto come separatore
+// delle migliaia moltiplicava per 100 ogni importo scritto "216425.15".
 export function toNumber(v: unknown): number {
   if (v == null || v === '' || v === '—') return 0;
-  if (typeof v === 'number') return v;
-  const s = String(v).replace(/\./g, '').replace(',', '.').replace(/[^0-9.\-]/g, '');
-  const n = Number(s);
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const s = String(v).trim().replace(/[^\d.,-]/g, '');
+  if (!s || s === '-') return 0;
+  const sep = decimalSep(s);
+  const cut = sep ? s.lastIndexOf(sep) : s.length;
+  const neg = s.startsWith('-');
+  const intPart = s.slice(0, cut).replace(/\D/g, '');
+  const decPart = s.slice(cut + 1).replace(/\D/g, '');
+  const n = Number(`${neg ? '-' : ''}${intPart || '0'}${decPart ? `.${decPart}` : ''}`);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -255,10 +284,15 @@ const RTI_INTELLERA = 'rti 7-26 intellera';
 // (altri fornitori del raggruppamento) devono essere scartate. Il fornitore
 // può comparire in una colonna "Fornitore" o "Fornitore RTI" a seconda
 // dell'export — basta che una delle due combaci.
+//
+// La colonna è cercata con `looseGetter`: essendo questo l'unico filtro di
+// import, una variante di maiuscole o uno spazio di troppo nell'intestazione
+// scartava silenziosamente OGNI riga del report.
 export function isRtiIntellera(r: Record<string, unknown>): boolean {
+  const g = looseGetter(r);
   const match = (v: unknown) => {
     const s = str(v);
     return !!s && s.toLowerCase().includes(RTI_INTELLERA);
   };
-  return match(r['Fornitore']) || match(r['Fornitore RTI']);
+  return match(g('Fornitore RTI')) || match(g('Fornitore'));
 }

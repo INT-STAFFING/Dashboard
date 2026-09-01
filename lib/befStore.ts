@@ -1,6 +1,6 @@
-import { and, eq, isNotNull, isNull, notInArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { RunnableQuery } from 'drizzle-orm/runnable-query';
-import { getDb, hasDB, ensureSchema, excludedSet } from './db';
+import { getDb, hasDB, ensureSchema } from './db';
 import { bef_records } from './schema';
 import type { BefRow, BefRecord, BefMonthly, BefAggregates } from './types';
 import { bdoFromBef } from './codes';
@@ -118,15 +118,10 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
     await ensureSchema();
     const db = getDb();
 
-    // Natural key (numero_if, num_fattura) — see the unique index on
-    // bef_records in lib/schema.ts. Rows without num_fattura aren't
-    // deduplicable (pre-existing "Decisione 2B" rule in upsertBef below), so
-    // they're bucketed separately and always fully replaced for this
-    // numero_if instead of being matched by key.
-    const keyed = clean.filter((r) => r.num_fattura != null);
-    const unkeyed = clean.filter((r) => r.num_fattura == null);
-    const keyedInvoices = keyed.map((r) => r.num_fattura as string);
-
+    // Sostituzione integrale delle righe di questo numero_if: `clean` è già
+    // l'elenco completo e deduplicato per l'IF (vedi upsertBef, che fonde
+    // esistenti e nuove prima di chiamare qui), quindi non serve — e non è
+    // corretto — deduplicare di nuovo lato DB su una chiave parziale.
     const toInsertRow = (r: (typeof clean)[number]) => ({
       numero_if: r.numero_if,
       num_bdo: r.num_bdo,
@@ -139,44 +134,18 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
       data_pagamento: r.data_pagamento,
     });
 
-    // Drop invoiced rows whose invoice number is no longer in the new set
-    // (removed from this IF's BEF list); unkeyed rows have no stable
-    // identity, so this call's list is always their full replacement.
-    const dropStaleKeyed = db
-      .delete(bef_records)
-      .where(
-        keyedInvoices.length
-          ? and(
-              eq(bef_records.numero_if, numeroIf),
-              isNotNull(bef_records.num_fattura),
-              notInArray(bef_records.num_fattura, keyedInvoices),
-            )
-          : and(eq(bef_records.numero_if, numeroIf), isNotNull(bef_records.num_fattura)),
-      );
-    const dropUnkeyed = db
-      .delete(bef_records)
-      .where(and(eq(bef_records.numero_if, numeroIf), isNull(bef_records.num_fattura)));
-
-    const statements: BefBatchItem[] = [dropStaleKeyed, dropUnkeyed];
-    if (unkeyed.length) {
-      statements.push(db.insert(bef_records).values(unkeyed.map(toInsertRow)));
-    }
-    if (keyed.length) {
-      statements.push(
-        db
-          .insert(bef_records)
-          .values(keyed.map(toInsertRow))
-          .onConflictDoUpdate({
-            target: [bef_records.numero_if, bef_records.num_fattura],
-            set: excludedSet(bef_records, ['id', 'numero_if', 'num_fattura']),
-          }),
-      );
+    const statements: BefBatchItem[] = [
+      db.delete(bef_records).where(eq(bef_records.numero_if, numeroIf)),
+    ];
+    if (clean.length) {
+      statements.push(db.insert(bef_records).values(clean.map(toInsertRow)));
     }
     // db.batch() sends every statement to Neon's transactional batch
     // endpoint in a single HTTP round-trip: either all apply or none do.
     // neon-http has no interactive db.transaction() (see
     // drizzle-orm/neon-http/session.js), but batch() is backed by a real
-    // Postgres transaction server-side.
+    // Postgres transaction server-side — la DELETE + INSERT resta quindi
+    // atomica come nella versione precedente basata su ON CONFLICT.
     await db.batch(statements as [BefBatchItem, ...BefBatchItem[]]);
     return listBef(numeroIf);
   }
@@ -184,22 +153,35 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
   return mem()[numeroIf].map((r) => ({ ...r }));
 }
 
-// Upsert per Numero Fattura (Decisione 2B): le righe in arrivo con la stessa
-// fattura sostituiscono quelle esistenti, le nuove si aggiungono, le altre si
-// conservano. Le righe senza Numero Fattura non sono deduplicabili e vengono
-// accodate.
+// Chiave naturale di una riga BEF all'interno di un IF.
+//
+// NON è il solo Numero Fattura: una fattura copre normalmente PIÙ righe BEF
+// dello stesso intervento (una per BDO e per periodo di competenza), quindi
+// deduplicare sul solo numero fattura le collassava in un'unica riga,
+// perdendo l'importo di tutte le altre e sottostimando il "Fatturato emesso".
+// La riga è identificata da BDO + periodo di competenza + fattura; le righe
+// prive di tutti e tre non sono deduplicabili.
+const befKey = (r: BefRow): string | null => {
+  const parts = [strN(r.num_bdo), strN(r.periodo_competenza), strN(r.num_fattura)];
+  return parts.some(Boolean) ? parts.map((p) => p ?? '').join('|') : null;
+};
+
+// Upsert per chiave naturale (Decisione 2B, corretta): le righe in arrivo con
+// la stessa chiave sostituiscono quelle esistenti, le nuove si aggiungono, le
+// altre si conservano. Le righe senza alcun elemento di chiave non sono
+// deduplicabili e vengono accodate.
 export async function upsertBef(numeroIf: string, incoming: BefRow[]): Promise<BefRow[]> {
   const existing = await listBef(numeroIf);
-  const byFattura = new Map<string, BefRow>();
+  const byKey = new Map<string, BefRow>();
   const noKey: BefRow[] = [];
   const place = (r: BefRow) => {
-    const k = strN(r.num_fattura);
-    if (k) byFattura.set(k, { ...r, numero_if: numeroIf });
+    const k = befKey(r);
+    if (k) byKey.set(k, { ...r, numero_if: numeroIf });
     else noKey.push({ ...r, numero_if: numeroIf });
   };
   existing.forEach(place);
   incoming.forEach(place);
-  return replaceBef(numeroIf, [...byFattura.values(), ...noKey]);
+  return replaceBef(numeroIf, [...byKey.values(), ...noKey]);
 }
 
 // Numero IF di default per le righe BEF il cui BDO non trova corrispondenza

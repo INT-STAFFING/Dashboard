@@ -84,33 +84,26 @@ export const interventi = pgTable(
   }),
 );
 
-// Natural key for upsert-on-replace (lib/befStore.ts replaceBef): a BEF row
-// is identified by (numero_if, num_fattura) — mirrors the pre-existing merge
-// rule ("Decisione 2B") that rows sharing an invoice number are the same
-// logical entry. Rows without num_fattura aren't deduplicable; Postgres never
-// treats two NULLs as conflicting under a UNIQUE index, so they're naturally
-// exempt and are always replaced wholesale for that numero_if instead.
-export const bef_records = pgTable(
-  'bef_records',
-  {
-    id: serial('id').primaryKey(),
-    numero_if: text('numero_if'), // links a BEF row to its IF/BO
-    num_bdo: text('num_bdo'),
-    descrizione: text('descrizione'),
-    periodo_competenza: text('periodo_competenza'),
-    fornitore_reale: text('fornitore_reale'),
-    importo_ricezione: numeric('importo_ricezione', { precision: 15, scale: 4 }),
-    num_fattura: text('num_fattura'),
-    data_fattura: date('data_fattura'),
-    data_pagamento: date('data_pagamento'),
-  },
-  (t) => ({
-    numero_if_num_fattura_unique: uniqueIndex('bef_records_numero_if_num_fattura_unique').on(
-      t.numero_if,
-      t.num_fattura,
-    ),
-  }),
-);
+// Multiple rows per (numero_if, num_fattura) are EXPECTED and must be kept: a
+// single invoice normally covers several BEF entries of the same intervento —
+// one per BDO and per periodo di competenza. The unique index this table used
+// to carry on that pair collapsed them into one row, silently dropping the
+// amount of all the others from "Fatturato emesso" (dropped in
+// drizzle/0010_bef_drop_fattura_unique.sql). Dedup on the real natural key
+// (num_bdo, periodo_competenza, num_fattura) happens in lib/befStore.ts
+// `upsertBef`, and replaceBef writes the resulting list wholesale per IF.
+export const bef_records = pgTable('bef_records', {
+  id: serial('id').primaryKey(),
+  numero_if: text('numero_if'), // links a BEF row to its IF/BO
+  num_bdo: text('num_bdo'),
+  descrizione: text('descrizione'),
+  periodo_competenza: text('periodo_competenza'),
+  fornitore_reale: text('fornitore_reale'),
+  importo_ricezione: numeric('importo_ricezione', { precision: 15, scale: 4 }),
+  num_fattura: text('num_fattura'),
+  data_fattura: date('data_fattura'),
+  data_pagamento: date('data_pagamento'),
+});
 
 export const verbali_chiusura = pgTable('verbali_chiusura', {
   id: serial('id').primaryKey(),

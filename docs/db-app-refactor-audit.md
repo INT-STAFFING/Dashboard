@@ -183,6 +183,32 @@ la verifica è stata fatta in due parti contro un Postgres reale locale:
    intatto lo stato precedente (nessuna perdita dati); lo stesso batch
    rieseguito più volte di seguito produce sempre lo stesso stato finale.
 
+### Correzione successiva — la chiave naturale di `bef_records` era sbagliata
+
+La chiave `(numero_if, num_fattura)` scelta sopra formalizzava un assunto di
+dominio **falso**: che due righe BEF con lo stesso numero di fattura fossero la
+stessa riga logica ("Decisione 2B"). Nel report BEF una singola fattura copre
+normalmente **più righe**, una per BDO e per periodo di competenza. L'indice
+unique e l'`ON CONFLICT DO UPDATE` le collassavano quindi in un'unica riga ad
+ogni upload, e la `DELETE` di deduplica pre-indice faceva lo stesso sui dati già
+presenti: l'importo di tutte le righe scartate spariva dal KPI "Fatturato
+emesso" del tab Timeline e dalla serie mensile del grafico. Riprodotto: 5 righe
+in ingresso → 4 righe salvate, `fatturatoEmesso` 450.623,43 → 350.623,43.
+
+Correzione (`drizzle/0010_bef_drop_fattura_unique.sql`, `SCHEMA_VERSION` 5→6):
+
+- l'indice unique su `bef_records` è **rimosso** — più righe per
+  `(numero_if, num_fattura)` sono attese e devono essere conservate;
+- la deduplica avviene solo in `upsertBef`, sulla chiave naturale reale
+  `(num_bdo, periodo_competenza, num_fattura)`;
+- `replaceBef` torna a `DELETE` per `numero_if` + `INSERT` dell'elenco
+  completo, sempre dentro un unico `db.batch()`: l'atomicità che era
+  l'obiettivo di R-2 è preservata, la deduplica scorretta no.
+
+`report_pdc` e `verbali_apertura` non sono toccate: le loro chiavi
+(`num_bdo`+`posizione_bdo`+`periodo_pdc`, `num_bdo`+`codifica_documento`)
+identificano davvero una riga e restano valide.
+
 ---
 
 ## R-3 — Console SQL admin senza audit trail

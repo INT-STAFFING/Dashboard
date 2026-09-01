@@ -89,6 +89,12 @@ const DATE_ID_REPAIRS: string[] = [
       )`,
   `UPDATE "if_risorse" a SET "numero_if" = ${repairedId('a."numero_if"')}
     WHERE a."numero_if" ~ '${DATE_ID_RE}'`,
+  // Stessa corruzione sul numero di fattura: fino alla correzione del parser
+  // (lib/parsers/parseBEF.ts) la colonna "Numero Fattura" veniva letta con
+  // `str` invece che con `strId`, quindi una cella numerica con formato-data
+  // finiva salvata come timestamp anziché come numero di fattura.
+  `UPDATE "bef_records" a SET "num_fattura" = ${repairedId('a."num_fattura"')}
+    WHERE a."num_fattura" ~ '${DATE_ID_RE}'`,
 ];
 
 // ---------------------------------------------------------------------------
@@ -353,16 +359,18 @@ const DDL: string[] = [
   // (non-deduplicating) delete-all-per-num_bdo pattern can already have rows
   // sharing what's about to become a natural key — keep the most recently
   // written row (highest id) per duplicate group, matching drizzle/0007_organic_odin.sql.
-  `DELETE FROM "bef_records" a USING "bef_records" b
-    WHERE a."numero_if" = b."numero_if" AND a."num_fattura" = b."num_fattura"
-      AND a."num_fattura" IS NOT NULL AND a."id" < b."id"`,
   `DELETE FROM "report_pdc" a USING "report_pdc" b
     WHERE a."num_bdo" = b."num_bdo" AND a."posizione_bdo" = b."posizione_bdo" AND a."periodo_pdc" = b."periodo_pdc"
       AND a."posizione_bdo" IS NOT NULL AND a."periodo_pdc" IS NOT NULL AND a."id" < b."id"`,
   `DELETE FROM "verbali_apertura" a USING "verbali_apertura" b
     WHERE a."num_bdo" = b."num_bdo" AND a."codifica_documento" = b."codifica_documento"
       AND a."codifica_documento" IS NOT NULL AND a."id" < b."id"`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "bef_records_numero_if_num_fattura_unique" ON "bef_records" ("numero_if","num_fattura")`,
+  // bef_records ha invece NESSUNA unique su (numero_if, num_fattura): una
+  // fattura copre normalmente più righe BEF dello stesso IF (una per BDO e per
+  // periodo di competenza) e l'indice le collassava in una sola, azzerando
+  // l'importo di tutte le altre nel KPI "Fatturato emesso". Va rimosso anche
+  // dai DB creati prima (vedi drizzle/0010_bef_drop_fattura_unique.sql).
+  `DROP INDEX IF EXISTS "bef_records_numero_if_num_fattura_unique"`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "report_pdc_num_bdo_posizione_periodo_unique" ON "report_pdc" ("num_bdo","posizione_bdo","periodo_pdc")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "verbali_apertura_num_bdo_codifica_unique" ON "verbali_apertura" ("num_bdo","codifica_documento")`,
   // Domain CHECK constraints for enum-like text columns previously validated
@@ -479,12 +487,16 @@ const DDL: string[] = [
 //   5 — IF/BO identifiers persisted as a JS Date string ("Fri Nov 16 57370 …")
 //       converted back to the Excel serial they really are, on interventi,
 //       bef_records and if_risorse
+//   6 — unique index bef_records(numero_if, num_fattura) rimosso: una fattura
+//       copre più righe BEF dello stesso IF e l'indice le collassava in una
+//       sola, sottostimando il "Fatturato emesso"; stessa riparazione del
+//       punto 5 estesa a bef_records.num_fattura
 // Exported so cached payloads assembled from these tables can key off it: a
 // bootstrap that rewrites existing rows (the DATE_ID_REPAIRS above) changes what
 // a read returns without going through any app write path, so nothing calls
 // `revalidateTag`. Cache keys that include this version rebuild on the bump
 // instead of serving data assembled before the repair — see lib/getDashboardData.ts.
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 const SCHEMA_VERSION_KEY = 'schema_version';
 
 // Reads the current schema_version from app_config with a single round-trip.

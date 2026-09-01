@@ -88,14 +88,41 @@ export function toNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Accepts Date objects, "gg/mm/aaaa" or ISO strings -> ISO yyyy-mm-dd (or null)
+// Excel's day-zero. Serial 1 is 1900-01-01 and Excel keeps the phantom
+// 1900-02-29, so every serial from 61 on lines up with a 1899-12-30 epoch.
+const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
+
+const p2 = (n: number) => String(n).padStart(2, '0');
+
+// ISO yyyy-mm-dd from a Date's LOCAL calendar parts.
+// `readWorkbook` uses `cellDates`, and xlsx builds those Date objects from the
+// serial's calendar parts in local time. Reading them back as UTC
+// (`toISOString`) therefore shifts every date one day earlier on any timezone
+// east of Greenwich (Europe/Rome included) — enough to move an invoice dated
+// the 1st of a month into the previous month's bucket, which is what the
+// monthly BEF series aggregates on.
+const localISO = (d: Date) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+
+// Excel serial -> ISO yyyy-mm-dd. Guarded to the range Excel can represent
+// (1 = 1899-12-31 … 2958465 = 9999-12-31) so a plain number that is *not* a
+// date (an amount, an identifier) yields null instead of a bogus year.
+function fromExcelSerial(serial: number): string | null {
+  if (!Number.isFinite(serial) || serial < 1 || serial > 2958465) return null;
+  const d = new Date(EXCEL_EPOCH_UTC + Math.round(serial) * 86400000);
+  return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
+}
+
+// Accepts Date objects, Excel serials, "gg/mm/aaaa" (also with '-' or '.'
+// separators) or ISO strings -> ISO yyyy-mm-dd (or null)
 export function toISODate(v: unknown): string | null {
   if (v == null || v === '' || v === '—') return null;
-  if (v instanceof Date && !isNaN(v.getTime())) {
-    return v.toISOString().slice(0, 10);
-  }
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : localISO(v);
+  // A numeric date cell whose column carries no date number-format arrives as
+  // the raw Excel serial. `new Date("45678")` reads that as a *year*
+  // ("+045677-12"), so convert it explicitly instead.
+  if (typeof v === 'number') return fromExcelSerial(v);
   const s = String(v).trim();
-  const it = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  const it = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
   if (it) {
     const [, d, m, y] = it;
     const yyyy = y.length === 2 ? `20${y}` : y;
@@ -103,8 +130,9 @@ export function toISODate(v: unknown): string | null {
   }
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  if (/^\d+(?:[.,]\d+)?$/.test(s)) return fromExcelSerial(Number(s.replace(',', '.')));
   const parsed = new Date(s);
-  return isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+  return isNaN(parsed.getTime()) ? null : localISO(parsed);
 }
 
 export function str(v: unknown): string | null {
@@ -112,10 +140,6 @@ export function str(v: unknown): string | null {
   const s = String(v).trim();
   return s === '' || s === '—' || s === 'nan' ? null : s;
 }
-
-// Excel's day-zero. Serial 1 is 1900-01-01 and Excel keeps the phantom
-// 1900-02-29, so every serial from 61 on lines up with a 1899-12-30 epoch.
-const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
 
 // Undo the `cellDates` coercion of a cell that only *looks* like a date.
 // When a numeric cell carries a date number-format, xlsx hands back a Date
@@ -170,6 +194,40 @@ export function pick(r: Record<string, unknown>, ...keys: string[]): unknown {
     if (k in r) return r[k];
   }
   return undefined;
+}
+
+// Header normalization for `looseGetter`: case, accents, punctuation and
+// repeated spaces are dropped, so "Numero Fattura", "numero fattura" and
+// "N° Fattura " all collapse onto the same lookup key.
+const normHeader = (h: string) =>
+  h
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+// A getter over one row that matches headers loosely (see `normHeader`) and
+// accepts several spellings per column. Exact-key access silently yields
+// `undefined` when an export renames a column by so much as a capital letter —
+// for a column the aggregates key on (e.g. "Numero Fattura", which decides
+// whether a BEF row counts as fatturata) that turns into a wrong KPI rather
+// than a visible error, so those parsers read through this instead.
+export function looseGetter(
+  r: Record<string, unknown>,
+): (...keys: string[]) => unknown {
+  const map = new Map<string, unknown>();
+  for (const k of Object.keys(r)) {
+    const nk = normHeader(k);
+    if (nk && !map.has(nk)) map.set(nk, r[k]);
+  }
+  return (...keys: string[]) => {
+    for (const k of keys) {
+      const v = map.get(normHeader(k));
+      if (v !== undefined) return v;
+    }
+    return undefined;
+  };
 }
 
 // Header row of a sheet (trimmed, blanks dropped) — used to sanity-check an

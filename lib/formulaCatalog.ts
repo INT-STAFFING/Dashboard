@@ -316,9 +316,10 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     pagina: '3 Timeline',
     sezione: 'Serie Revenue vs Fatturazione',
     elemento: 'Cumulati (linee)',
-    formula: 'cum[i] = Σ(k=0..i) valore[k]  (per revenue e per fatturazione)',
-    spiegazione: 'Le linee sono le somme progressive delle barre lungo i periodi visualizzati.',
-    sorgenti: 'serie revenue / fatturazione',
+    formula: 'cum[i] = Σ(k=0..i) valore[k]  (per revenue, per fatturazione e per fatturato BEF)',
+    spiegazione:
+      'Le linee sono le somme progressive delle barre lungo i periodi visualizzati. Sono tre serie distinte: “Cum. Revenue” (revenue di competenza), “Cum. Fatturazione” (consuntivato a piano, da cons_mesi) e — quando esistono righe BEF nel periodo — “Cum. Fatturato (BEF)”, il cumulato del fatturato realmente emesso. Le ultime due NON coincidono: la seconda è il piano, la terza il consuntivo delle fatture.',
+    sorgenti: 'serie revenue / fatturazione / fatturato BEF',
   },
   {
     pagina: '3 Timeline',
@@ -367,8 +368,9 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     sezione: 'Indicatori',
     elemento: 'Fatturabile ad oggi',
     formula:
-      'fatturabile = Σ importo_ricezione delle righe BEF Intellera SENZA num_fattura E SENZA data_fattura',
-    spiegazione: 'Importo BEF non ancora fatturato (righe prive sia di numero sia di data fattura).',
+      'fatturabile = Σ importo_ricezione delle righe BEF Intellera SENZA num_fattura E SENZA data_fattura (tutte le annualità caricate, non solo l’anno selezionato)',
+    spiegazione:
+      'Importo BEF non ancora fatturato (righe prive sia di numero sia di data fattura). Indicatore di portafoglio: le righe non fatturate non portano una data su cui filtrarle per anno, quindi — a differenza del grafico — non è ristretto al periodo selezionato. Una riga con uno solo dei due campi valorizzato non rientra né qui né in “Fatturato emesso”: è un dato incompleto da sanare nel report BEF.',
     sorgenti: 'bef_records (Intellera): importo_ricezione, num_fattura, data_fattura',
   },
   {
@@ -376,8 +378,9 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     sezione: 'Indicatori',
     elemento: 'Fatturato emesso',
     formula:
-      'fatturatoEmesso = Σ importo_ricezione delle righe BEF Intellera CON num_fattura E data_fattura',
-    spiegazione: 'Importo BEF già fatturato (righe con numero e data fattura valorizzati).',
+      'fatturatoEmesso = Σ importo_ricezione delle righe BEF Intellera CON num_fattura E data_fattura (tutte le annualità caricate, non solo l’anno selezionato)',
+    spiegazione:
+      'Importo BEF già fatturato (righe con numero e data fattura valorizzati). La somma è su TUTTE le righe: una stessa fattura copre normalmente più righe BEF (una per BDO e per periodo di competenza) e ognuna contribuisce con il proprio importo. Indicatore di portafoglio, non ristretto al periodo del grafico.',
     sorgenti: 'bef_records (Intellera): importo_ricezione, num_fattura, data_fattura',
   },
 

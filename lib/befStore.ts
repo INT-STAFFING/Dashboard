@@ -54,17 +54,31 @@ export async function listAllBef(): Promise<BefRow[]> {
   return Object.values(mem()).flat().map((r) => ({ ...r }));
 }
 
-const isFatturata = (r: BefRow) => Boolean(r.num_fattura) && Boolean(r.data_fattura);
-const isNonFatturata = (r: BefRow) => !r.num_fattura && !r.data_fattura;
+// Stato di una riga BEF (fonte: business owner). I tre stati sono mutuamente
+// esclusivi ed esaustivi, così i tre indicatori del tab Timeline sommano
+// esattamente al totale BEF:
+//   - senza numero fattura                  -> la fattura deve ancora essere
+//                                              emessa (fatturabile);
+//   - con numero fattura, senza data        -> fattura emessa, non ancora
+//                                              incassata (fatturato emesso);
+//   - con numero fattura e con data fattura -> emessa e incassata (fatturato
+//                                              incassato): `data_fattura` è la
+//                                              data dell'incasso.
+// Una riga con data fattura ma senza numero è un dato incompleto: non può
+// essere una fattura emessa, quindi resta tra le fatturabili.
+const isIncassata = (r: BefRow) => Boolean(r.num_fattura) && Boolean(r.data_fattura);
+const isEmessaNonIncassata = (r: BefRow) => Boolean(r.num_fattura) && !r.data_fattura;
+const isDaEmettere = (r: BefRow) => !r.num_fattura;
 
 // Sum of `importo_ricezione` grouped by calendar month of `data_fattura`, for
-// rows that have both a `num_fattura` and a `data_fattura` (i.e. fatturate).
+// rows già incassate. Le righe emesse ma non ancora incassate non hanno una
+// data su cui collocarle, quindi non compaiono nella serie mensile.
 // The compute* variants are pure so callers that already hold the rows (e.g.
 // getDashboardData) can derive both aggregates from a single fetch.
 export function computeBefMonthlyTotals(rows: BefRow[]): BefMonthly[] {
   const totals = new Map<string, number>();
   for (const r of rows) {
-    if (!isFatturata(r) || r.importo_ricezione == null) continue;
+    if (!isIncassata(r) || r.importo_ricezione == null) continue;
     const [y, m] = (r.data_fattura as string).split('-');
     const anno = Number(y),
       mese = Number(m);
@@ -82,18 +96,22 @@ export async function getBefMonthlyTotals(): Promise<BefMonthly[]> {
   return computeBefMonthlyTotals(await listAllBef());
 }
 
-// Portfolio-level BEF totals (no year/period filtering):
-//  - fatturabile: righe senza numero fattura e senza data fattura (non ancora fatturate)
-//  - fatturatoEmesso: righe con numero fattura e data fattura (fatturate)
+// Portfolio-level BEF totals (no year/period filtering), uno per stato della
+// riga (vedi i predicati sopra):
+//  - fatturabile:        fattura ancora da emettere
+//  - fatturatoEmesso:    fattura emessa, incasso non ancora avvenuto
+//  - fatturatoIncassato: fattura emessa e incassata
 export function computeBefAggregates(rows: BefRow[]): BefAggregates {
   let fatturabile = 0,
-    fatturatoEmesso = 0;
+    fatturatoEmesso = 0,
+    fatturatoIncassato = 0;
   for (const r of rows) {
     if (r.importo_ricezione == null) continue;
-    if (isNonFatturata(r)) fatturabile += r.importo_ricezione;
-    else if (isFatturata(r)) fatturatoEmesso += r.importo_ricezione;
+    if (isIncassata(r)) fatturatoIncassato += r.importo_ricezione;
+    else if (isEmessaNonIncassata(r)) fatturatoEmesso += r.importo_ricezione;
+    else if (isDaEmettere(r)) fatturabile += r.importo_ricezione;
   }
-  return { fatturabile, fatturatoEmesso };
+  return { fatturabile, fatturatoEmesso, fatturatoIncassato };
 }
 
 export async function getBefAggregates(): Promise<BefAggregates> {

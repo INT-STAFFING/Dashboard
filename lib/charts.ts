@@ -296,10 +296,10 @@ export function chartRevFatt(
     cb = 0;
   const cumR = rev.map((v) => (cr += v)),
     cumF = fatt.map((v) => (cf += v)),
-    // Cumulato del fatturato realmente emesso (righe BEF con numero e data
-    // fattura). È una serie distinta da `cumF`, che cumula la fatturazione
-    // consuntivata/attivata a piano: sono due grandezze diverse e il grafico
-    // deve mostrarle entrambe, non una al posto dell'altra.
+    // Cumulato dell'incassato (righe BEF con numero E data fattura, collocate
+    // nel mese di incasso). È una serie distinta da `cumF`, che cumula la
+    // fatturazione consuntivata/attivata a piano: sono due grandezze diverse e
+    // il grafico deve mostrarle entrambe, non una al posto dell'altra.
     cumB = bef.map((v) => (cb += v || 0));
   const maxCum = Math.max(
     1,
@@ -380,7 +380,7 @@ export function chartRevFatt(
     const tipTxt = `${mn}${periodLabel ? ' ' + periodLabel : ''}\nRevenue: ${EUR(rev[i])}\nFatturazione: ${EUR(fatt[i])}\nCum. Revenue: ${EUR(
       cumR[i],
     )}\nCum. Fatturazione: ${EUR(cumF[i])}${
-      hasBef ? `\nFatturato (BEF): ${EUR(bef[i] || 0)}\nCum. Fatturato (BEF): ${EUR(cumB[i])}` : ''
+      hasBef ? `\nIncassato (BEF): ${EUR(bef[i] || 0)}\nCum. Incassato (BEF): ${EUR(cumB[i])}` : ''
     }`;
     hov += `<rect x="${x.toFixed(1)}" y="${pt}" width="${slot.toFixed(
       1,

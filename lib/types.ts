@@ -113,13 +113,16 @@ export type BefMonthly = {
 };
 
 // Portfolio-level totals of `bef_records.importo_ricezione` (no period filter).
-// Le quattro voci sono mutuamente esclusive ed esaustive: ogni riga BEF ricade
-// in una e una sola (vedi computeBefAggregates in lib/befStore.ts).
+// `fatturabile` + `fatturatoInAttesa` + `fatturatoEmesso` sono mutuamente
+// esclusive ed esaustive (ogni riga BEF ricade in una e una sola); `fatturatoIncassato`
+// NON è una quarta voce da sommare alle altre — è un sottoinsieme di
+// `fatturatoEmesso` (le fatture emesse già incassate) — vedi computeBefAggregates
+// in lib/befStore.ts.
 export type BefAggregates = {
   fatturabile: number; // senza numero fattura: da emettere
   fatturatoInAttesa: number; // numero fattura, senza data fattura: emessa, non ancora approvata dal cliente
-  fatturatoEmesso: number; // numero + data fattura, senza data pagamento: emessa, non incassata
-  fatturatoIncassato: number; // numero + data fattura + data pagamento: emessa e incassata
+  fatturatoEmesso: number; // numero + data fattura: emessa, incassata o meno (totale fatturato a oggi)
+  fatturatoIncassato: number; // sottoinsieme di fatturatoEmesso: numero + data fattura + data pagamento
 };
 
 export type Meta = {

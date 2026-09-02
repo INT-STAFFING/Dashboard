@@ -55,25 +55,27 @@ export async function listAllBef(): Promise<BefRow[]> {
   return Object.values(mem()).flat().map((r) => ({ ...r }));
 }
 
-// Ciclo di vita di una riga BEF (fonte: business owner). I quattro stati sono
-// mutuamente esclusivi ed esaustivi, così i quattro indicatori del tab
-// Timeline sommano esattamente al totale BEF:
+// Ciclo di vita di una riga BEF (fonte: business owner). "Fatturabile",
+// "in attesa" ed "emessa" sono mutuamente esclusivi ed esaustivi; "incassata"
+// non è un quarto stato a sé ma un SOTTOINSIEME di "emessa" (una fattura
+// emessa è incassata o meno) — allineato al significato che il report BEF
+// del business owner dà a "Fatturato emesso": il totale fatturato a oggi,
+// incassato o meno, non solo la quota ancora da incassare. cfr. `isFatturata`
+// sotto, già usata con lo stesso significato per il fatturato mensile.
 //
 //   num_fattura  data_fattura  data_pagamento  stato
 //   ───────────  ────────────  ──────────────  ──────────────────────────────
 //        no           no             —         da emettere      (fatturabile)
 //        sì           no             —         emessa, non ancora approvata
 //                                              dal cliente      (in attesa)
-//        sì           sì             no        emessa, non incassata (emesso)
-//        sì           sì             sì        emessa e incassata  (incassato)
+//        sì           sì             no/sì     emessa                (emesso)
+//        sì           sì             sì          └─ di cui incassata (incassato)
 //
 // Lo stato "in attesa" è raro: di norma numero e data fattura sono entrambi
 // presenti o entrambi assenti. Una riga senza numero fattura resta fra le
 // fatturabili anche se porta una data: non può essere una fattura emessa.
 const isDaEmettere = (r: BefRow) => !r.num_fattura;
 const isInAttesa = (r: BefRow) => Boolean(r.num_fattura) && !r.data_fattura;
-const isEmessaNonIncassata = (r: BefRow) =>
-  Boolean(r.num_fattura) && Boolean(r.data_fattura) && !r.data_pagamento;
 const isIncassata = (r: BefRow) =>
   Boolean(r.num_fattura) && Boolean(r.data_fattura) && Boolean(r.data_pagamento);
 
@@ -112,8 +114,10 @@ export async function getBefMonthlyTotals(): Promise<BefMonthly[]> {
 // riga (vedi i predicati sopra):
 //  - fatturabile:        fattura ancora da emettere
 //  - fatturatoInAttesa:  emessa, in attesa di approvazione dal cliente
-//  - fatturatoEmesso:    emessa e approvata, incasso non ancora avvenuto
-//  - fatturatoIncassato: emessa e incassata
+//  - fatturatoEmesso:    emessa (incassata o meno) — totale fatturato a oggi
+//  - fatturatoIncassato: SOTTOINSIEME di fatturatoEmesso, di cui già incassata
+// fatturabile + fatturatoInAttesa + fatturatoEmesso == totale BEF; fatturatoIncassato
+// non va sommato di nuovo (è già incluso in fatturatoEmesso).
 export function computeBefAggregates(rows: BefRow[]): BefAggregates {
   let fatturabile = 0,
     fatturatoInAttesa = 0,
@@ -123,8 +127,10 @@ export function computeBefAggregates(rows: BefRow[]): BefAggregates {
     if (r.importo_ricezione == null) continue;
     if (isDaEmettere(r)) fatturabile += r.importo_ricezione;
     else if (isInAttesa(r)) fatturatoInAttesa += r.importo_ricezione;
-    else if (isEmessaNonIncassata(r)) fatturatoEmesso += r.importo_ricezione;
-    else if (isIncassata(r)) fatturatoIncassato += r.importo_ricezione;
+    else if (isFatturata(r)) {
+      fatturatoEmesso += r.importo_ricezione;
+      if (isIncassata(r)) fatturatoIncassato += r.importo_ricezione;
+    }
   }
   return { fatturabile, fatturatoInAttesa, fatturatoEmesso, fatturatoIncassato };
 }

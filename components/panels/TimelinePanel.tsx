@@ -96,12 +96,14 @@ function TimelinePanel({
     // caricate), non filtrati sull'anno selezionato come il resto del
     // pannello: le righe ancora da emettere non portano una data su cui
     // bucketizzarle. Il sottotitolo lo dichiara per non lasciar leggere il
-    // valore come "del periodo mostrato nel grafico". I quattro stati sono
-    // mutuamente esclusivi: la loro somma è il totale BEF Intellera.
+    // valore come "del periodo mostrato nel grafico". "Fatturabile ad oggi",
+    // "Fatturato in attesa" e "Fatturato emesso" sono mutuamente esclusivi e
+    // sommano al totale BEF Intellera; "Fatturato incassato" è un
+    // SOTTOINSIEME di "Fatturato emesso" (non va sommato una seconda volta).
     ['Fatturabile ad oggi', EUR2(befAggregates.fatturabile), 'da emettere · Intellera · tutti i periodi'],
     ['Fatturato in attesa', EUR2(befAggregates.fatturatoInAttesa), 'emesso, non approvato dal cliente · tutti i periodi'],
-    ['Fatturato emesso', EUR2(befAggregates.fatturatoEmesso), 'emesso, non ancora incassato · tutti i periodi'],
-    ['Fatturato incassato', EUR2(befAggregates.fatturatoIncassato), 'emesso e incassato · tutti i periodi'],
+    ['Fatturato emesso', EUR2(befAggregates.fatturatoEmesso), 'incassato o meno · Intellera · tutti i periodi'],
+    ['Fatturato incassato', EUR2(befAggregates.fatturatoIncassato), 'di cui già incassato · tutti i periodi'],
   ];
 
   return (

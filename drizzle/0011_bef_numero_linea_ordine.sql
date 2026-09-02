@@ -1,0 +1,15 @@
+-- BDO + periodo di competenza (+ numero fattura, se già emessa) non
+-- identificano una riga BEF univocamente: la stessa combinazione copre
+-- normalmente PIÙ righe, una per "Numero Linea Ordine" (profilo/seniority),
+-- ciascuna con un proprio importo. La chiave naturale usata da upsertBef
+-- (lib/befStore.ts, befKey) non includeva questo campo: righe distinte con
+-- lo stesso BDO/periodo/fattura collidevano sulla stessa chiave e si
+-- sovrascrivevano a vicenda ad ogni import — sopravviveva solo l'ultima riga
+-- letta dal foglio per quella combinazione — sottostimando silenziosamente
+-- "Fatturabile ad oggi", "Fatturato emesso" e "Fatturato incassato" nel tab
+-- Timeline, senza alcun errore visibile.
+--
+-- Questa colonna non recupera da sola gli importi già persi da import
+-- precedenti alla correzione: richiede un nuovo caricamento dei file BEF
+-- sorgente una volta distribuita la fix (vedi anche lib/db.ts, SCHEMA_VERSION 7).
+ALTER TABLE "bef_records" ADD COLUMN IF NOT EXISTS "numero_linea_ordine" text;

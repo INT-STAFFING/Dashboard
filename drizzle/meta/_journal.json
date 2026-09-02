@@ -78,6 +78,13 @@
       "when": 1788272861622,
       "tag": "0010_bef_drop_fattura_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788278400000,
+      "tag": "0011_bef_numero_linea_ordine",
+      "breakpoints": true
     }
   ]
 }

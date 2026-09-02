@@ -135,6 +135,7 @@ export type Meta = {
 export type BefRecord = {
   num_bdo: string | null;
   descrizione: string | null;
+  numero_linea_ordine: string | null;
   periodo_competenza: string | null;
   fornitore_reale: string | null;
   importo_ricezione: number | null;
@@ -339,6 +340,7 @@ export type BefRow = {
   numero_if: string;
   num_bdo: string | null;
   descrizione: string | null;
+  numero_linea_ordine: string | null;
   periodo_competenza: string | null;
   fornitore_reale: string | null;
   importo_ricezione: number | null;

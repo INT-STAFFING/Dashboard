@@ -97,6 +97,11 @@ export const bef_records = pgTable('bef_records', {
   numero_if: text('numero_if'), // links a BEF row to its IF/BO
   num_bdo: text('num_bdo'),
   descrizione: text('descrizione'),
+  // Identifica quale voce d'ordine (profilo/seniority) del BDO/periodo la riga
+  // rappresenta: fa parte della chiave naturale in lib/befStore.ts (befKey),
+  // perché più righe BEF possono condividere BDO + periodo di competenza (+
+  // fattura, se già emessa) restando comunque distinte.
+  numero_linea_ordine: text('numero_linea_ordine'),
   periodo_competenza: text('periodo_competenza'),
   fornitore_reale: text('fornitore_reale'),
   importo_ricezione: numeric('importo_ricezione', { precision: 15, scale: 4 }),

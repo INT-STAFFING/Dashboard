@@ -77,7 +77,7 @@ function normalizeRow<T>(
 function normalizeBef(raw: unknown): BefRecord | null {
   return normalizeRow<BefRecord>(
     raw,
-    ['num_bdo', 'descrizione', 'periodo_competenza', 'fornitore_reale', 'importo_ricezione', 'num_fattura', 'data_fattura', 'data_pagamento'],
+    ['num_bdo', 'descrizione', 'numero_linea_ordine', 'periodo_competenza', 'fornitore_reale', 'importo_ricezione', 'num_fattura', 'data_fattura', 'data_pagamento'],
     { requireAnyOf: ['num_bdo', 'num_fattura'], numeric: ['importo_ricezione'] },
   );
 }

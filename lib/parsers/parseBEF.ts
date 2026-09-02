@@ -16,6 +16,7 @@ import {
 const EXPECTED_HEADERS = [
   'Numero BDO',
   'Descrizione',
+  'Numero Linea Ordine',
   'Periodo Competenza',
   'Fornitore RTI',
   'Fornitore Reale',
@@ -51,6 +52,11 @@ export function parseBEF(input: ArrayBuffer | Buffer): BefRecord[] {
     out.push({
       num_bdo,
       descrizione,
+      // Identificativo ordinale della linea d'ordine (profilo/seniority), non
+      // testo libero: stessa ragione di `num_fattura` sotto — va letto con
+      // `strId` per non ereditare una coda decimale (es. "1.0") o, se il
+      // foglio ha lasciato un formato-data sulla colonna, un timestamp.
+      numero_linea_ordine: strId(g('Numero Linea Ordine')),
       periodo_competenza: str(g('Periodo Competenza', 'Mese competenza Verbale')),
       fornitore_reale: str(g('Fornitore Reale')) ?? str(g('Fornitore RTI', 'Fornitore')),
       importo_ricezione: toNumber(g('Importo Ricezione')),

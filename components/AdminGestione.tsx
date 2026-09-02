@@ -942,6 +942,7 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
                 <tr>
                   <th>Num. BO</th>
                   <th>Descrizione</th>
+                  <th>Linea</th>
                   <th>Periodo</th>
                   <th>Fornitore reale</th>
                   <th style={{ textAlign: 'right' }}>Importo (€)</th>
@@ -956,6 +957,7 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
                   <tr key={i}>
                     <td><TextInput value={r.num_bdo} width={110} onChange={(v) => upd(i, { num_bdo: v })} /></td>
                     <td><TextInput value={r.descrizione} onChange={(v) => upd(i, { descrizione: v })} /></td>
+                    <td><TextInput value={r.numero_linea_ordine} width={60} onChange={(v) => upd(i, { numero_linea_ordine: v })} /></td>
                     <td><TextInput value={r.periodo_competenza} width={100} onChange={(v) => upd(i, { periodo_competenza: v })} /></td>
                     <td><TextInput value={r.fornitore_reale} width={120} onChange={(v) => upd(i, { fornitore_reale: v })} /></td>
                     <td style={{ textAlign: 'right' }}><NumInput value={r.importo_ricezione} width={110} onChange={(v) => upd(i, { importo_ricezione: v })} /></td>
@@ -968,7 +970,7 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
                   </tr>
                 ))}
                 {rows.length === 0 && (
-                  <tr><td colSpan={9} style={{ color: 'var(--muted)', padding: 14 }}>Nessuna voce BEF.</td></tr>
+                  <tr><td colSpan={10} style={{ color: 'var(--muted)', padding: 14 }}>Nessuna voce BEF.</td></tr>
                 )}
               </tbody>
             </table>
@@ -979,7 +981,7 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
               onClick={() =>
                 setRows((l) => [
                   ...l,
-                  { numero_if: numeroIf, num_bdo: '', descrizione: '', periodo_competenza: '', fornitore_reale: '', importo_ricezione: 0, num_fattura: '', data_fattura: '', data_pagamento: '' },
+                  { numero_if: numeroIf, num_bdo: '', descrizione: '', numero_linea_ordine: '', periodo_competenza: '', fornitore_reale: '', importo_ricezione: 0, num_fattura: '', data_fattura: '', data_pagamento: '' },
                 ])
               }
             >

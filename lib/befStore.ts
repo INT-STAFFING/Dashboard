@@ -26,6 +26,7 @@ function rowTo(r: Row): BefRow {
     numero_if: r.numero_if ?? '',
     num_bdo: r.num_bdo,
     descrizione: r.descrizione,
+    numero_linea_ordine: r.numero_linea_ordine,
     periodo_competenza: r.periodo_competenza,
     fornitore_reale: r.fornitore_reale,
     importo_ricezione: r.importo_ricezione == null ? null : Number(r.importo_ricezione),
@@ -138,6 +139,7 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
     numero_if: numeroIf,
     num_bdo: strN(r.num_bdo),
     descrizione: strN(r.descrizione),
+    numero_linea_ordine: strN(r.numero_linea_ordine),
     periodo_competenza: strN(r.periodo_competenza),
     fornitore_reale: strN(r.fornitore_reale),
     importo_ricezione: numN(r.importo_ricezione),
@@ -158,6 +160,7 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
       numero_if: r.numero_if,
       num_bdo: r.num_bdo,
       descrizione: r.descrizione,
+      numero_linea_ordine: r.numero_linea_ordine,
       periodo_competenza: r.periodo_competenza,
       fornitore_reale: r.fornitore_reale,
       importo_ricezione: r.importo_ricezione == null ? null : String(r.importo_ricezione),
@@ -191,10 +194,25 @@ export async function replaceBef(numeroIf: string, rows: BefRow[]): Promise<BefR
 // dello stesso intervento (una per BDO e per periodo di competenza), quindi
 // deduplicare sul solo numero fattura le collassava in un'unica riga,
 // perdendo l'importo di tutte le altre e sottostimando il "Fatturato emesso".
-// La riga è identificata da BDO + periodo di competenza + fattura; le righe
-// prive di tutti e tre non sono deduplicabili.
+//
+// BDO + periodo di competenza (+ fattura, se già emessa) non bastano da soli:
+// lo stesso BDO/periodo/fattura copre normalmente PIÙ righe BEF, una per
+// "Numero Linea Ordine" (profilo/seniority), ciascuna con un proprio importo.
+// Omettendo la linea d'ordine dalla chiave, righe distinte collidevano sulla
+// stessa chiave e si sovrascrivevano a vicenda ad ogni import — sopravviveva
+// solo l'ultima riga letta dal foglio per quella combinazione — sottostimando
+// silenziosamente "Fatturabile ad oggi", "Fatturato emesso" e "Fatturato
+// incassato" (nessun errore visibile: le righe perse semplicemente non
+// arrivavano al DB). La riga è identificata da BDO + periodo di competenza +
+// fattura + linea d'ordine; le righe prive di tutti e quattro non sono
+// deduplicabili.
 const befKey = (r: BefRow): string | null => {
-  const parts = [strN(r.num_bdo), strN(r.periodo_competenza), strN(r.num_fattura)];
+  const parts = [
+    strN(r.num_bdo),
+    strN(r.periodo_competenza),
+    strN(r.num_fattura),
+    strN(r.numero_linea_ordine),
+  ];
   return parts.some(Boolean) ? parts.map((p) => p ?? '').join('|') : null;
 };
 

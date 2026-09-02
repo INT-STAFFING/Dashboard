@@ -354,6 +354,13 @@ const DDL: string[] = [
   // existed (CREATE TABLE IF NOT EXISTS won't add columns to an existing table).
   `ALTER TABLE "interventi" ADD COLUMN IF NOT EXISTS "cons_mesi" jsonb`,
   `ALTER TABLE "bef_records" ADD COLUMN IF NOT EXISTS "numero_if" text`,
+  // "Numero Linea Ordine" fa ora parte della chiave naturale di befKey (vedi
+  // lib/befStore.ts): senza questa colonna, righe che condividono BDO +
+  // periodo di competenza (+ fattura) ma rappresentano voci d'ordine diverse
+  // collidevano sulla stessa chiave e si sovrascrivevano a vicenda ad ogni
+  // import, sottostimando silenziosamente "Fatturabile ad oggi", "Fatturato
+  // emesso" e "Fatturato incassato".
+  `ALTER TABLE "bef_records" ADD COLUMN IF NOT EXISTS "numero_linea_ordine" text`,
   // Natural keys for upsert-on-replace (see lib/befStore.ts, lib/reportPdcStore.ts,
   // lib/verbaliAperturaStore.ts). De-duplicate first: a DB populated by the old
   // (non-deduplicating) delete-all-per-num_bdo pattern can already have rows
@@ -491,12 +498,20 @@ const DDL: string[] = [
 //       copre più righe BEF dello stesso IF e l'indice le collassava in una
 //       sola, sottostimando il "Fatturato emesso"; stessa riparazione del
 //       punto 5 estesa a bef_records.num_fattura
+//   7 — nuova colonna bef_records.numero_linea_ordine, ora parte della chiave
+//       naturale di befKey (lib/befStore.ts): BDO + periodo di competenza (+
+//       fattura) da soli non identificano una riga BEF univocamente — una
+//       stessa combinazione copre normalmente più righe, una per linea
+//       d'ordine (profilo/seniority) — e senza questo campo collidevano sulla
+//       stessa chiave sottostimando "Fatturabile ad oggi", "Fatturato
+//       emesso" e "Fatturato incassato". Non recupera righe già perse da
+//       import precedenti: richiede un nuovo caricamento dei file BEF sorgente.
 // Exported so cached payloads assembled from these tables can key off it: a
 // bootstrap that rewrites existing rows (the DATE_ID_REPAIRS above) changes what
 // a read returns without going through any app write path, so nothing calls
 // `revalidateTag`. Cache keys that include this version rebuild on the bump
 // instead of serving data assembled before the repair — see lib/getDashboardData.ts.
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 const SCHEMA_VERSION_KEY = 'schema_version';
 
 // Reads the current schema_version from app_config with a single round-trip.

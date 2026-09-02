@@ -199,11 +199,28 @@ Correzione (`drizzle/0010_bef_drop_fattura_unique.sql`, `SCHEMA_VERSION` 5→6):
 
 - l'indice unique su `bef_records` è **rimosso** — più righe per
   `(numero_if, num_fattura)` sono attese e devono essere conservate;
-- la deduplica avviene solo in `upsertBef`, sulla chiave naturale reale
-  `(num_bdo, periodo_competenza, num_fattura)`;
 - `replaceBef` torna a `DELETE` per `numero_if` + `INSERT` dell'elenco
   completo, sempre dentro un unico `db.batch()`: l'atomicità che era
   l'obiettivo di R-2 è preservata, la deduplica scorretta no.
+
+Sono seguiti due tentativi di spostare la deduplica in `upsertBef`, su una
+chiave naturale via via più completa — prima
+`(num_bdo, periodo_competenza, num_fattura)`, poi con l'aggiunta di
+`numero_linea_ordine`. Entrambi sbagliati, in entrambe le direzioni: ogni
+colonna dimenticata nella chiave fa collidere righe distinte, che si
+sovrascrivono a vicenda perdendo un importo (misurato sul file BEF reale:
+580.402,30 EUR salvati su 964.207,59 EUR, -40%); e `num_fattura`, essendo
+**mutabile**, fa cambiare chiave a una riga che viene fatturata fra due
+upload, che sopravvive così *accanto* alla propria versione aggiornata
+raddoppiando il proprio importo ad ogni reimport.
+
+Il report BEF non espone alcuna colonna che identifichi univocamente una riga,
+quindi **nessuna chiave naturale è ricostruibile**. La fusione riga-per-riga è
+stata perciò eliminata: il report è uno snapshot completo e
+`persistBefFromUpload` sostituisce integralmente le righe di ogni IF che
+l'upload contiene (gli IF non citati restano intatti, quindi anche un report
+parziale è sicuro). Così la somma degli importi salvati coincide sempre con la
+colonna "Importo Ricezione", senza dipendere da quali colonne il report espone.
 
 `report_pdc` e `verbali_apertura` non sono toccate: le loro chiavi
 (`num_bdo`+`posizione_bdo`+`periodo_pdc`, `num_bdo`+`codifica_documento`)

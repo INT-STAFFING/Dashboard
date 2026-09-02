@@ -389,10 +389,10 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     sezione: 'Indicatori',
     elemento: 'Fatturato emesso',
     formula:
-      'fatturatoEmesso = Σ importo_ricezione delle righe BEF Intellera CON num_fattura E data_fattura ma SENZA data_pagamento (tutte le annualità caricate, non solo l’anno selezionato)',
+      'fatturatoEmesso = Σ importo_ricezione delle righe BEF Intellera CON num_fattura E data_fattura, incassate o meno (tutte le annualità caricate, non solo l’anno selezionato)',
     spiegazione:
-      'Importo delle fatture emesse e approvate, non ancora incassate. La somma è su TUTTE le righe: una stessa fattura copre normalmente più righe BEF (una per BDO e per periodo di competenza) e ognuna contribuisce con il proprio importo. Indicatore di portafoglio, non ristretto al periodo del grafico.',
-    sorgenti: 'bef_records (Intellera): importo_ricezione, num_fattura, data_fattura, data_pagamento',
+      'Importo totale già fatturato a oggi, incassato o meno — non solo la quota ancora da incassare. La somma è su TUTTE le righe: una stessa fattura copre normalmente più righe BEF (una per BDO e per periodo di competenza) e ognuna contribuisce con il proprio importo. Indicatore di portafoglio, non ristretto al periodo del grafico. Include "Fatturato incassato" come sottoinsieme (non va sommato una seconda volta).',
+    sorgenti: 'bef_records (Intellera): importo_ricezione, num_fattura, data_fattura',
   },
   {
     pagina: '3 Timeline',
@@ -401,7 +401,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     formula:
       'fatturatoIncassato = Σ importo_ricezione delle righe BEF Intellera CON num_fattura, data_fattura E data_pagamento (tutte le annualità caricate, non solo l’anno selezionato)',
     spiegazione:
-      'Importo delle fatture emesse e già incassate: è la valorizzazione di data_pagamento a segnare l’avvenuto incasso. Insieme a “Fatturabile ad oggi”, “Fatturato in attesa” e “Fatturato emesso” copre ogni riga BEF una sola volta: i quattro indicatori sommano al totale BEF Intellera.',
+      'Importo delle fatture emesse e già incassate: è la valorizzazione di data_pagamento a segnare l’avvenuto incasso. È un SOTTOINSIEME di "Fatturato emesso" (ogni riga incassata è anche emessa), non un quarto stato a sé. "Fatturabile ad oggi" + "Fatturato in attesa" + "Fatturato emesso" (che include l’incassato) coprono ogni riga BEF una sola volta e sommano al totale BEF Intellera.',
     sorgenti: 'bef_records (Intellera): importo_ricezione, num_fattura, data_fattura, data_pagamento',
   },
 

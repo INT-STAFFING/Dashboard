@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import type { Intervento, RtiConfig, Meta } from '@/lib/types';
 import { EUR, EURM, PCT, FCOL, C, erosionRisk } from '@/lib/format';
-import { donut, hbars, esc } from '@/lib/charts';
+import { donut, hbars, legchips, esc } from '@/lib/charts';
 import { Html } from '../Html';
 
 function buildYearlyErosionChart(
@@ -56,6 +56,85 @@ function buildYearlyErosionChart(
   }
 
   return `<svg class="msvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${bars}${mk}${labs}</svg>`;
+}
+
+type ErosionSeries = {
+  name: string;
+  color: string;
+  theoretical: number[]; // one value per `years` entry: cumulative target at year-end
+  real: (number | null)[]; // one value per `years` entry: cumulative actual, null once beyond today
+};
+
+// Cumulative theoretical-linear-pace vs real erosion, one line per company.
+// `sharedTheoretical`: in % terms every company's linear pace is the same
+// 0->100 diagonal, so draw it once instead of once per company.
+function buildErosionCompareChart(
+  years: number[],
+  todayYear: number,
+  series: ErosionSeries[],
+  mode: 'pct' | 'eur',
+  sharedTheoretical: boolean,
+): string {
+  const W = 920, H = 300, pl = 76, pr = 18, pt = 20, pb = 44;
+  const pw = W - pl - pr, ph = H - pt - pb;
+  const allVals = series.flatMap((s) => [...s.theoretical, ...s.real.filter((v): v is number => v != null)]);
+  const rawMax = Math.max(1, ...allVals);
+  const maxV = mode === 'pct' ? Math.max(100, Math.ceil(rawMax / 10) * 10) : rawMax * 1.08;
+  const ticks = 4;
+  const yOf = (v: number) => pt + ph - (v / maxV) * ph;
+  const slot = pw / years.length;
+  const xOf = (i: number) => pl + slot * i + slot / 2;
+  const fmtAxis = (v: number) => (mode === 'pct' ? `${Math.round(v)}%` : `€${(v / 1e6).toFixed(1)}M`);
+  const fmtVal = (v: number) => (mode === 'pct' ? PCT(v) : EURM(v));
+  const fmtDelta = (v: number) => (mode === 'pct' ? `${v >= 0 ? '+' : ''}${v.toFixed(1)} p.p.` : `${v >= 0 ? '+' : ''}${EURM(v)}`);
+  const todayIdx = years.indexOf(todayYear);
+
+  let g = '';
+  for (let i = 0; i <= ticks; i++) {
+    const v = (maxV * i) / ticks, y = yOf(v);
+    g += `<line x1="${pl}" y1="${y.toFixed(1)}" x2="${W - pr}" y2="${y.toFixed(1)}" stroke="${C.line}"/>`;
+    g += `<text x="${pl - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" fill="${C.muted}">${fmtAxis(v)}</text>`;
+  }
+
+  let lines = '';
+  if (sharedTheoretical && series.length) {
+    const pts = years.map((_, i) => `${xOf(i).toFixed(1)},${yOf(series[0].theoretical[i]).toFixed(1)}`).join(' ');
+    lines += `<polyline points="${pts}" fill="none" stroke="${C.muted}" stroke-width="2" stroke-dasharray="6 4"/>`;
+  }
+
+  series.forEach((s) => {
+    if (!sharedTheoretical) {
+      const tpts = years.map((_, i) => `${xOf(i).toFixed(1)},${yOf(s.theoretical[i]).toFixed(1)}`).join(' ');
+      lines += `<polyline points="${tpts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>`;
+    }
+    const realIdx = years.map((_, i) => i).filter((i) => s.real[i] != null);
+    if (realIdx.length) {
+      const realPts = realIdx.map((i) => `${xOf(i).toFixed(1)},${yOf(s.real[i] as number).toFixed(1)}`).join(' ');
+      lines += `<polyline points="${realPts}" fill="none" stroke="${s.color}" stroke-width="2.6"/>`;
+    }
+    realIdx.forEach((i) => {
+      const v = s.real[i] as number;
+      const isToday = i === todayIdx;
+      lines += `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="${isToday ? 5.5 : 4.5}" fill="${s.color}" stroke="#fff" stroke-width="2" class="seg" data-tip="${esc(
+        `${s.name} · ${years[i]}\nErosione reale: ${fmtVal(v)}\nRitmo teorico atteso: ${fmtVal(s.theoretical[i])}\nScostamento: ${fmtDelta(v - s.theoretical[i])}`,
+      )}"/>`;
+    });
+  });
+
+  let mk = '';
+  if (todayIdx >= 0) {
+    const mx = xOf(todayIdx);
+    mk = `<line x1="${mx.toFixed(1)}" y1="${pt}" x2="${mx.toFixed(1)}" y2="${pt + ph}" stroke="${C.amberD}" stroke-width="1.3" stroke-dasharray="4 3"/>`;
+    mk += `<text x="${(mx + 5).toFixed(1)}" y="${pt + 13}" text-anchor="start" font-size="10" fill="${C.amberD}" font-weight="700">oggi</text>`;
+  }
+
+  let labs = '';
+  years.forEach((yr, i) => {
+    const isToday = yr === todayYear;
+    labs += `<text x="${xOf(i).toFixed(1)}" y="${H - pb + 18}" text-anchor="middle" font-size="13" font-weight="${isToday ? '700' : '400'}" fill="${isToday ? C.ink : C.muted}">${yr}</text>`;
+  });
+
+  return `<svg class="msvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${lines}${mk}${labs}</svg>`;
 }
 
 function RTIPanel({
@@ -156,6 +235,86 @@ function RTIPanel({
     </div>
   </div>`;
 
+  // Theoretical linear pace vs real erosion, per partner, over the contract period.
+  const cumulativeByYear = (items: Intervento[]): number[] => {
+    const perYear: Record<number, number> = {};
+    years.forEach((y) => (perYear[y] = 0));
+    items.forEach((i) => {
+      const y = i.data_inizio ? new Date(i.data_inizio).getFullYear() : startYear;
+      if (perYear[y] != null) perYear[y] += i.importo;
+      else perYear[startYear] += i.importo;
+    });
+    let acc = 0;
+    return years.map((y) => (acc += perYear[y] || 0));
+  };
+  const todayIdxRaw = years.indexOf(todayYear);
+  const cutIdx = todayIdxRaw >= 0 ? todayIdxRaw : todayYear > endYear ? years.length - 1 : -1;
+
+  const quotaErosion = rti.partners.map((p) => {
+    const cum = cumulativeByYear(IFs.filter((i) => i.fornitore === p.name));
+    const theoreticalEur = years.map((_, i) => (p.quota * (i + 1)) / years.length);
+    const theoreticalPct = years.map((_, i) => ((i + 1) / years.length) * 100);
+    const realEur = years.map((_, i) => (cutIdx >= 0 && i <= cutIdx ? cum[i] : null));
+    const realPct = years.map((_, i) => (cutIdx >= 0 && i <= cutIdx ? (p.quota ? (cum[i] / p.quota) * 100 : 0) : null));
+    return { name: p.name, color: FCOL[p.name] || C.slateL, theoreticalEur, theoreticalPct, realEur, realPct };
+  });
+
+  const eroQuotaPctSvg = buildErosionCompareChart(
+    years,
+    todayYear,
+    quotaErosion.map((s) => ({ name: s.name, color: s.color, theoretical: s.theoreticalPct, real: s.realPct })),
+    'pct',
+    true,
+  );
+  const eroQuotaEurSvg = buildErosionCompareChart(
+    years,
+    todayYear,
+    quotaErosion.map((s) => ({ name: s.name, color: s.color, theoretical: s.theoreticalEur, real: s.realEur })),
+    'eur',
+    false,
+  );
+
+  const quotaDeltaHtml = quotaErosion
+    .map((s) => {
+      if (cutIdx < 0 || s.realPct[cutIdx] == null) return '';
+      const delta = (s.realPct[cutIdx] as number) - s.theoreticalPct[cutIdx];
+      const sign = delta >= 0 ? '+' : '';
+      const word = delta >= 0 ? 'avanti rispetto al ritmo atteso' : 'indietro rispetto al ritmo atteso';
+      return `<div style="flex:1;min-width:190px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-left:3px solid ${s.color}">
+        <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700">${esc(s.name)} vs ritmo atteso</div>
+        <div style="font-size:19px;font-weight:800;font-family:'SFMono-Regular',monospace;color:${s.color}">${sign}${delta.toFixed(1)} p.p.</div>
+        <div style="font-size:12px;color:var(--muted)">${word}</div>
+      </div>`;
+    })
+    .join('');
+
+  const eroQuotaPctHtml = `<div>
+    ${eroQuotaPctSvg}
+    <div style="display:flex;gap:9px 20px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:14px">${legchips(
+      [
+        { c: C.muted, t: 'Ritmo teorico lineare (0→100%)', dash: true },
+        ...quotaErosion.map((s) => ({ c: s.color, t: `${s.name} · reale`, line: true })),
+      ],
+    )}</div>
+    ${quotaDeltaHtml ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">${quotaDeltaHtml}</div>` : ''}
+    <div style="font-size:11px;color:var(--muted);margin-top:14px">
+      Confronto in percentuale della quota di ciascun partner, comparabile anche tra quote di dimensione diversa.
+    </div>
+  </div>`;
+
+  const eroQuotaEurHtml = `<div>
+    ${eroQuotaEurSvg}
+    <div style="display:flex;gap:9px 20px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:14px">${legchips(
+      quotaErosion.flatMap((s) => [
+        { c: s.color, t: `${s.name} · teorico`, dash: true },
+        { c: s.color, t: `${s.name} · reale`, line: true },
+      ]),
+    )}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:14px">
+      Stesso confronto in valore assoluto: tratteggiata = ritmo teorico lineare della quota, continua = impegnato reale.
+    </div>
+  </div>`;
+
   const onDonutClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = (e.target as HTMLElement).closest('[data-drill-rti]') as HTMLElement | null;
     if (target) {
@@ -220,6 +379,30 @@ function RTIPanel({
         <Html
           ariaLabel={`Erosione del massimale contrattuale per anno. Massimale ${EURM(ceil)}, impegnato totale ${EURM(totImpegnato)} (${PCT(eroTotPct)}, ${totRisk.label}), ${residuo < 0 ? `sforamento ${EURM(-residuo)}` : `residuo ${EURM(residuo)}`}. Impegnato per anno: ${years.map((y) => `${y} ${EURM(impByYear[y] || 0)}`).join(', ')}.`}
           html={eroAnnoHtml}
+        />
+      </div>
+      <div className="card">
+        <h3>Erosione teorica vs reale delle quote (%)</h3>
+        <div className="cap">
+          Ritmo di erosione lineare atteso della quota di ciascuna azienda lungo la durata del contratto, confrontato con l&apos;erosione reale maturata ad oggi
+        </div>
+        <Html
+          ariaLabel={`Erosione teorica lineare vs reale delle quote, in percentuale, per azienda. ${quotaErosion
+            .map((s) => `${s.name}: reale ${cutIdx >= 0 && s.realPct[cutIdx] != null ? PCT(s.realPct[cutIdx] as number) : 'n/d'} contro un ritmo atteso di ${cutIdx >= 0 ? PCT(s.theoreticalPct[cutIdx]) : 'n/d'}`)
+            .join('; ')}.`}
+          html={eroQuotaPctHtml}
+        />
+      </div>
+      <div className="card">
+        <h3>Erosione teorica vs reale delle quote (valore)</h3>
+        <div className="cap">
+          Stesso confronto in valore assoluto, per azienda: traiettoria teorica lineare della quota contrattuale rispetto all&apos;impegnato reale
+        </div>
+        <Html
+          ariaLabel={`Erosione teorica lineare vs reale delle quote, in valore, per azienda. ${quotaErosion
+            .map((s) => `${s.name}: reale ${cutIdx >= 0 && s.realEur[cutIdx] != null ? EURM(s.realEur[cutIdx] as number) : 'n/d'} contro un ritmo atteso di ${cutIdx >= 0 ? EURM(s.theoreticalEur[cutIdx]) : 'n/d'}`)
+            .join('; ')}.`}
+          html={eroQuotaEurHtml}
         />
       </div>
     </div>

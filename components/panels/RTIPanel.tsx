@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import type { Intervento, RtiConfig, Meta } from '@/lib/types';
-import { EUR, EURM, PCT, FCOL, C, erosionRisk } from '@/lib/format';
+import { EUR, EUR0, EURM, PCT, FCOL, C, erosionRisk } from '@/lib/format';
 import { donut, hbars, legchips, esc } from '@/lib/charts';
 import { Html } from '../Html';
 
@@ -258,11 +258,79 @@ function RTIPanel({
   const contractEndMs = new Date(meta.valid_to).getTime();
   const nowMs = Date.now();
   const contractStarted = nowMs >= contractStartMs;
+  const elapsedMs = Math.min(Math.max(nowMs, contractStartMs), contractEndMs) - contractStartMs;
+  const totalContractMs = Math.max(1, contractEndMs - contractStartMs);
+  const theoreticalTodayPct = Math.min(100, Math.max(0, (elapsedMs / totalContractMs) * 100));
+  const projectedFactor = elapsedMs > 0 ? totalContractMs / elapsedMs : 1;
+
+  // Two independent comparisons — mixing them would compare a company's own
+  // quota against the whole contract's pace, which is meaningless:
+  //  1. the CONTRACT total (ceiling) vs the total real impegnato;
+  //  2. each PARTNER's own quota vs that partner's own real impegnato.
+  const TOTAL_COLOR = C.ink;
+  const totalRealPct = contractStarted ? eroTotPct : null;
+  const totalRealEur = contractStarted ? totImpegnato : null;
+  const totalProjectedPct = totalRealPct != null ? totalRealPct * projectedFactor : null;
+  const totalProjectedEur = totalRealEur != null ? totalRealEur * projectedFactor : null;
+
+  const eroTotalPctSvg = buildErosionProjectionChart(
+    contractStartMs,
+    contractEndMs,
+    nowMs,
+    [{ name: 'Totale contratto', color: TOTAL_COLOR, theoreticalEnd: 100, realToday: totalRealPct }],
+    'pct',
+    false,
+  );
+  const eroTotalEurSvg = buildErosionProjectionChart(
+    contractStartMs,
+    contractEndMs,
+    nowMs,
+    [{ name: 'Totale contratto', color: TOTAL_COLOR, theoreticalEnd: ceil, realToday: totalRealEur }],
+    'eur',
+    false,
+  );
+
+  const totalDeltaHtml = (() => {
+    if (totalProjectedPct == null) return '';
+    const delta = totalProjectedPct - 100;
+    const sign = delta >= 0 ? '+' : '';
+    const word = delta >= 0 ? 'supererebbe il massimale a questo ritmo' : 'resterebbe sotto il massimale a questo ritmo';
+    return `<div style="max-width:320px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-left:3px solid ${TOTAL_COLOR}">
+      <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700">Totale contratto · proiezione a fine contratto</div>
+      <div style="font-size:19px;font-weight:800;font-family:'SFMono-Regular',monospace;color:${TOTAL_COLOR}">${sign}${delta.toFixed(1)} p.p.</div>
+      <div style="font-size:12px;color:var(--muted)">${word}</div>
+    </div>`;
+  })();
+
+  const eroTotalPctHtml = `<div>
+    ${eroTotalPctSvg}
+    <div style="display:flex;gap:9px 20px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:14px">${legchips([
+      { c: TOTAL_COLOR, t: 'Ritmo teorico lineare (0→100% del massimale)', dash: true },
+      { c: TOTAL_COLOR, t: 'Totale contratto · reale', line: true },
+    ])}</div>
+    ${totalDeltaHtml ? `<div style="margin-top:16px">${totalDeltaHtml}</div>` : ''}
+    <div style="font-size:11px;color:var(--muted);margin-top:14px">
+      Erosione dell'intero massimale contrattuale, indipendente dalla ripartizione tra le aziende del RTI. Tratto continuo = erosione reale a oggi, tratteggiato = proiezione a fine contratto mantenendo il ritmo attuale.
+    </div>
+  </div>`;
+
+  const eroTotalEurHtml = `<div>
+    ${eroTotalEurSvg}
+    <div style="display:flex;gap:9px 20px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:14px">${legchips([
+      { c: TOTAL_COLOR, t: 'Massimale · ritmo teorico lineare', dash: true },
+      { c: TOTAL_COLOR, t: 'Totale contratto · reale', line: true },
+    ])}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:14px">
+      Stesso confronto in valore assoluto sull'intero massimale contrattuale.
+    </div>
+  </div>`;
 
   const quotaErosion = rti.partners.map((p) => {
     const realEur = contractStarted ? impByP[p.name] || 0 : null;
     const realPct = realEur != null ? (p.quota ? (realEur / p.quota) * 100 : 0) : null;
-    return { name: p.name, color: FCOL[p.name] || C.slateL, quota: p.quota, realEur, realPct };
+    const projectedPct = realPct != null ? realPct * projectedFactor : null;
+    const projectedEur = realEur != null ? realEur * projectedFactor : null;
+    return { name: p.name, color: FCOL[p.name] || C.slateL, quota: p.quota, pct: p.pct, realEur, realPct, projectedPct, projectedEur };
   });
 
   const eroQuotaPctSvg = buildErosionProjectionChart(
@@ -282,15 +350,12 @@ function RTIPanel({
     false,
   );
 
-  const elapsedMs = Math.min(Math.max(nowMs, contractStartMs), contractEndMs) - contractStartMs;
-  const totalContractMs = Math.max(1, contractEndMs - contractStartMs);
   const quotaDeltaHtml = quotaErosion
     .map((s) => {
-      if (s.realPct == null) return '';
-      const projectedPct = elapsedMs > 0 ? (s.realPct * totalContractMs) / elapsedMs : s.realPct;
-      const delta = projectedPct - 100;
+      if (s.projectedPct == null) return '';
+      const delta = s.projectedPct - 100;
       const sign = delta >= 0 ? '+' : '';
-      const word = delta >= 0 ? 'supererebbe la quota a questo ritmo' : 'resterebbe sotto quota a questo ritmo';
+      const word = delta >= 0 ? 'supererebbe la propria quota a questo ritmo' : 'resterebbe sotto la propria quota a questo ritmo';
       return `<div style="flex:1;min-width:190px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-left:3px solid ${s.color}">
         <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700">${esc(s.name)} · proiezione a fine contratto</div>
         <div style="font-size:19px;font-weight:800;font-family:'SFMono-Regular',monospace;color:${s.color}">${sign}${delta.toFixed(1)} p.p.</div>
@@ -303,13 +368,13 @@ function RTIPanel({
     ${eroQuotaPctSvg}
     <div style="display:flex;gap:9px 20px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:14px">${legchips(
       [
-        { c: C.muted, t: 'Ritmo teorico lineare (0→100%)', dash: true },
+        { c: C.muted, t: 'Ritmo teorico lineare (0→100% della propria quota)', dash: true },
         ...quotaErosion.map((s) => ({ c: s.color, t: `${s.name} · reale`, line: true })),
       ],
     )}</div>
     ${quotaDeltaHtml ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">${quotaDeltaHtml}</div>` : ''}
     <div style="font-size:11px;color:var(--muted);margin-top:14px">
-      Confronto in percentuale della quota di ciascun partner, comparabile anche tra quote di dimensione diversa. Tratto continuo = erosione reale a oggi, tratteggiato = proiezione a fine contratto mantenendo il ritmo attuale.
+      Ogni azienda confrontata solo con la propria quota contrattuale, mai con il massimale totale: comparabile anche tra quote di dimensione diversa. Tratto continuo = erosione reale a oggi, tratteggiato = proiezione a fine contratto mantenendo il ritmo attuale.
     </div>
   </div>`;
 
@@ -322,9 +387,34 @@ function RTIPanel({
       ]),
     )}</div>
     <div style="font-size:11px;color:var(--muted);margin-top:14px">
-      Stesso confronto in valore assoluto: tratteggiata grigia/colorata sottile = ritmo teorico lineare della quota, continua = impegnato reale, tratteggiata colorata spessa = proiezione a fine contratto al ritmo attuale.
+      Stesso confronto in valore assoluto: tratteggiata sottile = ritmo teorico lineare della propria quota, continua = impegnato reale, tratteggiata spessa = proiezione a fine contratto al ritmo attuale.
     </div>
   </div>`;
+
+  const summaryRows = [
+    ...quotaErosion.map((s) => ({
+      label: s.name,
+      color: s.color,
+      quota: s.quota,
+      quotaPct: s.pct * 100,
+      realEur: s.realEur,
+      realPct: s.realPct,
+      theoreticalTodayEur: s.quota * (theoreticalTodayPct / 100),
+      projectedEur: s.projectedEur,
+      projectedPct: s.projectedPct,
+    })),
+    {
+      label: 'Totale contratto',
+      color: TOTAL_COLOR,
+      quota: ceil,
+      quotaPct: 100,
+      realEur: totalRealEur,
+      realPct: totalRealPct,
+      theoreticalTodayEur: ceil * (theoreticalTodayPct / 100),
+      projectedEur: totalProjectedEur,
+      projectedPct: totalProjectedPct,
+    },
+  ];
 
   const onDonutClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = (e.target as HTMLElement).closest('[data-drill-rti]') as HTMLElement | null;
@@ -393,21 +483,41 @@ function RTIPanel({
         />
       </div>
       <div className="card">
-        <h3>Erosione teorica vs reale delle quote (%)</h3>
+        <h3>Erosione teorica vs reale del massimale (%)</h3>
         <div className="cap">
-          Ritmo di erosione lineare atteso della quota di ciascuna azienda lungo la durata del contratto, confrontato con l&apos;erosione reale maturata ad oggi
+          Ritmo di erosione lineare atteso dell&apos;intero massimale contrattuale, confrontato con l&apos;erosione reale totale maturata ad oggi — a prescindere da come si ripartisce tra le aziende del RTI
+        </div>
+        <Html
+          ariaLabel={`Erosione teorica lineare vs reale del massimale contrattuale, in percentuale. Reale a oggi ${totalRealPct != null ? PCT(totalRealPct) : 'n/d'} contro un target teorico del 100% a fine contratto.`}
+          html={eroTotalPctHtml}
+        />
+      </div>
+      <div className="card">
+        <h3>Erosione teorica vs reale del massimale (valore)</h3>
+        <div className="cap">
+          Stesso confronto in valore assoluto sull&apos;intero massimale contrattuale
+        </div>
+        <Html
+          ariaLabel={`Erosione teorica lineare vs reale del massimale contrattuale, in valore. Reale a oggi ${totalRealEur != null ? EURM(totalRealEur) : 'n/d'} contro un massimale di ${EURM(ceil)}.`}
+          html={eroTotalEurHtml}
+        />
+      </div>
+      <div className="card">
+        <h3>Erosione teorica vs reale delle quote per azienda (%)</h3>
+        <div className="cap">
+          Ritmo di erosione lineare atteso della quota di ciascuna azienda rispetto alla propria quota (mai rispetto al massimale totale), confrontato con l&apos;erosione reale maturata ad oggi
         </div>
         <Html
           ariaLabel={`Erosione teorica lineare vs reale delle quote, in percentuale, per azienda. ${quotaErosion
-            .map((s) => `${s.name}: reale a oggi ${s.realPct != null ? PCT(s.realPct) : 'n/d'} contro un target teorico del 100% a fine contratto`)
+            .map((s) => `${s.name}: reale a oggi ${s.realPct != null ? PCT(s.realPct) : 'n/d'} contro un target teorico del 100% della propria quota a fine contratto`)
             .join('; ')}.`}
           html={eroQuotaPctHtml}
         />
       </div>
       <div className="card">
-        <h3>Erosione teorica vs reale delle quote (valore)</h3>
+        <h3>Erosione teorica vs reale delle quote per azienda (valore)</h3>
         <div className="cap">
-          Stesso confronto in valore assoluto, per azienda: traiettoria teorica lineare della quota contrattuale rispetto all&apos;impegnato reale
+          Stesso confronto in valore assoluto, per azienda: traiettoria teorica lineare della propria quota contrattuale rispetto al proprio impegnato reale
         </div>
         <Html
           ariaLabel={`Erosione teorica lineare vs reale delle quote, in valore, per azienda. ${quotaErosion
@@ -415,6 +525,60 @@ function RTIPanel({
             .join('; ')}.`}
           html={eroQuotaEurHtml}
         />
+      </div>
+      <div className="card">
+        <h3>Riepilogo numerico</h3>
+        <div className="cap">
+          Tutti i numeri teorici e reali, per azienda e per il totale del contratto, alla data odierna e in proiezione a fine contratto
+        </div>
+        <div className="tscroll">
+          <table className="dtable">
+            <thead>
+              <tr>
+                <th>Azienda</th>
+                <th className="num">Quota</th>
+                <th className="num">Quota %</th>
+                <th className="num">Reale a oggi</th>
+                <th className="num">Erosione reale a oggi</th>
+                <th className="num">Erosione teorica attesa a oggi</th>
+                <th className="num">Scostamento a oggi</th>
+                <th className="num">Proiezione fine contratto</th>
+                <th className="num">Proiezione fine contratto %</th>
+                <th className="num">Scostamento proiezione</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map((r) => {
+                const deltaToday = r.realPct != null ? r.realPct - theoreticalTodayPct : null;
+                const deltaProjected = r.projectedPct != null ? r.projectedPct - 100 : null;
+                return (
+                  <tr key={r.label}>
+                    <td>
+                      <span className="dot" style={{ background: r.color, display: 'inline-block', width: 8, height: 8, borderRadius: 4, marginRight: 7 }} />
+                      {r.label === 'Totale contratto' ? <b>{r.label}</b> : r.label}
+                    </td>
+                    <td className="num">{EUR0(r.quota)} €</td>
+                    <td className="num">{PCT(r.quotaPct)}</td>
+                    <td className="num">{r.realEur != null ? `${EUR0(r.realEur)} €` : '—'}</td>
+                    <td className="num">{r.realPct != null ? PCT(r.realPct) : '—'}</td>
+                    <td className="num">{EUR0(r.theoreticalTodayEur)} € · {PCT(theoreticalTodayPct)}</td>
+                    <td className="num" style={{ color: deltaToday == null ? undefined : deltaToday >= 0 ? 'var(--good)' : 'var(--amber-d)' }}>
+                      {deltaToday != null ? `${deltaToday >= 0 ? '+' : ''}${deltaToday.toFixed(1)} p.p.` : '—'}
+                    </td>
+                    <td className="num">{r.projectedEur != null ? `${EUR0(r.projectedEur)} €` : '—'}</td>
+                    <td className="num">{r.projectedPct != null ? PCT(r.projectedPct) : '—'}</td>
+                    <td className="num" style={{ color: deltaProjected == null ? undefined : deltaProjected >= 0 ? 'var(--bad)' : 'var(--good)' }}>
+                      {deltaProjected != null ? `${deltaProjected >= 0 ? '+' : ''}${deltaProjected.toFixed(1)} p.p.` : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
+          Contratto {meta.contract_date} → {meta.valid_to}. &quot;Erosione teorica attesa a oggi&quot; è il ritmo lineare 0→100% calcolato sulle date di stipula e scadenza. &quot;Proiezione fine contratto&quot; estrapola il ritmo reale osservato finora fino alla scadenza.
+        </div>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import {
   toISODate,
   str,
   strId,
+  normalizeFornitore,
   type Workbook,
 } from './util';
 
@@ -48,7 +49,7 @@ export function parseIF(input: ArrayBuffer | Buffer | Workbook): Intervento[] {
       bdo: strId(r['N° BO']),
       titolo,
       ambito,
-      fornitore: str(r['Fornitore']) || 'Intellera',
+      fornitore: normalizeFornitore(r['Fornitore']),
       ref_aria: str(r['Ref. ARIA']),
       ref_fornitore: str(r['Ref. Fornitore']),
       importo,

@@ -7,6 +7,7 @@ import {
   toISODate,
   str,
   strId,
+  normalizeFornitore,
   type Workbook,
 } from './util';
 import { codeFor } from './parseAggregatore';
@@ -162,7 +163,7 @@ export function parseDashboard(input: ArrayBuffer | Buffer | Workbook): Dashboar
     if (tit) a.titolo = tit;
 
     const forn = str(row[col('Fornitore')]);
-    if (forn) a.fornitore = /deloitte/i.test(forn) ? 'Deloitte' : 'Intellera';
+    if (forn) a.fornitore = normalizeFornitore(forn);
 
     const mod = str(row[col('Modalità Fornitura')]);
     if (mod) a.modalita.add(mod.replace(/_/g, ' '));

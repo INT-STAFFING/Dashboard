@@ -1,8 +1,9 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Role, SafeUser } from '@/lib/types';
 import { ROLE_LABEL, STATUS_LABEL } from '@/lib/auth/permissions';
+import { CopyTableButton } from './export/ExportControls';
 
 const ROLES: Role[] = ['USER', 'USERPLUS', 'ADMIN'];
 
@@ -20,6 +21,7 @@ export default function UsersAdmin({
   const [error, setError] = useState('');
 
   const isProtected = (u: SafeUser) => u.email.toLowerCase() === adminEmail.toLowerCase();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const call = async (id: number, init: RequestInit): Promise<{ ok: boolean; user?: SafeUser }> => {
     setBusyId(id);
@@ -91,7 +93,13 @@ export default function UsersAdmin({
 
       {error && <div className="authmsg err" style={{ maxWidth: 480 }}>{error}</div>}
 
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <CopyTableButton
+          targetRef={tableRef}
+          title="Copia l'elenco utenti: incollalo in un foglio Excel"
+        />
+      </div>
+      <div style={{ overflowX: 'auto' }} ref={tableRef}>
         <table className="usertable">
           <thead>
             <tr>

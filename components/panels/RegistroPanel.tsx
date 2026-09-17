@@ -4,25 +4,41 @@ import type { Intervento, InterventoInput, DocStatus } from '@/lib/types';
 import { EUR0, dfmt } from '@/lib/format';
 import InlineField from '../editing/InlineField';
 import StatusSelect from '../editing/StatusSelect';
+import { CopyTableButton } from '../export/ExportControls';
+import type { Matrix } from '@/lib/exportTable';
 
 const ST_TXT: Record<DocStatus, string> = { ok: 'OK', ko: 'Mancante', prog: 'In corso', nd: 'N/D' };
 
-function exportCSV(IFs: Intervento[]) {
-  const eur = (n: number) => Number(n || 0).toFixed(2).replace('.', ',');
-  const head = [
-    'Numero IF', 'BDO', 'Titolo', 'Ambito', 'Fornitore', 'Referente ARIA', 'Referente Intellera',
-    'Modalità', 'Attivazione immediata', 'Stato', 'Data assegnazione', 'Data inizio', 'Data fine',
-    'PDC', 'V. Apertura', 'V. SAL', 'BEF', 'Importo', 'Revenue 2026', 'Subappalto',
+// Intestazioni e righe condivise fra l'export CSV e la copia per Excel: una
+// sola definizione delle colonne, così i due export non divergono.
+const EXPORT_HEAD = [
+  'Numero IF', 'BDO', 'Titolo', 'Ambito', 'Fornitore', 'Referente ARIA', 'Referente Intellera',
+  'Modalità', 'Attivazione immediata', 'Stato', 'Data assegnazione', 'Data inizio', 'Data fine',
+  'PDC', 'V. Apertura', 'V. SAL', 'BEF', 'Importo', 'Revenue 2026', 'Subappalto',
+];
+
+function exportRow(x: Intervento, eur: (n: number) => string): (string | number)[] {
+  return [
+    x.numero_if, x.bdo || '', x.titolo, x.ambito || '', x.fornitore, x.ref_aria || '', x.ref_fornitore || '',
+    x.modalita_if || '', x.attivazione || '', x.stato, x.data_assegnazione || '', x.data_inizio || '', x.data_fine || '',
+    ST_TXT[x.pdc], ST_TXT[x.v_apertura], ST_TXT[x.v_sal], ST_TXT[x.bef], eur(x.importo), eur(x.revenue_2026),
+    x.subappalto ? 'Sì' : 'No',
   ];
+}
+
+// Per Excel i decimali vanno separati dalla virgola (locale it-IT) e senza
+// separatore di migliaia, altrimenti la cella resta testo.
+const eurPlain = (n: number) => Number(n || 0).toFixed(2).replace('.', ',');
+
+function exportMatrix(IFs: Intervento[]): Matrix {
+  return [EXPORT_HEAD, ...IFs.map((x) => exportRow(x, eurPlain))];
+}
+
+function exportCSV(IFs: Intervento[]) {
+  const head = EXPORT_HEAD;
   // IFs arrives already filtered/sorted exactly as shown on screen — export it
   // as-is instead of re-sorting, so the CSV matches what the user is looking at.
-  const rows = IFs
-    .map((x) => [
-      x.numero_if, x.bdo || '', x.titolo, x.ambito || '', x.fornitore, x.ref_aria || '', x.ref_fornitore || '',
-      x.modalita_if || '', x.attivazione || '', x.stato, x.data_assegnazione || '', x.data_inizio || '', x.data_fine || '',
-      ST_TXT[x.pdc], ST_TXT[x.v_apertura], ST_TXT[x.v_sal], ST_TXT[x.bef], eur(x.importo), eur(x.revenue_2026),
-      x.subappalto ? 'Sì' : 'No',
-    ]);
+  const rows = IFs.map((x) => exportRow(x, eurPlain));
   const csv = [head, ...rows]
     .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';'))
     .join('\r\n');
@@ -131,6 +147,10 @@ function RegistroPanel({
             </button>
           )}
           <input className="search" placeholder="Cerca IF, titolo, referente, ambito…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <CopyTableButton
+            getMatrix={() => exportMatrix(rows)}
+            title="Copia tutte le righe mostrate (tutte le colonne): incollale in un foglio Excel"
+          />
           <button className="freset" onClick={() => exportCSV(rows)} style={{ borderColor: 'var(--petrol)', color: 'var(--petrol-d)' }}>
             ⤓ Esporta CSV
           </button>

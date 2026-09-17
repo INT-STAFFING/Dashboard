@@ -116,6 +116,19 @@ main{padding:16px 0 calc(60px + env(safe-area-inset-bottom));position:relative}
 .kpis+.card,.kpis+.grid2,.kpis+.grid3,.kpis+.tablecard{margin-top:var(--space)}
 .card h3{font-size:15px;font-weight:750;margin-bottom:3px}
 .card .cap{font-size:12.5px;color:var(--muted);margin-bottom:18px}
+/* export (grafici -> JPG, tabelle -> testo per Excel) */
+.cardhead{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px}
+.cardhead-txt{flex:1;min-width:0}
+.cardhead .cap{margin-bottom:0}
+.expbtns{display:inline-flex;align-items:center;gap:6px;flex:none}
+.cardhead .expbtns{margin-left:auto;padding-top:1px}
+.expbtn{font-family:inherit;font-size:11.5px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--petrol-d);padding:5px 9px;border-radius:7px;cursor:pointer;white-space:nowrap;line-height:1.25}
+.expbtn:hover:not(:disabled){border-color:var(--petrol-l);background:var(--petrol-bg)}
+.expbtn:focus-visible{outline:2px solid var(--petrol-l);outline-offset:1px}
+.expbtn:disabled{opacity:.55;cursor:progress}
+.expmsg{font-size:11px;color:var(--good);font-weight:600;white-space:nowrap}
+.expmsg.err{color:var(--bad)}
+.expmsg:empty{display:none}
 .empty{display:flex;align-items:center;justify-content:center;min-height:160px;color:var(--muted);font-size:13px;text-align:center}
 /* donut */
 .donutwrap{display:flex;flex-direction:column;align-items:center;gap:18px;padding-top:8px}
@@ -317,6 +330,8 @@ tbody tr:hover{background:#F5F8F7}
   .hsrow{grid-template-columns:110px 1fr auto}
   .fsel{max-width:140px}
   .formgrid{grid-template-columns:1fr}
+  .cardhead{flex-wrap:wrap}
+  .cardhead .expbtns{margin-left:0}
 }
 /* touch devices: 16px inputs avoid the iOS auto-zoom-on-focus; icon-only action
    buttons get a 44x44 minimum hit area (WCAG 2.5.5) without inflating the

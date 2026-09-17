@@ -4,6 +4,7 @@ import type { Intervento, RtiConfig, Meta } from '@/lib/types';
 import { EUR, EURM, PCT, FCOL, C, erosionRisk } from '@/lib/format';
 import { donut, hbars, esc } from '@/lib/charts';
 import { Html } from '../Html';
+import { ChartCard } from '../export/ExportControls';
 
 function buildYearlyErosionChart(
   years: number[],
@@ -172,9 +173,11 @@ function RTIPanel({
       </div>
       {editMode && <RtiConfigForm rti={rti} onUpdate={onUpdateRti} />}
       <div className="grid2">
-        <div className="card">
-          <h3>Composizione del RTI</h3>
-          <div className="cap">Quota contrattuale per partner sul massimale contrattuale</div>
+        <ChartCard
+          title="Composizione del RTI"
+          caption="Quota contrattuale per partner sul massimale contrattuale"
+          filename="Composizione_RTI"
+        >
           <Html
             ariaLabel={`Grafico a ciambella della composizione del RTI sul massimale ${EURM(rti.ceiling)}. ${rti.partners
               .map((p) => `${p.name} ${PCT(p.pct * 100)} pari a ${EURM(p.quota)}`)
@@ -182,7 +185,10 @@ function RTIPanel({
             html={donutHtml}
             onClick={onDonutClick}
           />
-          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>
+          <div
+            style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted)', marginTop: 10 }}
+            data-export-ignore
+          >
             {selP ? (
               <>
                 Stai vedendo la quota di <b>{selP}</b>.{' '}
@@ -201,27 +207,29 @@ function RTIPanel({
               "Clic su uno spicchio per vedere l'erosione della quota di quel partner ↗"
             )}
           </div>
-        </div>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3>Erosione della quota per partner RTI</h3>
-          <div className="cap">
-            Valore impegnato (IF/BO della vista) rispetto alla quota contrattuale di ciascun partner
-          </div>
+        </ChartCard>
+        <ChartCard
+          title="Erosione della quota per partner RTI"
+          caption="Valore impegnato (IF/BO della vista) rispetto alla quota contrattuale di ciascun partner"
+          filename="Erosione_quota_partner_RTI"
+          style={{ display: 'flex', flexDirection: 'column' }}
+          bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+        >
           <div className="hbars-fill" style={{ flex: 1 }}>
             <Html html={eroPartner} style={{ height: '100%', display: 'flex', flexDirection: 'column' }} />
           </div>
-        </div>
+        </ChartCard>
       </div>
-      <div className="card">
-        <h3>Erosione per Anno</h3>
-        <div className="cap">
-          Impegnato (IF/BO della vista) distribuito per anno lungo la durata contrattuale
-        </div>
+      <ChartCard
+        title="Erosione per Anno"
+        caption="Impegnato (IF/BO della vista) distribuito per anno lungo la durata contrattuale"
+        filename="Erosione_per_anno"
+      >
         <Html
           ariaLabel={`Erosione del massimale contrattuale per anno. Massimale ${EURM(ceil)}, impegnato totale ${EURM(totImpegnato)} (${PCT(eroTotPct)}, ${totRisk.label}), ${residuo < 0 ? `sforamento ${EURM(-residuo)}` : `residuo ${EURM(residuo)}`}. Impegnato per anno: ${years.map((y) => `${y} ${EURM(impByYear[y] || 0)}`).join(', ')}.`}
           html={eroAnnoHtml}
         />
-      </div>
+      </ChartCard>
     </div>
   );
 }

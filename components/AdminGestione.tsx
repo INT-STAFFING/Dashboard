@@ -1,5 +1,5 @@
 'use client';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type {
   Intervento,
@@ -13,6 +13,7 @@ import type {
 import { aggregate, type Calendar, type Grain } from '@/lib/fiscal';
 import { MESI, EUR } from '@/lib/format';
 import { buildFormulaCsv } from '@/lib/formulaCatalog';
+import { CopyTableButton } from './export/ExportControls';
 import './admin-gestione.css';
 
 // ---------------------------------------------------------------------------
@@ -163,6 +164,32 @@ function Rollups({ values }: { values: number[] }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Tabella + pulsante "copia per Excel", con lo scroll orizzontale che serve a
+// tutte le tabelle di questo pannello. I valori vengono letti dal DOM: molte
+// celle qui sono input editabili e il pulsante deve copiare ciò che l'utente
+// sta effettivamente vedendo, comprese le modifiche non ancora salvate.
+function TableBlock({
+  copyTitle,
+  children,
+  style,
+}: {
+  copyTitle?: string;
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <CopyTableButton targetRef={ref} title={copyTitle} />
+      </div>
+      <div ref={ref} style={{ overflowX: 'auto', ...style }}>
+        {children}
+      </div>
+    </>
   );
 }
 
@@ -326,7 +353,8 @@ function GaraSection({
         <Field label="Massimale totale (€)">
           <NumInput value={ceiling} width={200} onChange={setCeiling} />
         </Field>
-        <table className="datatable" style={{ marginTop: 14 }}>
+        <TableBlock copyTitle="Copia quote RTI per Excel" style={{ marginTop: 14 }}>
+        <table className="datatable">
           <thead>
             <tr>
               <th>Partner</th>
@@ -368,6 +396,7 @@ function GaraSection({
             ))}
           </tbody>
         </table>
+        </TableBlock>
         <button
           className="ubtn"
           style={{ marginTop: 10 }}
@@ -385,6 +414,7 @@ function GaraSection({
       <div className="card">
         <h3>Figure professionali e tariffe</h3>
         <div className="cap">Listino figure (giorni uomo a portafoglio e tariffa giornaliera).</div>
+        <TableBlock copyTitle="Copia figure professionali e tariffe per Excel">
         <table className="datatable">
           <thead>
             <tr>
@@ -417,6 +447,7 @@ function GaraSection({
             ))}
           </tbody>
         </table>
+        </TableBlock>
         <button
           className="ubtn"
           style={{ marginTop: 10 }}
@@ -586,7 +617,7 @@ function IfBoSection({
           <button className={cal === 'solare' ? 'on' : ''} onClick={() => setCal('solare')}>Anno solare</button>
           <button className={cal === 'fiscale' ? 'on' : ''} onClick={() => setCal('fiscale')}>Anno fiscale (Set–Ago)</button>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <TableBlock copyTitle="Copia revenue e consuntivazione per IF/BO per Excel">
           <table className="datatable">
             <thead>
               <tr>
@@ -617,7 +648,7 @@ function IfBoSection({
               ))}
             </tbody>
           </table>
-        </div>
+        </TableBlock>
       </div>
 
       {sel && <IfDetail key={sel.numero_if} iv={sel} onUpdated={onUpdated} show={show} />}
@@ -814,7 +845,7 @@ function RisorseEditor({ numeroIf, show }: { numeroIf: string; show: (m: string,
         </div>
       ) : (
         <>
-          <div style={{ overflowX: 'auto' }}>
+          <TableBlock copyTitle="Copia allocazione risorse per Excel">
             <table className="datatable">
               <thead>
                 <tr>
@@ -846,7 +877,7 @@ function RisorseEditor({ numeroIf, show }: { numeroIf: string; show: (m: string,
                 )}
               </tbody>
             </table>
-          </div>
+          </TableBlock>
           <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
             <button
               className="ubtn"
@@ -936,7 +967,7 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
         </div>
       ) : (
         <>
-          <div style={{ overflowX: 'auto' }}>
+          <TableBlock copyTitle="Copia voci BEF per Excel">
             <table className="datatable">
               <thead>
                 <tr>
@@ -974,7 +1005,7 @@ function BefEditor({ numeroIf, show }: { numeroIf: string; show: (m: string, bad
                 )}
               </tbody>
             </table>
-          </div>
+          </TableBlock>
           <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
             <button
               className="ubtn"
@@ -1052,7 +1083,7 @@ function DbSection({ show }: { show: (m: string, bad?: boolean) => void }) {
             Errore nel caricamento delle tabelle. Riprova ricaricando la pagina.
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <TableBlock copyTitle="Copia elenco tabelle per Excel">
             <table className="datatable">
               <thead>
                 <tr>
@@ -1084,7 +1115,7 @@ function DbSection({ show }: { show: (m: string, bad?: boolean) => void }) {
                 )}
               </tbody>
             </table>
-          </div>
+          </TableBlock>
         )}
       </div>
 
@@ -1139,7 +1170,7 @@ function TableViewer({ name }: { name: string }) {
       ) : (
         <>
           <div className="cap">Colonne</div>
-          <div style={{ overflowX: 'auto', marginBottom: 14 }}>
+          <TableBlock copyTitle="Copia struttura colonne per Excel" style={{ marginBottom: 14 }}>
             <table className="datatable">
               <thead>
                 <tr>
@@ -1160,10 +1191,10 @@ function TableViewer({ name }: { name: string }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBlock>
 
           <div className="cap">Contenuto ({data!.total.toLocaleString('it-IT')} righe totali)</div>
-          <div style={{ overflowX: 'auto' }}>
+          <TableBlock copyTitle="Copia contenuto della pagina corrente per Excel">
             <table className="datatable">
               <thead>
                 <tr>
@@ -1191,7 +1222,7 @@ function TableViewer({ name }: { name: string }) {
                 )}
               </tbody>
             </table>
-          </div>
+          </TableBlock>
           <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center' }}>
             <button className="ubtn" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - limit))}>
               ← Precedenti
@@ -1292,7 +1323,7 @@ function QueryRunner({
               : `Query eseguita (${result.rowCount} righe interessate) · ${result.durationMs} ms`}
           </div>
           {result.rows.length > 0 && (
-            <div style={{ overflowX: 'auto', marginTop: 8 }}>
+            <TableBlock copyTitle="Copia risultato della query per Excel" style={{ marginTop: 8 }}>
               <table className="datatable">
                 <thead>
                   <tr>
@@ -1313,7 +1344,7 @@ function QueryRunner({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableBlock>
           )}
         </div>
       )}

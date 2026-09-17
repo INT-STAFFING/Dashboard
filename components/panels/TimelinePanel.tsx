@@ -13,6 +13,7 @@ import {
 } from '@/lib/fiscal';
 import { chartRevFatt, legchips } from '@/lib/charts';
 import { Html } from '../Html';
+import { ChartCard, CopyTableButton } from '../export/ExportControls';
 
 function TimelinePanel({
   timelineMy,
@@ -142,14 +143,14 @@ function TimelinePanel({
           </div>
         </div>
       </div>
-      <div className="card">
-        <h3>
-          Revenue vs Fatturazione — {modeTxt} · {calTxt} {periodLabel}
-        </h3>
-        <div className="cap">
-          Barre: valori per periodo · Linee: cumulati · solo fornitore Intellera Consulting
-          {hasBef ? ` · Fatturato BEF ${calTxt} ${periodLabel}: ${EUR2(totBef)}` : ''}
-        </div>
+      <ChartCard
+        title={`Revenue vs Fatturazione — ${modeTxt} · ${calTxt} ${periodLabel}`}
+        caption={
+          'Barre: valori per periodo · Linee: cumulati · solo fornitore Intellera Consulting' +
+          (hasBef ? ` · Fatturato BEF ${calTxt} ${periodLabel}: ${EUR2(totBef)}` : '')
+        }
+        filename={`Revenue_vs_Fatturazione_${periodLabel}`}
+      >
         <Html
           ariaLabel={`Revenue vs fatturazione (${modeTxt}, ${calTxt} ${periodLabel}). Revenue totale ${EUR(totR)}, fatturazione totale ${EUR(totF)}${
             hasBef ? `, fatturato BEF totale ${EUR(totBef)}` : ''
@@ -174,8 +175,15 @@ function TimelinePanel({
             ...(hasBef ? [{ c: C.slate, t: 'Cum. Fatturato (BEF)', dash: true }] : []),
           ])}
         />
+      </ChartCard>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 22 }}>
+        <CopyTableButton
+          label="Copia indicatori per Excel"
+          title="Copia gli indicatori del periodo: incollali in un foglio Excel"
+          getMatrix={() => [['Indicatore', 'Valore', 'Dettaglio'], ...stats.map((s) => [s[0], s[1], s[2]])]}
+        />
       </div>
-      <div className="exsum" style={{ marginTop: 22 }}>
+      <div className="exsum" style={{ marginTop: 10 }}>
         {stats.map((s, i) => (
           <div className="stat" key={i}>
             <div className="l">{s[0]}</div>

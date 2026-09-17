@@ -4,6 +4,8 @@ import type { DocStatus, Intervento, InterventoInput, ReportPdcRecord, VerbaleSa
 import { EUR0, dfmt, ICO } from '@/lib/format';
 import InlineField from '../editing/InlineField';
 import StatusSelect from '../editing/StatusSelect';
+import { CopyTableButton } from '../export/ExportControls';
+import type { Matrix } from '@/lib/exportTable';
 
 // Mirrors the "📋 Dettaglio IF" export: stessa sequenza di colonne, stessi
 // campi. ICO fornisce colore/etichetta/glifo condivisi con il resto della app.
@@ -35,6 +37,24 @@ function periodKey(p: string | null): number {
 
 type MonthlyData = { pdc: ReportPdcRecord[]; sal: VerbaleSalRecord[]; bef: BefRow[] };
 
+// Titolo di una colonna del dettaglio mensile con il pulsante di copia: le tre
+// tabelle sono piccole ma restano dati che finiscono in Excel come le altre.
+function MonthlyHead({ title, matrix }: { title: string; matrix: Matrix | null }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <h5>{title}</h5>
+      {matrix && (
+        <CopyTableButton
+          style={{ marginLeft: 'auto' }}
+          label="Copia"
+          title={`Copia "${title}" per Excel`}
+          getMatrix={() => matrix}
+        />
+      )}
+    </div>
+  );
+}
+
 // Dettaglio mensile per BO: PDC (report_pdc), Verbali SAL (verbali_sal) e BEF
 // (bef_records), caricati on-demand dalla riga/card espansa.
 function MonthlyDetail({ state }: { state: MonthlyData | 'loading' | 'error' }) {
@@ -46,7 +66,17 @@ function MonthlyDetail({ state }: { state: MonthlyData | 'loading' | 'error' }) 
   return (
     <div className="monthly-grid">
       <div className="monthly-col">
-        <h5>PDC mensile</h5>
+        <MonthlyHead
+          title="PDC mensile"
+          matrix={
+            pdc.length
+              ? [
+                  ['Periodo', 'Stato', 'Codice'],
+                  ...pdc.map((r) => [r.periodo_pdc || '', r.stato_pdc || '', r.codice_pdc || '']),
+                ]
+              : null
+          }
+        />
         {pdc.length ? (
           <table className="monthly-tbl">
             <thead>
@@ -71,7 +101,17 @@ function MonthlyDetail({ state }: { state: MonthlyData | 'loading' | 'error' }) 
         )}
       </div>
       <div className="monthly-col">
-        <h5>Verbali SAL mensili</h5>
+        <MonthlyHead
+          title="Verbali SAL mensili"
+          matrix={
+            sal.length
+              ? [
+                  ['Periodo', 'Stato verbale', 'Conforme'],
+                  ...sal.map((r) => [r.periodo_competenza || '', r.stato_verbale || '', r.conforme || '']),
+                ]
+              : null
+          }
+        />
         {sal.length ? (
           <table className="monthly-tbl">
             <thead>
@@ -96,7 +136,21 @@ function MonthlyDetail({ state }: { state: MonthlyData | 'loading' | 'error' }) 
         )}
       </div>
       <div className="monthly-col">
-        <h5>BEF mensili</h5>
+        <MonthlyHead
+          title="BEF mensili"
+          matrix={
+            bef.length
+              ? [
+                  ['Periodo', 'Importo', 'Fattura'],
+                  ...bef.map((r) => [
+                    r.periodo_competenza || '',
+                    r.importo_ricezione != null ? eurPlain(r.importo_ricezione) : '',
+                    r.num_fattura || 'fatturabile',
+                  ]),
+                ]
+              : null
+          }
+        />
         {bef.length ? (
           <table className="monthly-tbl">
             <thead>
@@ -126,18 +180,32 @@ function MonthlyDetail({ state }: { state: MonthlyData | 'loading' | 'error' }) 
   );
 }
 
-function exportCSV(IFs: Intervento[]) {
-  const eur = (n: number) => Number(n || 0).toFixed(2).replace('.', ',');
-  const lbl = (v: DocStatus) => ICO[v][1];
-  const head = [
-    'Ambito', 'N° IF', 'N° BO', 'Titolo Intervento', 'Data Inizio', 'Data Fine', 'Ref. ARIA', 'Ref. Fornitore',
-    'Fornitore', 'Importo (€)', 'Modalità', 'Stato BO', 'PDC', 'V. Apertura', 'V. SAL', 'BEF', 'Azione Richiesta',
-  ];
-  const rows = IFs.map((x) => [
+// Intestazioni e righe condivise fra l'export CSV e la copia per Excel.
+const EXPORT_HEAD = [
+  'Ambito', 'N° IF', 'N° BO', 'Titolo Intervento', 'Data Inizio', 'Data Fine', 'Ref. ARIA', 'Ref. Fornitore',
+  'Fornitore', 'Importo (€)', 'Modalità', 'Stato BO', 'PDC', 'V. Apertura', 'V. SAL', 'BEF', 'Azione Richiesta',
+];
+
+// Per Excel i decimali vanno separati dalla virgola (locale it-IT) e senza
+// separatore di migliaia, altrimenti la cella resta testo.
+const eurPlain = (n: number) => Number(n || 0).toFixed(2).replace('.', ',');
+const docLabel = (v: DocStatus) => ICO[v][1];
+
+function exportRow(x: Intervento): (string | number)[] {
+  return [
     x.ambito || '', x.numero_if, x.bdo || '', x.titolo, dfmt(x.data_inizio), dfmt(x.data_fine), x.ref_aria || '',
-    x.ref_fornitore || '', x.fornitore, eur(x.importo), x.modalita_if || '', x.has_bo ? 'BO emesso' : 'In attesa',
-    lbl(x.pdc), lbl(x.v_apertura), lbl(x.v_sal), lbl(x.bef), x.azione || '',
-  ]);
+    x.ref_fornitore || '', x.fornitore, eurPlain(x.importo), x.modalita_if || '', x.has_bo ? 'BO emesso' : 'In attesa',
+    docLabel(x.pdc), docLabel(x.v_apertura), docLabel(x.v_sal), docLabel(x.bef), x.azione || '',
+  ];
+}
+
+function exportMatrix(IFs: Intervento[]): Matrix {
+  return [EXPORT_HEAD, ...IFs.map(exportRow)];
+}
+
+function exportCSV(IFs: Intervento[]) {
+  const head = EXPORT_HEAD;
+  const rows = IFs.map(exportRow);
   const csv = [head, ...rows]
     .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';'))
     .join('\r\n');
@@ -280,6 +348,10 @@ function DettaglioIFPanel({
               🗂️ Card
             </button>
           </div>
+          <CopyTableButton
+            getMatrix={() => exportMatrix(rows)}
+            title="Copia tutti gli IF mostrati (tutte le colonne): incollali in un foglio Excel"
+          />
           <button className="freset" onClick={() => exportCSV(rows)} style={{ borderColor: 'var(--petrol)', color: 'var(--petrol-d)' }}>
             ⤓ Esporta CSV
           </button>
@@ -410,7 +482,7 @@ function DettaglioIFPanel({
                       )}
                     </tr>
                     {isOpen && (
-                      <tr>
+                      <tr data-export-ignore>
                         <td colSpan={cols.length + 1 + (canEdit ? 1 : 0)} className="monthly-row">
                           <MonthlyDetail state={monthly[x.numero_if] || 'loading'} />
                         </td>

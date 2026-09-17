@@ -1,9 +1,10 @@
 'use client';
-import React from 'react';
+import React, { useRef } from 'react';
 import type { Intervento } from '@/lib/types';
 import { EUR, EUR0, PCT, C } from '@/lib/format';
 import { donut, chartVBars } from '@/lib/charts';
 import { Html } from '../Html';
+import { ChartCard, CopyTableButton } from '../export/ExportControls';
 
 // Canonical modalità buckets. Matching is EXACT (not substring) so a compound
 // value like "A canone + A corpo" is never double-counted into two buckets —
@@ -75,6 +76,8 @@ function ModalitaPanel({
     if (t) onDrillMod(t.getAttribute('data-drill-mod') || '');
   };
 
+  const tblRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="panel on" data-p="4">
       <div className="phead">
@@ -82,23 +85,28 @@ function ModalitaPanel({
         <p>Distribuzione per tipologia contrattuale · vista corrente (rispetta i filtri attivi).</p>
       </div>
       <div className="grid2">
-        <div className="card">
-          <h3>Distribuzione valore per modalità</h3>
-          <div className="cap">Quota del valore per tipologia contrattuale</div>
+        <ChartCard
+          title="Distribuzione valore per modalità"
+          caption="Quota del valore per tipologia contrattuale"
+          filename="Valore_per_modalita"
+        >
           <Html html={modDonut} />
-        </div>
-        <div className="card">
-          <h3>N° IF per modalità</h3>
-          <div className="cap">Numero di IF per modalità · clic su una barra per vedere gli IF</div>
+        </ChartCard>
+        <ChartCard
+          title="N° IF per modalità"
+          caption="Numero di IF per modalità · clic su una barra per vedere gli IF"
+          filename="IF_per_modalita"
+        >
           <Html html={modBars} onClick={onDrill} />
-        </div>
+        </ChartCard>
       </div>
       <div className="tablecard">
         <div className="tbar">
           <h3>Dettaglio modalità fornitura</h3>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)' }}>clic su una riga per gli IF ↗</span>
+          <CopyTableButton targetRef={tblRef} />
         </div>
-        <div className="tscroll">
+        <div className="tscroll" ref={tblRef}>
           <table className="dtable">
             <thead>
               <tr>

@@ -4,6 +4,7 @@ import type { Intervento } from '@/lib/types';
 import { EUR, EUR0, PCT, C } from '@/lib/format';
 import { donut } from '@/lib/charts';
 import { Html } from '../Html';
+import { ChartCard, CopyTableButton } from '../export/ExportControls';
 
 function StatoPanel({
   IFs,
@@ -48,11 +49,11 @@ function StatoPanel({
         <p>Stati di lavorazione, copertura Buoni d&apos;Ordine e subappalti.</p>
       </div>
       <div className="grid2">
-        <div className="card">
-          <h3>IF per stato del BO</h3>
-          <div className="cap">
-            {IFs.length} IF · {conBo.length} con BO · {senzaBo.length} in attesa
-          </div>
+        <ChartCard
+          title="IF per stato del BO"
+          caption={`${IFs.length} IF · ${conBo.length} con BO · ${senzaBo.length} in attesa`}
+          filename="IF_per_stato_BO"
+        >
           <Html
             ariaLabel={`Grafico a ciambella degli IF per stato del Buono d'Ordine. ${IFs.length} IF totali: ${conBo.length} con BO emesso, ${senzaBo.length} in attesa. Per stato: ${stE
               .map((e) => `${e[0]} ${e[1]} IF`)
@@ -60,7 +61,7 @@ function StatoPanel({
             html={stBox}
             onClick={onDrill}
           />
-          <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12, marginTop: 8 }}>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12, marginTop: 8 }} data-export-ignore>
             Clic su una fetta per vedere gli IF ↗
           </div>
           <div className="exsum" style={{ marginTop: 16 }}>
@@ -79,11 +80,25 @@ function StatoPanel({
               </div>
             ))}
           </div>
-        </div>
+        </ChartCard>
         <div className="alert">
-          <h3>Da presidiare</h3>
-          <div className="cap" style={{ color: 'var(--amber-d)' }}>
-            IF ancora privi di Buono d&apos;Ordine (non fatturabili)
+          <div className="cardhead">
+            <div className="cardhead-txt">
+              <h3>Da presidiare</h3>
+              <div className="cap" style={{ color: 'var(--amber-d)' }}>
+                IF ancora privi di Buono d&apos;Ordine (non fatturabili)
+              </div>
+            </div>
+            {senzaBo.length > 0 && (
+              <CopyTableButton
+                label="Copia elenco per Excel"
+                title="Copia gli IF in attesa di Buono d'Ordine: incollali in un foglio Excel"
+                getMatrix={() => [
+                  ['N° IF', 'Intervento', 'Referente ARIA', 'Importo (€)'],
+                  ...senzaBo.map((i) => [i.numero_if, i.titolo, i.ref_aria || '', EUR0(i.importo)]),
+                ]}
+              />
+            )}
           </div>
           <ul className="todo">
             {senzaBo.length ? (

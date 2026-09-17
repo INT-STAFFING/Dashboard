@@ -52,10 +52,12 @@ lib/
   schema.ts  db.ts  store.ts   Drizzle + store (DB o in-memory)
   parsers/                      parseIF · parseBEF · parseChiusura · parseAggregatore · parseDashboard
   queries.ts  charts.ts  format.ts
+  exportImage.ts  exportTable.ts  grafici → JPG/PNG · tabelle → testo per Excel
 components/
   Dashboard.tsx  FilterBar.tsx
   panels/        Overview · RTI · Timeline · Distribuzione · Modalità · Stato · Operativo
   editing/       EditDrawer · InlineField · StatusSelect · NotePreview
+  export/        ChartCard · ChartExportButtons · CopyTableButton
 ```
 
 ## Autenticazione & ruoli
@@ -95,6 +97,37 @@ API: `POST /api/auth/{register,login,logout}` · `GET /api/me` ·
 6. **Stato IF / BO** — stato BO, IF da presidiare, subappalti (con drill-down)
 7. **Operativo (Registro IF)** — tabella completa con **editing inline**, drawer di
    modifica, creazione, soft-delete, ricerca, ordinamento ed **export CSV**
+
+## Export di grafici e tabelle
+
+Ogni grafico e ogni tabella dell'applicazione (dashboard, Gestione dati,
+Gestione utenti) espone i propri comandi di export, senza dipendenze esterne:
+la rasterizzazione passa da un clone del nodo con gli stili calcolati
+inlinizzati dentro un `<foreignObject>` SVG, poi su `<canvas>`.
+
+- **🖼️ Copia grafico** — mette il grafico negli appunti come immagine, pronta da
+  incollare in Word, Excel, PowerPoint o in una mail. L'immagine include titolo,
+  didascalia, legenda e la data di estrazione, a risoluzione doppia.
+- **⤓ JPG** — scarica lo stesso grafico come file `.jpg`
+  (`<Nome_grafico>_AAAA-MM-GG.jpg`).
+- **📋 Copia per Excel** — copia **tutti** i dati della tabella (non solo le
+  righe visibili a schermo) come testo tabulato + tabella HTML: incollando in un
+  foglio Excel i valori finiscono già separati in celle. Le colonne di soli
+  pulsanti vengono escluse; sulle tabelle editabili i valori copiati sono quelli
+  correnti dei campi.
+
+Gli appunti di sistema accettano solo `image/png` per le immagini, quindi
+"Copia grafico" incolla un PNG mentre il file scaricato è un JPG; dove l'API
+appunti non è disponibile (contesto non sicuro, browser datati) il pulsante
+ripiega automaticamente sul download.
+
+Le tabelle Registro IF e Dettaglio IF mantengono anche l'**export CSV**
+dedicato, con le stesse colonne della copia per Excel.
+
+Codice: `lib/exportImage.ts` (grafici), `lib/exportTable.ts` (tabelle),
+`components/export/ExportControls.tsx` (`ChartCard`, `ChartExportButtons`,
+`CopyTableButton`). Un elemento marcato `data-export-ignore` viene escluso sia
+dall'immagine sia dalla copia testuale (es. i suggerimenti "clic per…").
 
 ## Editing & merge
 

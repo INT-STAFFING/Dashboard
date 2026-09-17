@@ -4,6 +4,7 @@ import type { Intervento, RtiConfig } from '@/lib/types';
 import { EUR, EUR0, EURM, PCT, MESI, C, erosionRisk } from '@/lib/format';
 import { chartMonthly, legchips } from '@/lib/charts';
 import { Html } from '../Html';
+import { ChartCard, CopyTableButton } from '../export/ExportControls';
 
 function OverviewPanel({
   IFs,
@@ -105,9 +106,11 @@ function OverviewPanel({
           </div>
         </div>
       </div>
-      <div className="card">
-        <h3>Revenue mensile · {refYear}</h3>
-        <div className="cap">Revenue di competenza per mese · totale vista {EUR(revTot)}</div>
+      <ChartCard
+        title={`Revenue mensile · ${refYear}`}
+        caption={`Revenue di competenza per mese · totale vista ${EUR(revTot)}`}
+        filename={`Revenue_mensile_${refYear}`}
+      >
         <Html
           ariaLabel={`Grafico a barre della revenue mensile ${refYear} per la vista corrente. Totale ${EUR(revTot)}, cumulato a fine anno ${EUR(cumV[cumV.length - 1] || 0)}. Valori per mese: ${MESI.map((m, i) => `${m} ${EUR(revM[i] || 0)}`).join(', ')}.`}
           html={chartMonthly(MESI, [{ name: 'Revenue', vals: revM, color: C.petrol }], {
@@ -124,10 +127,18 @@ function OverviewPanel({
             { c: C.amberD, t: 'mese corrente', line: true },
           ])}
         />
-      </div>
+      </ChartCard>
       <div className="card">
-        <h3>Indicatori sintetici</h3>
-        <div className="cap">Valori della vista corrente</div>
+        <div className="cardhead">
+          <div className="cardhead-txt">
+            <h3>Indicatori sintetici</h3>
+            <div className="cap">Valori della vista corrente</div>
+          </div>
+          <CopyTableButton
+            style={{ marginLeft: 'auto' }}
+            getMatrix={() => [['Indicatore', 'Valore', 'Dettaglio'], ...stats.map((s) => [s[0], s[1], s[2]])]}
+          />
+        </div>
         <div className="exsum" style={{ marginTop: 4 }}>
           {stats.map((s, i) => (
             <div className="stat" key={i}>

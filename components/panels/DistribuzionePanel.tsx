@@ -1,9 +1,10 @@
 'use client';
-import React from 'react';
+import React, { useRef } from 'react';
 import type { Intervento, Seniority } from '@/lib/types';
 import { EUR, EUR0, PCT, clamp, C } from '@/lib/format';
 import { hbars, hbarsStacked, donut, legchips } from '@/lib/charts';
 import { Html } from '../Html';
+import { ChartCard, CopyTableButton } from '../export/ExportControls';
 
 const PAL = [C.petrol, C.gold, C.slate, C.petrolL, '#B96E15', '#8C9BB3', '#0A4A43', '#C0492F', '#2F8F5B', '#7A5AA0', '#A100FF', '#D98A2B'];
 
@@ -80,6 +81,10 @@ function DistribuzionePanel({
       )
     : '<div class="empty">Nessun dato</div>';
 
+  const ambTblRef = useRef<HTMLDivElement>(null);
+  const refTblRef = useRef<HTMLDivElement>(null);
+  const senTblRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="panel on" data-p="3">
       <div className="phead">
@@ -96,22 +101,27 @@ function DistribuzionePanel({
 
       <div className={'subpanel' + (distSub === 0 ? ' on' : '')}>
         <div className="grid2">
-          <div className="card">
-            <h3>N° IF per ambito</h3>
-            <div className="cap">Numero di Interventi di Fornitura per macro ambito</div>
+          <ChartCard
+            title="N° IF per ambito"
+            caption="Numero di Interventi di Fornitura per macro ambito"
+            filename="IF_per_ambito"
+          >
             <Html html={ambCount} />
-          </div>
-          <div className="card">
-            <h3>Valore (€) per ambito</h3>
-            <div className="cap">Valore ordinato per macro ambito</div>
+          </ChartCard>
+          <ChartCard
+            title="Valore (€) per ambito"
+            caption="Valore ordinato per macro ambito"
+            filename="Valore_per_ambito"
+          >
             <Html html={ambVal} />
-          </div>
+          </ChartCard>
         </div>
         <div className="tablecard">
           <div className="tbar">
             <h3>Dettaglio per ambito</h3>
+            <CopyTableButton style={{ marginLeft: 'auto' }} targetRef={ambTblRef} />
           </div>
-          <div className="tscroll">
+          <div className="tscroll" ref={ambTblRef}>
             <table className="dtable">
               <thead>
                 <tr>
@@ -145,24 +155,32 @@ function DistribuzionePanel({
       </div>
 
       <div className={'subpanel' + (distSub === 1 ? ' on' : '')}>
-        <div className="card">
-          <h3>
-            Valore per referente ARIA <span style={{ color: 'var(--muted)', fontWeight: 500 }}>(split Intellera / Deloitte)</span>
-          </h3>
+        <ChartCard
+          title={
+            <>
+              Valore per referente ARIA{' '}
+              <span style={{ color: 'var(--muted)', fontWeight: 500 }}>(split Intellera / Deloitte)</span>
+            </>
+          }
+          exportTitle="Valore per referente ARIA (split Intellera / Deloitte)"
+          filename="Valore_per_referente_ARIA"
+        >
           <Html
             className="legrow"
+            style={{ marginTop: 0, marginBottom: 14 }}
             html={legchips([
               { c: C.petrol, t: 'Intellera' },
               { c: C.gold, t: 'Deloitte' },
             ])}
           />
           <Html html={refStack} />
-        </div>
+        </ChartCard>
         <div className="tablecard">
           <div className="tbar">
             <h3>Dettaglio referenti</h3>
+            <CopyTableButton style={{ marginLeft: 'auto' }} targetRef={refTblRef} />
           </div>
-          <div className="tscroll">
+          <div className="tscroll" ref={refTblRef}>
             <table className="dtable">
               <thead>
                 <tr>
@@ -201,16 +219,19 @@ function DistribuzionePanel({
 
       <div className={'subpanel' + (distSub === 2 ? ' on' : '')}>
         <div className="grid2">
-          <div className="card">
-            <h3>GG/Uomo per figura professionale</h3>
-            <div className="cap">Giornate/uomo pianificate · intero portafoglio</div>
+          <ChartCard
+            title="GG/Uomo per figura professionale"
+            caption="Giornate/uomo pianificate · intero portafoglio"
+            filename="GG_uomo_per_figura"
+          >
             <Html html={senDonut} />
-          </div>
+          </ChartCard>
           <div className="tablecard">
             <div className="tbar">
               <h3>Figure professionali e tariffe</h3>
+              <CopyTableButton style={{ marginLeft: 'auto' }} targetRef={senTblRef} />
             </div>
-            <div className="tscroll">
+            <div className="tscroll" ref={senTblRef}>
               <table className="dtable">
                 <thead>
                   <tr>

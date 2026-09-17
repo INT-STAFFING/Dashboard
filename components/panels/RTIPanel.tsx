@@ -1,9 +1,10 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import type { Intervento, RtiConfig, Meta } from '@/lib/types';
 import { EUR, EUR0, EURM, PCT, FCOL, C, erosionRisk } from '@/lib/format';
 import { donut, hbars, legchips, esc } from '@/lib/charts';
 import { Html } from '../Html';
+import { ChartCard, CopyTableButton } from '../export/ExportControls';
 
 function buildYearlyErosionChart(
   years: number[],
@@ -416,6 +417,8 @@ function RTIPanel({
     },
   ];
 
+  const summaryTblRef = useRef<HTMLDivElement>(null);
+
   const onDonutClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = (e.target as HTMLElement).closest('[data-drill-rti]') as HTMLElement | null;
     if (target) {
@@ -432,9 +435,11 @@ function RTIPanel({
       </div>
       {editMode && <RtiConfigForm rti={rti} onUpdate={onUpdateRti} />}
       <div className="grid2">
-        <div className="card">
-          <h3>Composizione del RTI</h3>
-          <div className="cap">Quota contrattuale per partner sul massimale contrattuale</div>
+        <ChartCard
+          title="Composizione del RTI"
+          caption="Quota contrattuale per partner sul massimale contrattuale"
+          filename="Composizione_RTI"
+        >
           <Html
             ariaLabel={`Grafico a ciambella della composizione del RTI sul massimale ${EURM(rti.ceiling)}. ${rti.partners
               .map((p) => `${p.name} ${PCT(p.pct * 100)} pari a ${EURM(p.quota)}`)
@@ -442,7 +447,10 @@ function RTIPanel({
             html={donutHtml}
             onClick={onDonutClick}
           />
-          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>
+          <div
+            style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted)', marginTop: 10 }}
+            data-export-ignore
+          >
             {selP ? (
               <>
                 Stai vedendo la quota di <b>{selP}</b>.{' '}
@@ -461,77 +469,84 @@ function RTIPanel({
               "Clic su uno spicchio per vedere l'erosione della quota di quel partner ↗"
             )}
           </div>
-        </div>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3>Erosione della quota per partner RTI</h3>
-          <div className="cap">
-            Valore impegnato (IF/BO della vista) rispetto alla quota contrattuale di ciascun partner
-          </div>
+        </ChartCard>
+        <ChartCard
+          title="Erosione della quota per partner RTI"
+          caption="Valore impegnato (IF/BO della vista) rispetto alla quota contrattuale di ciascun partner"
+          filename="Erosione_quota_partner_RTI"
+          style={{ display: 'flex', flexDirection: 'column' }}
+          bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+        >
           <div className="hbars-fill" style={{ flex: 1 }}>
             <Html html={eroPartner} style={{ height: '100%', display: 'flex', flexDirection: 'column' }} />
           </div>
-        </div>
+        </ChartCard>
       </div>
-      <div className="card">
-        <h3>Erosione per Anno</h3>
-        <div className="cap">
-          Impegnato (IF/BO della vista) distribuito per anno lungo la durata contrattuale
-        </div>
+      <ChartCard
+        title="Erosione per Anno"
+        caption="Impegnato (IF/BO della vista) distribuito per anno lungo la durata contrattuale"
+        filename="Erosione_per_anno"
+      >
         <Html
           ariaLabel={`Erosione del massimale contrattuale per anno. Massimale ${EURM(ceil)}, impegnato totale ${EURM(totImpegnato)} (${PCT(eroTotPct)}, ${totRisk.label}), ${residuo < 0 ? `sforamento ${EURM(-residuo)}` : `residuo ${EURM(residuo)}`}. Impegnato per anno: ${years.map((y) => `${y} ${EURM(impByYear[y] || 0)}`).join(', ')}.`}
           html={eroAnnoHtml}
         />
-      </div>
-      <div className="card">
-        <h3>Erosione teorica vs reale del massimale (%)</h3>
-        <div className="cap">
-          Ritmo di erosione lineare atteso dell&apos;intero massimale contrattuale, confrontato con l&apos;erosione reale totale maturata ad oggi — a prescindere da come si ripartisce tra le aziende del RTI
-        </div>
+      </ChartCard>
+      <ChartCard
+        title="Erosione teorica vs reale del massimale (%)"
+        caption="Ritmo di erosione lineare atteso dell'intero massimale contrattuale, confrontato con l'erosione reale totale maturata ad oggi — a prescindere da come si ripartisce tra le aziende del RTI"
+        filename="Erosione_teorica_vs_reale_massimale_pct"
+      >
         <Html
           ariaLabel={`Erosione teorica lineare vs reale del massimale contrattuale, in percentuale. Reale a oggi ${totalRealPct != null ? PCT(totalRealPct) : 'n/d'} contro un target teorico del 100% a fine contratto.`}
           html={eroTotalPctHtml}
         />
-      </div>
-      <div className="card">
-        <h3>Erosione teorica vs reale del massimale (valore)</h3>
-        <div className="cap">
-          Stesso confronto in valore assoluto sull&apos;intero massimale contrattuale
-        </div>
+      </ChartCard>
+      <ChartCard
+        title="Erosione teorica vs reale del massimale (valore)"
+        caption="Stesso confronto in valore assoluto sull'intero massimale contrattuale"
+        filename="Erosione_teorica_vs_reale_massimale_valore"
+      >
         <Html
           ariaLabel={`Erosione teorica lineare vs reale del massimale contrattuale, in valore. Reale a oggi ${totalRealEur != null ? EURM(totalRealEur) : 'n/d'} contro un massimale di ${EURM(ceil)}.`}
           html={eroTotalEurHtml}
         />
-      </div>
-      <div className="card">
-        <h3>Erosione teorica vs reale delle quote per azienda (%)</h3>
-        <div className="cap">
-          Ritmo di erosione lineare atteso della quota di ciascuna azienda rispetto alla propria quota (mai rispetto al massimale totale), confrontato con l&apos;erosione reale maturata ad oggi
-        </div>
+      </ChartCard>
+      <ChartCard
+        title="Erosione teorica vs reale delle quote per azienda (%)"
+        caption="Ritmo di erosione lineare atteso della quota di ciascuna azienda rispetto alla propria quota (mai rispetto al massimale totale), confrontato con l'erosione reale maturata ad oggi"
+        filename="Erosione_teorica_vs_reale_quote_pct"
+      >
         <Html
           ariaLabel={`Erosione teorica lineare vs reale delle quote, in percentuale, per azienda. ${quotaErosion
             .map((s) => `${s.name}: reale a oggi ${s.realPct != null ? PCT(s.realPct) : 'n/d'} contro un target teorico del 100% della propria quota a fine contratto`)
             .join('; ')}.`}
           html={eroQuotaPctHtml}
         />
-      </div>
-      <div className="card">
-        <h3>Erosione teorica vs reale delle quote per azienda (valore)</h3>
-        <div className="cap">
-          Stesso confronto in valore assoluto, per azienda: traiettoria teorica lineare della propria quota contrattuale rispetto al proprio impegnato reale
-        </div>
+      </ChartCard>
+      <ChartCard
+        title="Erosione teorica vs reale delle quote per azienda (valore)"
+        caption="Stesso confronto in valore assoluto, per azienda: traiettoria teorica lineare della propria quota contrattuale rispetto al proprio impegnato reale"
+        filename="Erosione_teorica_vs_reale_quote_valore"
+      >
         <Html
           ariaLabel={`Erosione teorica lineare vs reale delle quote, in valore, per azienda. ${quotaErosion
             .map((s) => `${s.name}: reale a oggi ${s.realEur != null ? EURM(s.realEur) : 'n/d'} contro una quota contrattuale di ${EURM(s.quota)}`)
             .join('; ')}.`}
           html={eroQuotaEurHtml}
         />
-      </div>
+      </ChartCard>
       <div className="card">
-        <h3>Riepilogo numerico</h3>
-        <div className="cap">
-          Tutti i numeri teorici e reali, per azienda e per il totale del contratto, alla data odierna e in proiezione a fine contratto
+        <div className="cardhead">
+          <div className="cardhead-txt">
+            <h3>Riepilogo numerico</h3>
+            <div className="cap">
+              Tutti i numeri teorici e reali, per azienda e per il totale del contratto, alla data odierna e in proiezione a fine contratto
+            </div>
+          </div>
+          <CopyTableButton targetRef={summaryTblRef} />
         </div>
-        <div className="tscroll">
+        <div className="tscroll" ref={summaryTblRef}>
           <table className="dtable">
             <thead>
               <tr>

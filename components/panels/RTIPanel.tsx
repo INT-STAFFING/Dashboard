@@ -58,36 +58,51 @@ function buildYearlyErosionChart(
   return `<svg class="msvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${bars}${mk}${labs}</svg>`;
 }
 
-type ErosionSeries = {
+type ProjectionSeries = {
   name: string;
   color: string;
-  theoretical: number[]; // one value per `years` entry: cumulative target at year-end
-  real: (number | null)[]; // one value per `years` entry: cumulative actual, null once beyond today
+  theoreticalEnd: number; // target value at the contract's end date (100 for %, the quota for €)
+  realToday: number | null; // actual cumulative value as of today; null if the contract hasn't started yet
 };
 
-// Cumulative theoretical-linear-pace vs real erosion, one line per company.
-// `sharedTheoretical`: in % terms every company's linear pace is the same
-// 0->100 diagonal, so draw it once instead of once per company.
-function buildErosionCompareChart(
-  years: number[],
-  todayYear: number,
-  series: ErosionSeries[],
+// Theoretical linear pace vs real erosion, one line per company, on a
+// continuous date axis spanning the whole contract (contractStartMs ->
+// contractEndMs). The theoretical line is the true straight diagonal from
+// 0 on the signing date to its target on the expiry date. The real line
+// starts at 0 on the signing date, passes through today's actual value,
+// and continues straight (same slope, i.e. "at the current pace") to the
+// expiry date — solid for the realised segment, dashed for the projection.
+function buildErosionProjectionChart(
+  contractStartMs: number,
+  contractEndMs: number,
+  todayMs: number,
+  series: ProjectionSeries[],
   mode: 'pct' | 'eur',
   sharedTheoretical: boolean,
 ): string {
   const W = 920, H = 300, pl = 76, pr = 18, pt = 20, pb = 44;
   const pw = W - pl - pr, ph = H - pt - pb;
-  const allVals = series.flatMap((s) => [...s.theoretical, ...s.real.filter((v): v is number => v != null)]);
-  const rawMax = Math.max(1, ...allVals);
+  const totalMs = Math.max(1, contractEndMs - contractStartMs);
+  const clampedToday = Math.min(Math.max(todayMs, contractStartMs), contractEndMs);
+  const elapsedMs = clampedToday - contractStartMs;
+
+  const projectedEnd = series.map((s) =>
+    s.realToday == null ? null : elapsedMs > 0 ? (s.realToday * totalMs) / elapsedMs : s.realToday,
+  );
+
+  const rawMax = Math.max(
+    1,
+    ...series.map((s) => s.theoreticalEnd),
+    ...projectedEnd.filter((v): v is number => v != null),
+    ...series.map((s) => s.realToday ?? 0),
+  );
   const maxV = mode === 'pct' ? Math.max(100, Math.ceil(rawMax / 10) * 10) : rawMax * 1.08;
   const ticks = 4;
   const yOf = (v: number) => pt + ph - (v / maxV) * ph;
-  const slot = pw / years.length;
-  const xOf = (i: number) => pl + slot * i + slot / 2;
+  const xOf = (ms: number) => pl + pw * ((ms - contractStartMs) / totalMs);
   const fmtAxis = (v: number) => (mode === 'pct' ? `${Math.round(v)}%` : `€${(v / 1e6).toFixed(1)}M`);
   const fmtVal = (v: number) => (mode === 'pct' ? PCT(v) : EURM(v));
   const fmtDelta = (v: number) => (mode === 'pct' ? `${v >= 0 ? '+' : ''}${v.toFixed(1)} p.p.` : `${v >= 0 ? '+' : ''}${EURM(v)}`);
-  const todayIdx = years.indexOf(todayYear);
 
   let g = '';
   for (let i = 0; i <= ticks; i++) {
@@ -96,45 +111,43 @@ function buildErosionCompareChart(
     g += `<text x="${pl - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11.5" fill="${C.muted}">${fmtAxis(v)}</text>`;
   }
 
+  const x0 = xOf(contractStartMs), xEnd = xOf(contractEndMs), xToday = xOf(clampedToday);
+  let vgrid = '', labs = '';
+  const startYear = new Date(contractStartMs).getUTCFullYear();
+  const endYear = new Date(contractEndMs).getUTCFullYear();
+  const seen = new Set<number>();
+  for (let y = startYear; y <= endYear; y++) {
+    const tickMs = Math.min(contractEndMs, Math.max(contractStartMs, Date.UTC(y, 0, 1)));
+    const x = xOf(tickMs);
+    const key = Math.round(x);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    vgrid += `<line x1="${x.toFixed(1)}" y1="${pt}" x2="${x.toFixed(1)}" y2="${pt + ph}" stroke="${C.line}" opacity="0.5"/>`;
+    labs += `<text x="${x.toFixed(1)}" y="${H - pb + 18}" text-anchor="middle" font-size="12.5" fill="${C.muted}">${y}</text>`;
+  }
+
   let lines = '';
   if (sharedTheoretical && series.length) {
-    const pts = years.map((_, i) => `${xOf(i).toFixed(1)},${yOf(series[0].theoretical[i]).toFixed(1)}`).join(' ');
-    lines += `<polyline points="${pts}" fill="none" stroke="${C.muted}" stroke-width="2" stroke-dasharray="6 4"/>`;
+    lines += `<polyline points="${x0.toFixed(1)},${yOf(0).toFixed(1)} ${xEnd.toFixed(1)},${yOf(series[0].theoreticalEnd).toFixed(1)}" fill="none" stroke="${C.muted}" stroke-width="2" stroke-dasharray="6 4"/>`;
   }
 
-  series.forEach((s) => {
+  series.forEach((s, si) => {
     if (!sharedTheoretical) {
-      const tpts = years.map((_, i) => `${xOf(i).toFixed(1)},${yOf(s.theoretical[i]).toFixed(1)}`).join(' ');
-      lines += `<polyline points="${tpts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>`;
+      lines += `<polyline points="${x0.toFixed(1)},${yOf(0).toFixed(1)} ${xEnd.toFixed(1)},${yOf(s.theoreticalEnd).toFixed(1)}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>`;
     }
-    const realIdx = years.map((_, i) => i).filter((i) => s.real[i] != null);
-    if (realIdx.length) {
-      const realPts = realIdx.map((i) => `${xOf(i).toFixed(1)},${yOf(s.real[i] as number).toFixed(1)}`).join(' ');
-      lines += `<polyline points="${realPts}" fill="none" stroke="${s.color}" stroke-width="2.6"/>`;
-    }
-    realIdx.forEach((i) => {
-      const v = s.real[i] as number;
-      const isToday = i === todayIdx;
-      lines += `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="${isToday ? 5.5 : 4.5}" fill="${s.color}" stroke="#fff" stroke-width="2" class="seg" data-tip="${esc(
-        `${s.name} · ${years[i]}\nErosione reale: ${fmtVal(v)}\nRitmo teorico atteso: ${fmtVal(s.theoretical[i])}\nScostamento: ${fmtDelta(v - s.theoretical[i])}`,
-      )}"/>`;
-    });
+    if (s.realToday == null) return;
+    const yToday = yOf(s.realToday);
+    const yProjEnd = yOf(projectedEnd[si] as number);
+    lines += `<polyline points="${x0.toFixed(1)},${yOf(0).toFixed(1)} ${xToday.toFixed(1)},${yToday.toFixed(1)}" fill="none" stroke="${s.color}" stroke-width="2.6"/>`;
+    lines += `<polyline points="${xToday.toFixed(1)},${yToday.toFixed(1)} ${xEnd.toFixed(1)},${yProjEnd.toFixed(1)}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-dasharray="2 4" opacity="0.85"/>`;
+    lines += `<circle cx="${xToday.toFixed(1)}" cy="${yToday.toFixed(1)}" r="5.5" fill="${s.color}" stroke="#fff" stroke-width="2" class="seg" data-tip="${esc(
+      `${s.name} · oggi\nErosione reale: ${fmtVal(s.realToday)}\nProiezione a fine contratto al ritmo attuale: ${fmtVal(projectedEnd[si] as number)}\nTarget teorico a fine contratto: ${fmtVal(s.theoreticalEnd)}\nScostamento proiezione vs target: ${fmtDelta((projectedEnd[si] as number) - s.theoreticalEnd)}`,
+    )}"/>`;
   });
 
-  let mk = '';
-  if (todayIdx >= 0) {
-    const mx = xOf(todayIdx);
-    mk = `<line x1="${mx.toFixed(1)}" y1="${pt}" x2="${mx.toFixed(1)}" y2="${pt + ph}" stroke="${C.amberD}" stroke-width="1.3" stroke-dasharray="4 3"/>`;
-    mk += `<text x="${(mx + 5).toFixed(1)}" y="${pt + 13}" text-anchor="start" font-size="10" fill="${C.amberD}" font-weight="700">oggi</text>`;
-  }
+  const mk = `<line x1="${xToday.toFixed(1)}" y1="${pt}" x2="${xToday.toFixed(1)}" y2="${pt + ph}" stroke="${C.amberD}" stroke-width="1.3" stroke-dasharray="4 3"/><text x="${(xToday + 5).toFixed(1)}" y="${pt + 13}" text-anchor="start" font-size="10" fill="${C.amberD}" font-weight="700">oggi</text>`;
 
-  let labs = '';
-  years.forEach((yr, i) => {
-    const isToday = yr === todayYear;
-    labs += `<text x="${xOf(i).toFixed(1)}" y="${H - pb + 18}" text-anchor="middle" font-size="13" font-weight="${isToday ? '700' : '400'}" fill="${isToday ? C.ink : C.muted}">${yr}</text>`;
-  });
-
-  return `<svg class="msvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${lines}${mk}${labs}</svg>`;
+  return `<svg class="msvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${vgrid}${lines}${mk}${labs}</svg>`;
 }
 
 function RTIPanel({
@@ -235,65 +248,51 @@ function RTIPanel({
     </div>
   </div>`;
 
-  // Theoretical linear pace vs real erosion, per partner, over the contract period.
-  const cumulativeByYear = (items: Intervento[]): number[] => {
-    const perYear: Record<number, number> = {};
-    years.forEach((y) => (perYear[y] = 0));
-    items.forEach((i) => {
-      const y = i.data_inizio ? new Date(i.data_inizio).getFullYear() : startYear;
-      if (perYear[y] != null) perYear[y] += i.importo;
-      else perYear[startYear] += i.importo;
-    });
-    let acc = 0;
-    return years.map((y) => (acc += perYear[y] || 0));
-  };
-  const todayIdxRaw = years.indexOf(todayYear);
-  const cutIdx = todayIdxRaw >= 0 ? todayIdxRaw : todayYear > endYear ? years.length - 1 : -1;
-
-  // Theoretical linear pace: 0% on the contract signing date, 100% on the
-  // contract expiry date — not on Jan 1 / Dec 31 of the years used for the
-  // chart's (annual) x-axis buckets.
+  // Theoretical linear pace vs real erosion, per partner, over the contract
+  // period: 0% on the signing date, 100% (or the quota, in € terms) on the
+  // expiry date — both read straight from meta, independent of the annual
+  // buckets used by the chart above. The real line starts at 0 on the
+  // signing date, passes through today's actual impegnato, and is then
+  // projected forward at that same pace to the expiry date.
   const contractStartMs = new Date(meta.contract_date).getTime();
   const contractEndMs = new Date(meta.valid_to).getTime();
-  const contractSpanMs = Math.max(1, contractEndMs - contractStartMs);
-  const theoreticalFraction = years.map((y) => {
-    const yearEndMs = Date.UTC(y, 11, 31, 23, 59, 59, 999);
-    const elapsedMs = Math.min(yearEndMs, contractEndMs) - contractStartMs;
-    return Math.min(1, Math.max(0, elapsedMs / contractSpanMs));
-  });
+  const nowMs = Date.now();
+  const contractStarted = nowMs >= contractStartMs;
 
   const quotaErosion = rti.partners.map((p) => {
-    const cum = cumulativeByYear(IFs.filter((i) => i.fornitore === p.name));
-    const theoreticalEur = theoreticalFraction.map((f) => p.quota * f);
-    const theoreticalPct = theoreticalFraction.map((f) => f * 100);
-    const realEur = years.map((_, i) => (cutIdx >= 0 && i <= cutIdx ? cum[i] : null));
-    const realPct = years.map((_, i) => (cutIdx >= 0 && i <= cutIdx ? (p.quota ? (cum[i] / p.quota) * 100 : 0) : null));
-    return { name: p.name, color: FCOL[p.name] || C.slateL, theoreticalEur, theoreticalPct, realEur, realPct };
+    const realEur = contractStarted ? impByP[p.name] || 0 : null;
+    const realPct = realEur != null ? (p.quota ? (realEur / p.quota) * 100 : 0) : null;
+    return { name: p.name, color: FCOL[p.name] || C.slateL, quota: p.quota, realEur, realPct };
   });
 
-  const eroQuotaPctSvg = buildErosionCompareChart(
-    years,
-    todayYear,
-    quotaErosion.map((s) => ({ name: s.name, color: s.color, theoretical: s.theoreticalPct, real: s.realPct })),
+  const eroQuotaPctSvg = buildErosionProjectionChart(
+    contractStartMs,
+    contractEndMs,
+    nowMs,
+    quotaErosion.map((s) => ({ name: s.name, color: s.color, theoreticalEnd: 100, realToday: s.realPct })),
     'pct',
     true,
   );
-  const eroQuotaEurSvg = buildErosionCompareChart(
-    years,
-    todayYear,
-    quotaErosion.map((s) => ({ name: s.name, color: s.color, theoretical: s.theoreticalEur, real: s.realEur })),
+  const eroQuotaEurSvg = buildErosionProjectionChart(
+    contractStartMs,
+    contractEndMs,
+    nowMs,
+    quotaErosion.map((s) => ({ name: s.name, color: s.color, theoreticalEnd: s.quota, realToday: s.realEur })),
     'eur',
     false,
   );
 
+  const elapsedMs = Math.min(Math.max(nowMs, contractStartMs), contractEndMs) - contractStartMs;
+  const totalContractMs = Math.max(1, contractEndMs - contractStartMs);
   const quotaDeltaHtml = quotaErosion
     .map((s) => {
-      if (cutIdx < 0 || s.realPct[cutIdx] == null) return '';
-      const delta = (s.realPct[cutIdx] as number) - s.theoreticalPct[cutIdx];
+      if (s.realPct == null) return '';
+      const projectedPct = elapsedMs > 0 ? (s.realPct * totalContractMs) / elapsedMs : s.realPct;
+      const delta = projectedPct - 100;
       const sign = delta >= 0 ? '+' : '';
-      const word = delta >= 0 ? 'avanti rispetto al ritmo atteso' : 'indietro rispetto al ritmo atteso';
+      const word = delta >= 0 ? 'supererebbe la quota a questo ritmo' : 'resterebbe sotto quota a questo ritmo';
       return `<div style="flex:1;min-width:190px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-left:3px solid ${s.color}">
-        <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700">${esc(s.name)} vs ritmo atteso</div>
+        <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700">${esc(s.name)} · proiezione a fine contratto</div>
         <div style="font-size:19px;font-weight:800;font-family:'SFMono-Regular',monospace;color:${s.color}">${sign}${delta.toFixed(1)} p.p.</div>
         <div style="font-size:12px;color:var(--muted)">${word}</div>
       </div>`;
@@ -310,7 +309,7 @@ function RTIPanel({
     )}</div>
     ${quotaDeltaHtml ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">${quotaDeltaHtml}</div>` : ''}
     <div style="font-size:11px;color:var(--muted);margin-top:14px">
-      Confronto in percentuale della quota di ciascun partner, comparabile anche tra quote di dimensione diversa.
+      Confronto in percentuale della quota di ciascun partner, comparabile anche tra quote di dimensione diversa. Tratto continuo = erosione reale a oggi, tratteggiato = proiezione a fine contratto mantenendo il ritmo attuale.
     </div>
   </div>`;
 
@@ -323,7 +322,7 @@ function RTIPanel({
       ]),
     )}</div>
     <div style="font-size:11px;color:var(--muted);margin-top:14px">
-      Stesso confronto in valore assoluto: tratteggiata = ritmo teorico lineare della quota, continua = impegnato reale.
+      Stesso confronto in valore assoluto: tratteggiata grigia/colorata sottile = ritmo teorico lineare della quota, continua = impegnato reale, tratteggiata colorata spessa = proiezione a fine contratto al ritmo attuale.
     </div>
   </div>`;
 
@@ -400,7 +399,7 @@ function RTIPanel({
         </div>
         <Html
           ariaLabel={`Erosione teorica lineare vs reale delle quote, in percentuale, per azienda. ${quotaErosion
-            .map((s) => `${s.name}: reale ${cutIdx >= 0 && s.realPct[cutIdx] != null ? PCT(s.realPct[cutIdx] as number) : 'n/d'} contro un ritmo atteso di ${cutIdx >= 0 ? PCT(s.theoreticalPct[cutIdx]) : 'n/d'}`)
+            .map((s) => `${s.name}: reale a oggi ${s.realPct != null ? PCT(s.realPct) : 'n/d'} contro un target teorico del 100% a fine contratto`)
             .join('; ')}.`}
           html={eroQuotaPctHtml}
         />
@@ -412,7 +411,7 @@ function RTIPanel({
         </div>
         <Html
           ariaLabel={`Erosione teorica lineare vs reale delle quote, in valore, per azienda. ${quotaErosion
-            .map((s) => `${s.name}: reale ${cutIdx >= 0 && s.realEur[cutIdx] != null ? EURM(s.realEur[cutIdx] as number) : 'n/d'} contro un ritmo atteso di ${cutIdx >= 0 ? EURM(s.theoreticalEur[cutIdx]) : 'n/d'}`)
+            .map((s) => `${s.name}: reale a oggi ${s.realEur != null ? EURM(s.realEur) : 'n/d'} contro una quota contrattuale di ${EURM(s.quota)}`)
             .join('; ')}.`}
           html={eroQuotaEurHtml}
         />

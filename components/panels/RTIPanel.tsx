@@ -250,10 +250,22 @@ function RTIPanel({
   const todayIdxRaw = years.indexOf(todayYear);
   const cutIdx = todayIdxRaw >= 0 ? todayIdxRaw : todayYear > endYear ? years.length - 1 : -1;
 
+  // Theoretical linear pace: 0% on the contract signing date, 100% on the
+  // contract expiry date — not on Jan 1 / Dec 31 of the years used for the
+  // chart's (annual) x-axis buckets.
+  const contractStartMs = new Date(meta.contract_date).getTime();
+  const contractEndMs = new Date(meta.valid_to).getTime();
+  const contractSpanMs = Math.max(1, contractEndMs - contractStartMs);
+  const theoreticalFraction = years.map((y) => {
+    const yearEndMs = Date.UTC(y, 11, 31, 23, 59, 59, 999);
+    const elapsedMs = Math.min(yearEndMs, contractEndMs) - contractStartMs;
+    return Math.min(1, Math.max(0, elapsedMs / contractSpanMs));
+  });
+
   const quotaErosion = rti.partners.map((p) => {
     const cum = cumulativeByYear(IFs.filter((i) => i.fornitore === p.name));
-    const theoreticalEur = years.map((_, i) => (p.quota * (i + 1)) / years.length);
-    const theoreticalPct = years.map((_, i) => ((i + 1) / years.length) * 100);
+    const theoreticalEur = theoreticalFraction.map((f) => p.quota * f);
+    const theoreticalPct = theoreticalFraction.map((f) => f * 100);
     const realEur = years.map((_, i) => (cutIdx >= 0 && i <= cutIdx ? cum[i] : null));
     const realPct = years.map((_, i) => (cutIdx >= 0 && i <= cutIdx ? (p.quota ? (cum[i] / p.quota) * 100 : 0) : null));
     return { name: p.name, color: FCOL[p.name] || C.slateL, theoreticalEur, theoreticalPct, realEur, realPct };

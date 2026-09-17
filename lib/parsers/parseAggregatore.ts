@@ -1,5 +1,5 @@
 import type { Intervento, Seniority } from '../types';
-import { readWorkbook, sheetRows, findSheet, toNumber, toISODate, str, strId } from './util';
+import { readWorkbook, sheetRows, findSheet, toNumber, toISODate, str, strId, normalizeFornitore } from './util';
 
 export type AggregatoreResult = {
   seniority: Seniority[];
@@ -68,7 +68,7 @@ export function parseAggregatore(input: ArrayBuffer | Buffer): AggregatoreResult
       }
       if (!e.fornitore) {
         const f = str(r['Fornitore']);
-        if (f) e.fornitore = /deloitte/i.test(f) ? 'Deloitte' : 'Intellera';
+        if (f) e.fornitore = normalizeFornitore(f);
       }
       ofByFile.set(file, e);
     }
@@ -85,8 +85,7 @@ export function parseAggregatore(input: ArrayBuffer | Buffer): AggregatoreResult
       const file = str(r['File Sorgente']);
       const of = file ? ofByFile.get(file) : undefined;
       const refMail = String(r['Ref. Fornitore - Mail'] ?? '');
-      const fornitore =
-        of?.fornitore || (/deloitte/i.test(refMail) ? 'Deloitte' : 'Intellera');
+      const fornitore = of?.fornitore || normalizeFornitore(refMail);
       const hasBdo = strId(r['Codice Ultimo BDO']) != null;
 
       interventi.push({

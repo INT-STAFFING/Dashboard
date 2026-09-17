@@ -296,3 +296,30 @@ export function isRtiIntellera(r: Record<string, unknown>): boolean {
   };
   return match(g('Fornitore RTI')) || match(g('Fornitore'));
 }
+
+// Canonical RTI partner names, as configured in "Gestione Dati" → "Massimale
+// e quote RTI". A raw "Fornitore" cell holds a ragione sociale — "ACCENTURE
+// SPA", "Accenture S.p.A.", "PGMD S.r.l.", "Gellify S.p.A.", … — that never
+// matches these exactly, so every partner other than the RTI capofila
+// (Intellera) needs a recognizer here, the same way Deloitte has always been
+// recognized. Order doesn't matter: the patterns are disjoint by name.
+const FORNITORE_PATTERNS: [RegExp, string][] = [
+  [/deloitte/i, 'Deloitte'],
+  [/accenture/i, 'Accenture'],
+  [/pgmd/i, 'PGMD'],
+  [/gellify/i, 'Gellify'],
+];
+
+// Normalizes a raw "Fornitore" value onto one of the RTI's canonical partner
+// names, regardless of legal-form suffixes, capitalization or spacing in the
+// source ragione sociale. Anything unrecognized (including Intellera itself,
+// which carries no distinguishing marker) falls back to 'Intellera', as
+// every call site already did before this normalizer existed.
+export function normalizeFornitore(raw: unknown): string {
+  const s = str(raw);
+  if (!s) return 'Intellera';
+  for (const [re, name] of FORNITORE_PATTERNS) {
+    if (re.test(s)) return name;
+  }
+  return 'Intellera';
+}

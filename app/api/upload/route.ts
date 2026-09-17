@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { parseFile, type FileKind, type ParseOutput } from '@/lib/parsers';
+import { normalizeFornitore } from '@/lib/parsers/util';
 import { upsertInterventiFromUpload, listInterventi } from '@/lib/store';
 import { persistBefFromUpload } from '@/lib/befStore';
 import { persistReportBdoFromUpload } from '@/lib/reportBdoStore';
@@ -173,7 +174,7 @@ function normalizeIntervento(raw: unknown): Intervento | null {
     bdo: sval(r.bdo),
     titolo,
     ambito: sval(r.ambito),
-    fornitore: sval(r.fornitore) ?? 'Intellera',
+    fornitore: normalizeFornitore(r.fornitore),
     ref_aria: sval(r.ref_aria),
     ref_fornitore: sval(r.ref_fornitore),
     importo: num(r.importo),

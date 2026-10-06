@@ -3,6 +3,7 @@ import { getDb, hasDB, ensureSchema } from './db';
 import { users as usersTable } from './schema';
 import { hashPassword } from './auth/password';
 import { assertAdminPasswordSecure } from './security/config';
+import { invalidateUser } from './auth/userCache';
 import type { Role, SafeUser, UserStatus } from './types';
 
 export type UserRecord = {
@@ -219,6 +220,7 @@ async function patch(
       })
       .where(eq(usersTable.id, id))
       .returning();
+    invalidateUser(id);
     return updated[0] ? toSafe(rowToUser(updated[0])) : null;
   }
   const u = mem().find((x) => x.id === id);
@@ -226,6 +228,7 @@ async function patch(
   if (changes.role !== undefined) u.role = changes.role;
   if (changes.status !== undefined) u.status = changes.status;
   if (changes.approved_at !== undefined) u.approved_at = changes.approved_at;
+  invalidateUser(id);
   return toSafe(u);
 }
 
@@ -260,11 +263,13 @@ export async function deleteUser(id: number): Promise<boolean> {
       .delete(usersTable)
       .where(eq(usersTable.id, id))
       .returning({ id: usersTable.id });
+    invalidateUser(id);
     return res.length > 0;
   }
   const list = mem();
   const idx = list.findIndex((x) => x.id === id);
   if (idx < 0) return false;
   list.splice(idx, 1);
+  invalidateUser(id);
   return true;
 }

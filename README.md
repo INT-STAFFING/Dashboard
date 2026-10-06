@@ -166,6 +166,11 @@ controlla le variabili all'avvio e risponde 500 con l'elenco di ciò che manca.
 - Per provare in locale una build di produzione senza segreti reali esiste
   `ALLOW_INSECURE_CONFIG=true`. Non impostarla su un deploy reale.
 
+Sessione: il cookie contiene solo l'id utente; ruolo e stato vengono letti dal database
+e tenuti in cache per istanza per 30 secondi (`SESSION_USER_CACHE_TTL_MS`, `0` per
+disattivare). Approvazioni, cambi di ruolo ed eliminazioni fatti dall'app invalidano
+subito la cache dell'istanza che li esegue; le altre istanze si allineano entro il TTL.
+
 Altre protezioni: il login è limitato a 10 tentativi falliti per email e 30 per IP
 ogni 15 minuti (risposta `429` con `Retry-After`; il blocco di un'email scade da solo
 e non invalida le sessioni già aperte). Ogni istruzione eseguita dalla console SQL

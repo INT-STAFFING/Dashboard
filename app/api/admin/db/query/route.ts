@@ -5,6 +5,7 @@ import { getSessionUser, isAdmin } from '@/lib/auth';
 import { getDb, hasDB } from '@/lib/db';
 import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import { beginAudit, finishAudit } from '@/lib/adminAudit';
+import { invalidateAllUsers } from '@/lib/auth/userCache';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -65,6 +66,8 @@ export async function POST(req: Request) {
     // cost of an occasional unnecessary cache miss is negligible next to the
     // risk of stale dashboard data after an admin edit made through here.
     revalidateTag(DASHBOARD_DATA_TAG);
+    // The statement may have touched `users` (role, status, deletion).
+    invalidateAllUsers();
     const rowCount = result.rowCount ?? result.rows.length;
     const durationMs = Date.now() - started;
     await finishAudit(auditId, { ok: true, rowCount, durationMs });

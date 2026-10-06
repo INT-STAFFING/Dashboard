@@ -3,9 +3,9 @@
 // handlers / server components.
 //
 // Token format:  base64url(JSON payload) "." base64url(HMAC-SHA256)
-// Payload carries only the user id + expiry; role/status are always looked up
-// fresh from the store server-side, so an admin's approval/role changes take
-// effect on the user's next request (no need to wait for re-login).
+// Payload carries only the user id + expiry; role/status are looked up from the
+// store server-side (briefly cached — see lib/auth/userCache.ts), so an admin's
+// approval/role changes take effect without waiting for a re-login.
 
 import {
   allowsInsecureConfig,

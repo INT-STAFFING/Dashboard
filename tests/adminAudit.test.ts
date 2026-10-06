@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import type { PGlite } from '@electric-sql/pglite';
 import { POST } from '@/app/api/admin/db/query/route';
 import { applyMigration, createTestDb } from './helpers/pglite';
+import { getCachedUser, invalidateAllUsers } from '@/lib/auth/userCache';
 
 const state = vi.hoisted(() => ({
   hasDB: true,
@@ -118,5 +119,25 @@ describe('POST /api/admin/db/query', () => {
     expect(res.status).toBe(200);
     spy.mockRestore();
     expect((await audit())[0].status).toBe('started');
+  });
+
+  it('drops every cached session user after a successful statement (it may have edited `users`)', async () => {
+    invalidateAllUsers();
+    const load = vi.fn(async () => ({ id: 7, email: 'c@x.it', name: null, role: 'USER' as const, status: 'approved' as const, created_at: null, approved_at: null }));
+    await getCachedUser(7, load);
+    await getCachedUser(7, load);
+    expect(load).toHaveBeenCalledTimes(1);
+    await run('select 1');
+    await getCachedUser(7, load);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the cache when the statement fails', async () => {
+    invalidateAllUsers();
+    const load = vi.fn(async () => ({ id: 8, email: 'd@x.it', name: null, role: 'USER' as const, status: 'approved' as const, created_at: null, approved_at: null }));
+    await getCachedUser(8, load);
+    await run('select * from nope_nope');
+    await getCachedUser(8, load);
+    expect(load).toHaveBeenCalledTimes(1);
   });
 });

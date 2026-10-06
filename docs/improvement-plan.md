@@ -9,7 +9,7 @@ Questo piano riguarda ciò che **manca** rispetto a `docs/performance-audit.md` 
 | # | Intervento | Area | Impatto | Sforzo | Fase |
 |---|---|---|---|---|---|
 | 1 | Funzioni Vercel nella stessa regione di Neon | Velocità | Molto alto | XS | 1 |
-| 2 | Eliminare la query utente a ogni richiesta | Velocità / risorse | Alto | S | 1 |
+| 2 | Eliminare la query utente a ogni richiesta (cache per istanza, TTL 30 s) | Velocità / risorse | Alto | S | 1 |
 | 3 | Idempotenza dell'import `verbali_sal` (duplicava le righe) | Scalabilità / dati | Alto | S | 1 |
 | 4 | Upsert, DDL e seed in un'unica richiesta HTTP | Risorse | Medio | S | 1 |
 | 5 | Blocchi di sicurezza che sono anche spreco di risorse | Sicurezza | Alto | S | 1 |
@@ -29,12 +29,17 @@ Ordine consigliato per la prima iterazione: 1 → 3 → 5 → 2 → 4 → 6. Son
 
 ### 2. Sessione senza accesso al database
 
-`getSessionUser()` (`lib/auth/index.ts:9`) esegue `getUserById` a ogni pagina e a ogni chiamata API, e ogni volta passa anche da `ensureSeed`. Il middleware verifica già la firma del token. Due strade equivalenti:
+Stato: **implementato.** Test: `tests/userCache.test.ts`, `tests/sessionUser.test.ts` (più due casi in `tests/adminAudit.test.ts`).
 
-- inserire `role`, `status` e un campo `session_version` (nuova colonna su `users`) nel payload firmato, con una scadenza breve (ad esempio 15 minuti) e rinnovo trasparente;
-- oppure tenere in cache la lettura dell'utente con `unstable_cache` e il tag `user:{id}`, invalidandola in `approveUser`, `rejectUser`, `setUserRole` e `deleteUser` (`lib/users.ts`).
+`getSessionUser()` (`lib/auth/index.ts`) eseguiva `getUserById` a ogni pagina e a ogni chiamata API: una richiesta HTTPS verso Neon ogni volta. Ora l'utente risolto dal cookie viene tenuto in una cache per istanza (`lib/auth/userCache.ts`), con TTL di 30 secondi (`SESSION_USER_CACHE_TTL_MS`, `0` la disattiva). Sul percorso caldo le richieste autenticate non toccano più il database (test: 10 richieste, 1 lettura).
 
-In entrambi i casi si risparmia un round-trip per richiesta e la revoca dei permessi resta rapida.
+**Scelta implementativa (diversa dalle due varianti elencate nella bozza).** Mettere ruolo e stato nel token richiederebbe un rinnovo periodico del cookie, che un server component non può impostare: gli utenti verrebbero disconnessi a ogni scadenza. `unstable_cache` con tag non è verificabile fuori da Next, e preferisco non consegnare codice di sicurezza che non posso collaudare. La cache di processo è semplice e interamente testata.
+
+- **Invalidazione immediata** sull'istanza che serve la richiesta: approvazione, rifiuto, cambio ruolo, eliminazione (`lib/users.ts`) e qualsiasi istruzione riuscita della console SQL admin (che può modificare `users`).
+- **Corse tra lettura e scrittura:** una lettura iniziata prima di un'invalidazione non ripopola la cache e le richieste successive non si agganciano a essa.
+- Si memorizzano solo ricerche riuscite e solo `SafeUser` (mai l'hash della password); gli errori e gli utenti inesistenti non vengono memorizzati; i chiamanti ricevono copie; al massimo 500 voci.
+
+**Compromesso da conoscere:** una modifica fatta da *un'altra* istanza serverless, o con SQL diretto sul database, arriva alle istanze già "calde" entro il TTL (30 s). Prima la revoca di un permesso era immediata ovunque. Per un tool interno è una latenza bassa, ma chi deve poter revocare un accesso in modo istantaneo può impostare `SESSION_USER_CACHE_TTL_MS=0` e tornare al comportamento precedente.
 
 ### 3. Duplicazione di `verbali_sal`
 

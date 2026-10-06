@@ -146,6 +146,21 @@ file aggiorna solo i campi che effettivamente contiene senza azzerare gli altri
 (es. la revenue non viene persa caricando un IF_ARIA). Protetto da
 `UPLOAD_SECRET`, da inviare **solo** nell'header `x-upload-secret` (il parametro `?token=` non è più accettato: le query string finiscono nei log di accesso). Pagina UI: `/upload`.
 
+## Sviluppo e verifica
+
+```bash
+npm test               # Vitest; usa un Postgres in-process (PGlite), nessun DB esterno
+npm run test:coverage  # copertura di lib/
+npm run typecheck      # tsc --noEmit
+npm run lint           # next lint (next/core-web-vitals)
+npm run build
+```
+
+La CI (`.github/workflows/ci.yml`) esegue typecheck, lint, test e build su ogni pull
+request e su `main`. In produzione il server scrive nei log una riga `[perf] {...}` per
+la ricostruzione del payload della dashboard e per ogni upload (`PERF_LOG=off` per
+silenziarle); Vercel Speed Insights va abilitato dalle impostazioni del progetto.
+
 ## Sicurezza e configurazione di produzione
 
 In un runtime di **produzione** (Vercel `production`, oppure `next start` fuori da Vercel)

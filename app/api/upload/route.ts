@@ -13,6 +13,7 @@ import { setSeniority } from '@/lib/portfolio';
 import { updateMeta } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
 import { isUploadAuthorized } from '@/lib/auth/uploadSecret';
+import { timed } from '@/lib/perf';
 import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type {
   BefRecord,
@@ -200,6 +201,16 @@ function normalizeIntervento(raw: unknown): Intervento | null {
 // Apply a parsed payload (from either the server-side parser or a client-side
 // parse) to the store and return the upload summary.
 async function applyParsed(parsed: ParseOutput, force: boolean) {
+  return timed('upload', () => applyParsedUntimed(parsed, force), (r) => ({
+    kind: parsed.kind,
+    inserted: r.inserted,
+    updated: r.updated,
+    skipped: r.skipped,
+    errors: r.errors.length,
+  }));
+}
+
+async function applyParsedUntimed(parsed: ParseOutput, force: boolean) {
   const errors: string[] = [];
   let inserted = 0;
   let updated = 0;

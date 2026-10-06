@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import { Inter, Fraunces } from 'next/font/google';
 import './globals.css';
 import './filterbar.css';
@@ -36,7 +37,21 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="it" className={`${inter.variable} ${fraunces.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Vercel Speed Insights (real-user Web Vitals), loaded only when running on
+            Vercel — elsewhere /_vercel/speed-insights/script.js doesn't exist. It
+            collects data once Speed Insights is enabled for the project in the
+            Vercel dashboard. */}
+        {process.env.VERCEL ? (
+          <>
+            <Script id="vercel-speed-insights-init" strategy="afterInteractive">
+              {'window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };'}
+            </Script>
+            <Script src="/_vercel/speed-insights/script.js" strategy="afterInteractive" />
+          </>
+        ) : null}
+      </body>
     </html>
   );
 }

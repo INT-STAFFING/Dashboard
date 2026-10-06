@@ -4,6 +4,7 @@ import { listInterventi } from './store';
 import { quotaValFromRti } from './config';
 import { listAllBef, computeBefMonthlyTotals, computeBefAggregates } from './befStore';
 import { getSettingsBulk } from './settings';
+import { timed } from './perf';
 import { SEED_FORNITORI, SEED_RTI, SEED_META, SEED_SENIORITY, SEED_MODALITA, SEED_TIMELINE } from './seed';
 import {
   computeKpi,
@@ -86,8 +87,16 @@ async function assembleDashboardData(): Promise<DashboardData & {
 // `revalidateTag` call sites listed in R-6 fire. Worse, while that payload stays
 // cached nothing reads the interventi table, so the bootstrap that performs the
 // repair never runs either. Bumping SCHEMA_VERSION now busts this key too.
+//
+// The timing below therefore measures only cache MISSES — the real cost of
+// rebuilding the payload — and `payload_kb` is what gets serialized into the
+// SSR HTML of /dashboard.
 export const getDashboardData = unstable_cache(
-  assembleDashboardData,
+  () =>
+    timed('dashboard_data', assembleDashboardData, (d) => ({
+      interventi: d.interventi.length,
+      payload_kb: Math.round(JSON.stringify(d).length / 1024),
+    })),
   ['dashboard-data', `schema-v${SCHEMA_VERSION}`],
   { tags: [DASHBOARD_DATA_TAG] },
 );

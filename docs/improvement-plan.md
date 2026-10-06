@@ -99,13 +99,13 @@ Stato: **implementato, tranne l'aggiornamento di `xlsx`** (bloccato nell'ambient
 
 ### 6. Test, CI e misurazioni
 
-Il repository non ha test, workflow CI né metriche, quindi oggi nessuna ottimizzazione è verificabile.
+Stato: **implementato, con i limiti indicati sotto.**
 
-- Aggiungere Vitest sulle funzioni pure: `lib/queries.ts`, `lib/fiscal.ts`, gli aggregati in `lib/befStore.ts`, `mergeUpload` in `lib/store.ts` e i parser in `lib/parsers/`, con fixture anonimizzate dei file Excel reali.
-- Aggiungere un workflow GitHub Actions che esegua typecheck, lint, test e `next build`.
-- Per le misure in produzione: `@vercel/speed-insights` e un log dei tempi di `assembleDashboardData` e dei tempi dell'upload.
-
-Ogni punto di questo piano dovrebbe chiudersi con un numero prima e uno dopo.
+- **Test.** Vitest, 322 test in 21 file (`npm test`; `npm run test:coverage` per la copertura). Coprono: `queries`, `fiscal`, aggregati e import BEF, utilità e parser (`parseIF`, `parseBEF`, `parseVerbaliSal`, `parseChiusura`, rilevamento del tipo di file), store in memoria (inserimento, fusione degli upload, record modificati a mano, soft-delete), `dualModeStore`, formattazione, e tutto ciò che è stato aggiunto ai punti 1–5. Sono *test di caratterizzazione*: fissano il comportamento attuale, in particolare i bug storici documentati nel codice (date spostate di un giorno in fuso Roma, identificativi letti come date, importi `216425.15` moltiplicati per 100, fatture con lo stesso numero collassate, reimport BEF che raddoppiava gli importi). Ho verificato con sette mutazioni mirate che ciascuno di questi test fallisca se il bug viene reintrodotto.
+- **Fixture.** I workbook `.xlsx` sono generati in memoria con SheetJS e riletti dallo stesso `readWorkbook()` dell'app, quindi non c'è nessun dato cliente nel repository. Il piano prevedeva fixture anonimizzate dei file reali: non ho accesso a quei file, perciò i parser sono provati su file sintetici che riproducono le intestazioni attese. Aggiungere qualche export reale anonimizzato è il passo successivo più utile.
+- **Copertura misurata:** 48,5% delle righe di `lib/` (89,8% dei rami). Logica di dominio, store di snapshot, autenticazione e parser BEF/IF/Sal/Chiusura sono ~100%. **Non coperti:** `parseDashboard`, `parseAggregatore`, `parseReportBdo/Rdi/Pdc`, `parseVerbaliApertura`, `charts.ts`, `exportImage.ts`/`exportTable.ts` (dipendono dal DOM), i rami su database di `store.ts` e `users.ts`, i componenti React. Nessun test end-to-end del browser.
+- **CI.** `.github/workflows/ci.yml` esegue su ogni PR e su `main`: typecheck, lint, test e `next build`. `npm run lint` non era utilizzabile (`next lint` chiedeva interattivamente una configurazione ESLint): aggiunti `eslint@8`, `eslint-config-next` e `.eslintrc.json` (`next/core-web-vitals`); il codice esistente passa senza avvisi.
+- **Misure in produzione.** Log JSON `[perf]` per `dashboard_data` (ricostruzione del payload, quindi solo cache miss, con `payload_kb`) e per `upload` (tipo di file, righe inserite/aggiornate, durata); cercabili nei log di Vercel, silenziabili con `PERF_LOG=off`. **Speed Insights:** caricato con lo script ufficiale solo quando l'app gira su Vercel; raccoglie dati solo dopo averlo abilitato nelle impostazioni del progetto Vercel. Non ho usato il pacchetto npm `@vercel/speed-insights`: nell'albero attuale npm non riesce a risolvere i suoi peer opzionali (conflitto con `vite` 8 via `@sveltejs/kit`), e forzare `--legacy-peer-deps` avrebbe peggiorato `npm ci` ovunque.
 
 ### 7. Bundle a caricamento progressivo
 

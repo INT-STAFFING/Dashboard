@@ -40,7 +40,9 @@ export async function GET() {
       .map((row) => ({
         name: row.table_name,
         columnCount: columnCounts.get(row.table_name) ?? 0,
-        approxRows: Number(row.approx_rows) || 0,
+        // reltuples is -1 for a table PostgreSQL has never vacuumed/analysed (e.g. one just
+        // created by a migration): show 0, not a negative row count.
+        approxRows: Math.max(0, Number(row.approx_rows) || 0),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 

@@ -129,6 +129,15 @@ Codice: `lib/exportImage.ts` (grafici), `lib/exportTable.ts` (tabelle),
 `CopyTableButton`). Un elemento marcato `data-export-ignore` viene escluso sia
 dall'immagine sia dalla copia testuale (es. i suggerimenti "clic per…").
 
+## Anno di riferimento
+
+I valori mensili di revenue e consuntivo sono salvati per anno nella tabella
+`intervento_mesi`. Il selettore **Anno** in intestazione (`/dashboard?anno=AAAA`)
+cambia KPI, grafici ed export; senza parametro vale l'anno corrente se ha dati,
+altrimenti il più vicino con dati. Un nuovo anno si aggiunge dal selettore in
+Gestione › IF/BO; l'upload del workbook Dashboard carica tutti gli anni presenti
+in `TIMELINE_REVENUE` senza toccare quelli assenti dal file.
+
 ## Editing & merge
 
 - Modifica inline (click-to-edit) e drawer completo → `PUT /api/interventi/[num_if]`

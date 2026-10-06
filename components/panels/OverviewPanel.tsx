@@ -111,16 +111,17 @@ function OverviewPanel({
         </div>
       </div>
       <ChartCard
-        title={`Revenue mensile · ${refYear}`}
+        title={`Revenue mensile · ${anno}`}
         caption={`Revenue di competenza per mese · totale vista ${EUR(revTot)}`}
-        filename={`Revenue_mensile_${refYear}`}
+        filename={`Revenue_mensile_${anno}`}
       >
         <Html
-          ariaLabel={`Grafico a barre della revenue mensile ${refYear} per la vista corrente. Totale ${EUR(revTot)}, cumulato a fine anno ${EUR(cumV[cumV.length - 1] || 0)}. Valori per mese: ${MESI.map((m, i) => `${m} ${EUR(revM[i] || 0)}`).join(', ')}.`}
+          ariaLabel={`Grafico a barre della revenue mensile ${anno} per la vista corrente. Totale ${EUR(revTot)}, cumulato a fine anno ${EUR(cumV[cumV.length - 1] || 0)}. Valori per mese: ${MESI.map((m, i) => `${m} ${EUR(revM[i] || 0)}`).join(', ')}.`}
           html={chartMonthly(MESI, [{ name: 'Revenue', vals: revM, color: C.petrol }], {
             cumulative: { vals: cumV, color: C.gold, name: 'Cumulato' },
-            today: new Date().getMonth(),
-            periodLabel: String(refYear),
+            // The "oggi" marker only makes sense in the current year.
+            today: anno === refYear ? now.getMonth() : -1,
+            periodLabel: String(anno),
           })}
         />
         <Html

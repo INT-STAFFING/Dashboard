@@ -127,6 +127,14 @@ Lo schema contiene `revenue_2026`, `rev_mesi` e `cons_mesi` come array fissi di 
 
 Il modello corretto è una tabella `intervento_mesi(numero_if, anno, mese, revenue, consuntivo)` con chiave composta e indice su `(anno, numero_if)`. La migrazione deve copiare i dati esistenti; il payload va filtrato per anno con un selettore nell'interfaccia; la cache va divisa per anno con chiavi come `dashboard-data:{anno}`.
 
+Stato: **implementato, con i limiti indicati sotto.** Test: `tests/mesiPure.test.ts`, `mesiStore.test.ts` (parità memoria/database), `migration.test.ts`, `dashboardData.test.ts`, `parseDashboard.test.ts`, `interventiRoutes.test.ts`, `uploadRoute.test.ts`, `ui.test.tsx`, `charts.test.ts`, più i test di copertura aggiunti su parser dei report, store, utenti, export admin e catalogo formule.
+
+La tabella `intervento_mesi(numero_if, anno, mese, revenue, consuntivo)` ha chiave `(numero_if, anno, mese)` e indice `(anno, numero_if)`; è sparsa (solo mesi con valore diverso da zero). La migrazione `drizzle/0013_intervento_mesi.sql` (eseguita anche dal bootstrap, `SCHEMA_VERSION` 9) copia i vecchi array sotto l'anno dell'impostazione `timeline` (default 2026), una sola volta e solo se la tabella è vuota. Le colonne legacy `rev_mesi`, `cons_mesi` e `revenue_2026` restano nello schema ma non vengono più lette né scritte, per consentire il rollback. `revenue_2026` diventa `revenue_anno`, derivato dalla somma dei mesi.
+
+Il selettore "Anno" in intestazione (`/dashboard?anno=AAAA`, anche in Gestione IF e nell'export CSV) sceglie l'anno; il default è l'anno corrente se ha dati, altrimenti il più vicino con dati. La cache ha l'anno nella chiave. L'upload legge tutte le colonne data di `TIMELINE_REVENUE` e sostituisce solo gli anni e gli IF presenti nel file.
+
+Limiti: filtri e aggregazioni restano sul client e il registro non è virtualizzato (non rientrano in questo passo); tornare al codice precedente dopo il deploy mostra mesi a zero perché le colonne legacy non vengono più aggiornate.
+
 Insieme a questo conviene spostare filtri e aggregazioni dal client al server. Oggi ogni filtro scorre l'intero portafoglio nel browser; diventa un problema oltre qualche migliaio di righe, ed è il momento in cui aggiungere anche la virtualizzazione del registro Operativo.
 
 ## Fase 4 — Funzionalità (in parallelo alla Fase 3)

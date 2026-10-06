@@ -41,6 +41,20 @@ describe('OverviewPanel', () => {
     expect(html).toContain('Revenue da gennaio ad oggi');
   });
 
+  it('REGRESSION: the monthly chart is titled, tagged and described with the selected year, not today\'s', () => {
+    const html = renderToStaticMarkup(<OverviewPanel IFs={ifs} rti={rti} quotaVal={{}} anno={2031} />);
+    expect(html).toContain('Revenue mensile · 2031');
+    expect(html).toContain('Grafico a barre della revenue mensile 2031');
+    expect(html).toContain('Gen 2031 · Revenue');
+    expect(html).not.toContain(`Revenue mensile · ${CY}`);
+  });
+
+  it('the "oggi" marker appears in the current year and nowhere else', () => {
+    expect(renderToStaticMarkup(<OverviewPanel IFs={ifs} rti={rti} quotaVal={{}} anno={CY} />)).toContain('>oggi<');
+    expect(renderToStaticMarkup(<OverviewPanel IFs={ifs} rti={rti} quotaVal={{}} anno={CY - 1} />)).not.toContain('>oggi<');
+    expect(renderToStaticMarkup(<OverviewPanel IFs={ifs} rti={rti} quotaVal={{}} anno={CY + 1} />)).not.toContain('>oggi<');
+  });
+
   it('a past year is shown in full as "concluded", a future one as not started', () => {
     const past = text(renderToStaticMarkup(<OverviewPanel IFs={ifs} rti={rti} quotaVal={{}} anno={CY - 1} />));
     expect(past).toContain(`Revenue maturata ${CY - 1} (anno concluso)`);

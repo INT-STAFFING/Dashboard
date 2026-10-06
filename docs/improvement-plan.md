@@ -133,7 +133,7 @@ La tabella `intervento_mesi(numero_if, anno, mese, revenue, consuntivo)` ha chia
 
 Il selettore "Anno" in intestazione (`/dashboard?anno=AAAA`, anche in Gestione IF e nell'export CSV) sceglie l'anno; il default è l'anno corrente se ha dati, altrimenti il più vicino con dati. La cache ha l'anno nella chiave. L'upload legge tutte le colonne data di `TIMELINE_REVENUE` e sostituisce solo gli anni e gli IF presenti nel file.
 
-Limiti: filtri e aggregazioni restano sul client e il registro non è virtualizzato (non rientrano in questo passo); tornare al codice precedente dopo il deploy mostra mesi a zero perché le colonne legacy non vengono più aggiornate.
+Completamento successivo: il registro Operativo mostra 200 righe per volta ("Mostra altre"), mentre totali, ricerca ed export lavorano su tutte le righe; `parseReportBdo` normalizza il Numero BDO con `strId` come gli altri report. Limiti: filtri e aggregazioni restano sul client (il filtraggio lato server non è stato fatto: sotto qualche migliaio di IF il costo è trascurabile); tornare al codice precedente dopo il deploy mostra mesi a zero perché le colonne legacy non vengono più aggiornate.
 
 Insieme a questo conviene spostare filtri e aggregazioni dal client al server. Oggi ogni filtro scorre l'intero portafoglio nel browser; diventa un problema oltre qualche migliaio di righe, ed è il momento in cui aggiungere anche la virtualizzazione del registro Operativo.
 

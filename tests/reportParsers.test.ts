@@ -137,6 +137,11 @@ describe('parseReportBdo', () => {
     expect(parseReportBdo(workbook({ Altro: [['x']] }))).toEqual([]);
   });
 
+  it('regressione: il Numero BDO numerico o float diventa una stringa intera', () => {
+    const out = parseReportBdo(workbook({ 'REPORT Bdo': [head, row(3300000005), row('3300000006.0')] }));
+    expect(out.map((x) => x.num_bdo)).toEqual(['3300000005', '3300000006']);
+  });
+
   it('is recognised by its sheet name', () => {
     const out = parseFile('export_1.xlsx', workbook({ 'REPORT Bdo': [head, row('3300000001')] }));
     expect(out.kind).toBe('report_bdo');

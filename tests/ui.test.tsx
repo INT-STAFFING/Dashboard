@@ -3,7 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Dashboard from '@/components/Dashboard';
 import OverviewPanel from '@/components/panels/OverviewPanel';
-import RegistroPanel, { exportMatrix } from '@/components/panels/RegistroPanel';
+import { EUR0 } from '@/lib/format';
+import RegistroPanel, { exportMatrix, REGISTRO_PAGE } from '@/components/panels/RegistroPanel';
 import { getDashboardData } from '@/lib/getDashboardData';
 import { persistMesiFromUpload } from '@/lib/mesiStore';
 import { SEED_INTERVENTI } from '@/lib/seed';
@@ -71,6 +72,23 @@ describe('RegistroPanel', () => {
   it('renders the registry for any year', () => {
     const html = renderToStaticMarkup(<RegistroPanel IFs={[makeIf({ numero_if: 'A', titolo: 'Uno' })]} anno={2027} {...base} />);
     expect(html).toContain('Uno');
+  });
+
+  it('renders only the first page of a long registry but reports and totals every row', () => {
+    const many = Array.from({ length: REGISTRO_PAGE * 2 + 50 }, (_, i) => makeIf({ numero_if: `Z${String(i).padStart(5, '0')}`, titolo: `T${i}`, importo: 10 }));
+    const html = renderToStaticMarkup(<RegistroPanel IFs={many} anno={2026} {...base} />);
+    expect(html.match(/<td class="codecell">Z\d{5}<\/td>/g)).toHaveLength(REGISTRO_PAGE);
+    expect(html).toContain(`Visualizzate ${REGISTRO_PAGE} righe su ${many.length}`);
+    expect(html).toContain(`Mostra altre ${REGISTRO_PAGE}`);
+    expect(html).toContain(`<b>${many.length}</b>`);
+    expect(html).toContain(`€ ${EUR0(many.length * 10)}`);
+  });
+
+  it('a registry within one page has no pagination control and keeps every row', () => {
+    const few = Array.from({ length: REGISTRO_PAGE }, (_, i) => makeIf({ numero_if: `Y${String(i).padStart(5, '0')}`, titolo: `T${i}` }));
+    const html = renderToStaticMarkup(<RegistroPanel IFs={few} anno={2026} {...base} />);
+    expect(html.match(/<td class="codecell">Y\d{5}<\/td>/g)).toHaveLength(REGISTRO_PAGE);
+    expect(html).not.toContain('Mostra altre');
   });
 
   it('REGRESSION: the Excel/CSV export names the revenue column after the year and carries the year total', () => {

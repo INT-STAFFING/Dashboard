@@ -1,5 +1,5 @@
 import type { ReportBdoRecord } from '../types';
-import { readWorkbook, sheetRows, findSheet, toISODate, str, type Workbook } from './util';
+import { readWorkbook, sheetRows, findSheet, toISODate, str, strId, type Workbook } from './util';
 
 // Sheet name used by the "REPORT Bdo" export (workflow approvativo ROI/PMO/CTRM).
 export function findReportBdoSheet(wb: Workbook): string | null {
@@ -15,7 +15,7 @@ export function parseReportBdo(input: ArrayBuffer | Buffer | Workbook): ReportBd
   if (!sheet) return [];
   const out: ReportBdoRecord[] = [];
   for (const r of sheetRows(wb, sheet, 0)) {
-    const num_bdo = str(r['Numero BDO']);
+    const num_bdo = strId(r['Numero BDO']);
     if (!num_bdo) continue;
     out.push({
       num_bdo,

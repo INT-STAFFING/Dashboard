@@ -8,12 +8,14 @@ import type { InterventoInput } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET() {
+export async function GET(req: Request) {
   const me = await getSessionUser();
   if (!canView(me)) {
     return NextResponse.json({ ok: false, error: 'Non autorizzato' }, { status: 403 });
   }
-  return NextResponse.json({ interventi: await listInterventi() });
+  // ?anno= selects the calendar year of the monthly profiles (default: current).
+  const anno = new URL(req.url).searchParams.get('anno');
+  return NextResponse.json({ interventi: await listInterventi(anno ? Number(anno) : undefined) });
 }
 
 // POST /api/interventi — create a new intervento (num_if + titolo required)

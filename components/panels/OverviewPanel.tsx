@@ -3,6 +3,7 @@ import React from 'react';
 import type { Intervento, RtiConfig } from '@/lib/types';
 import { EUR, EUR0, EURM, PCT, MESI, C, erosionRisk } from '@/lib/format';
 import { chartMonthly, legchips } from '@/lib/charts';
+import { monthsElapsed } from '@/lib/fiscal';
 import { Html } from '../Html';
 import { ChartCard, CopyTableButton } from '../export/ExportControls';
 
@@ -11,11 +12,14 @@ function OverviewPanel({
   rti,
   quotaVal,
   filtersForn,
+  anno,
 }: {
   IFs: Intervento[];
   rti: RtiConfig;
   quotaVal: Record<string, number>;
   filtersForn?: string;
+  // Calendar year of the monthly profiles in IFs.
+  anno: number;
 }) {
   const conBo = IFs.filter((i) => i.has_bo);
   const senzaBo = IFs.filter((i) => !i.has_bo);
@@ -37,12 +41,12 @@ function OverviewPanel({
   // Months elapsed so far this calendar year (Gen..mese corrente incluso) —
   // previously hardcoded to a fixed Gen-Giu slice regardless of the actual
   // current month.
-  const revToDate = sum(revM, 0, now.getMonth() + 1);
+  const revToDate = sum(revM, 0, monthsElapsed(anno, now));
 
   const stats: [string, string, string][] = [
     ['Valore IF attive', EURM(tot), IFs.length + ' IF'],
-    [`Revenue ${refYear} (totale anno)`, EUR(revTot), 'competenza'],
-    ['Revenue da gennaio ad oggi', EUR(revToDate), 'avanzamento ' + PCT(revTot ? (revToDate / revTot) * 100 : 0)],
+    [`Revenue ${anno} (totale anno)`, EUR(revTot), 'competenza'],
+    [anno === refYear ? 'Revenue da gennaio ad oggi' : anno < refYear ? `Revenue maturata ${anno} (anno concluso)` : `Revenue maturata ${anno} (anno non iniziato)`, EUR(revToDate), 'avanzamento ' + PCT(revTot ? (revToDate / revTot) * 100 : 0)],
     ['BO emessi', conBo.length + ' / ' + IFs.length, PCT(pct)],
     ['Quota RTI impegnata', PCT(eroPct), EURM(tot) + ' / ' + EURM(quota)],
   ];
@@ -107,16 +111,17 @@ function OverviewPanel({
         </div>
       </div>
       <ChartCard
-        title={`Revenue mensile · ${refYear}`}
+        title={`Revenue mensile · ${anno}`}
         caption={`Revenue di competenza per mese · totale vista ${EUR(revTot)}`}
-        filename={`Revenue_mensile_${refYear}`}
+        filename={`Revenue_mensile_${anno}`}
       >
         <Html
-          ariaLabel={`Grafico a barre della revenue mensile ${refYear} per la vista corrente. Totale ${EUR(revTot)}, cumulato a fine anno ${EUR(cumV[cumV.length - 1] || 0)}. Valori per mese: ${MESI.map((m, i) => `${m} ${EUR(revM[i] || 0)}`).join(', ')}.`}
+          ariaLabel={`Grafico a barre della revenue mensile ${anno} per la vista corrente. Totale ${EUR(revTot)}, cumulato a fine anno ${EUR(cumV[cumV.length - 1] || 0)}. Valori per mese: ${MESI.map((m, i) => `${m} ${EUR(revM[i] || 0)}`).join(', ')}.`}
           html={chartMonthly(MESI, [{ name: 'Revenue', vals: revM, color: C.petrol }], {
             cumulative: { vals: cumV, color: C.gold, name: 'Cumulato' },
-            today: new Date().getMonth(),
-            periodLabel: String(refYear),
+            // The "oggi" marker only makes sense in the current year.
+            today: anno === refYear ? now.getMonth() : -1,
+            periodLabel: String(anno),
           })}
         />
         <Html

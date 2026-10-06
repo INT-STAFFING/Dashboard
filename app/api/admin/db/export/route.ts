@@ -65,11 +65,15 @@ export async function GET() {
     XLSX.utils.book_append_sheet(wb, summaryWs, '_Indice');
     wb.SheetNames.unshift(wb.SheetNames.pop() as string);
 
-    const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as Uint8Array;
+    // SheetJS's `array` output is an ArrayBuffer, not a typed array: copying it with
+    // `Uint8Array.set(arrayBuffer)` copies nothing (an ArrayBuffer has no `length`),
+    // which used to produce a file of zeros that Excel could not open.
+    const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer | Uint8Array;
+    const bytes = out instanceof Uint8Array ? out : new Uint8Array(out);
     // Copy into a plain ArrayBuffer so the Blob body is typed against
     // ArrayBuffer (not the wider ArrayBufferLike SheetJS returns).
-    const ab = new ArrayBuffer(out.byteLength);
-    new Uint8Array(ab).set(out);
+    const ab = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(ab).set(bytes);
     const stamp = new Date().toISOString().slice(0, 10);
     const body = new Blob([ab], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

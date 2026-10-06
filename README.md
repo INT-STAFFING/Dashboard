@@ -129,6 +129,15 @@ Codice: `lib/exportImage.ts` (grafici), `lib/exportTable.ts` (tabelle),
 `CopyTableButton`). Un elemento marcato `data-export-ignore` viene escluso sia
 dall'immagine sia dalla copia testuale (es. i suggerimenti "clic per…").
 
+## Anno di riferimento
+
+I valori mensili di revenue e consuntivo sono salvati per anno nella tabella
+`intervento_mesi`. Il selettore **Anno** in intestazione (`/dashboard?anno=AAAA`)
+cambia KPI, grafici ed export; senza parametro vale l'anno corrente se ha dati,
+altrimenti il più vicino con dati. Un nuovo anno si aggiunge dal selettore in
+Gestione › IF/BO; l'upload del workbook Dashboard carica tutti gli anni presenti
+in `TIMELINE_REVENUE` senza toccare quelli assenti dal file.
+
 ## Editing & merge
 
 - Modifica inline (click-to-edit) e drawer completo → `PUT /api/interventi/[num_if]`
@@ -144,7 +153,54 @@ dall'immagine sia dalla copia testuale (es. i suggerimenti "clic per…").
 mensile (fogli `DATI` + `TIMELINE_REVENUE`); l'upsert è *merge-aware*, quindi un
 file aggiorna solo i campi che effettivamente contiene senza azzerare gli altri
 (es. la revenue non viene persa caricando un IF_ARIA). Protetto da
-`UPLOAD_SECRET` (header `x-upload-secret` o `?token=`). Pagina UI: `/upload`.
+`UPLOAD_SECRET`, da inviare **solo** nell'header `x-upload-secret` (il parametro `?token=` non è più accettato: le query string finiscono nei log di accesso). Pagina UI: `/upload`.
+
+## Sviluppo e verifica
+
+```bash
+npm test               # Vitest; usa un Postgres in-process (PGlite), nessun DB esterno
+npm run test:coverage  # copertura di lib/
+npm run typecheck      # tsc --noEmit
+npm run lint           # next lint (next/core-web-vitals)
+npm run build
+```
+
+La CI (`.github/workflows/ci.yml`) esegue typecheck, lint, test e build su ogni pull
+request e su `main`. In produzione il server scrive nei log una riga `[perf] {...}` per
+la ricostruzione del payload della dashboard e per ogni upload (`PERF_LOG=off` per
+silenziarle); Vercel Speed Insights va abilitato dalle impostazioni del progetto.
+
+## Sicurezza e configurazione di produzione
+
+In un runtime di **produzione** (Vercel `production`, oppure `next start` fuori da Vercel)
+l'app rifiuta di avviarsi con una configurazione non sicura: `instrumentation.ts`
+controlla le variabili all'avvio e risponde 500 con l'elenco di ciò che manca.
+
+- `AUTH_SECRET` obbligatorio, casuale e diverso da `UPLOAD_SECRET` e dai valori di
+  default del repository. In produzione **non** ricade più su `UPLOAD_SECRET`: chi
+  carica file conosce quel segreto e potrebbe altrimenti falsificare sessioni ADMIN.
+- Un database (`DATABASE_URL` o uno degli alias supportati) è obbligatorio: senza,
+  i dati finirebbero in memoria, separati per istanza e persi a ogni riavvio.
+- `ADMIN_PASSWORD` non può essere vuota né `admin` nel momento in cui l'account
+  amministratore viene **creato** (primo avvio su database vuoto). Un amministratore
+  già presente non viene toccato: per cambiargli la password, dopo un backup,
+  eliminare la sua riga da `users` e rideployare con una nuova `ADMIN_PASSWORD`
+  (viene ricreato con quella).
+- Preview di Vercel e `next dev` non sono produzione: stampano solo un avviso.
+- Per provare in locale una build di produzione senza segreti reali esiste
+  `ALLOW_INSECURE_CONFIG=true`. Non impostarla su un deploy reale.
+
+Sessione: il cookie contiene solo l'id utente; ruolo e stato vengono letti dal database
+e tenuti in cache per istanza per 30 secondi (`SESSION_USER_CACHE_TTL_MS`, `0` per
+disattivare). Approvazioni, cambi di ruolo ed eliminazioni fatti dall'app invalidano
+subito la cache dell'istanza che li esegue; le altre istanze si allineano entro il TTL.
+
+Altre protezioni: il login è limitato a 10 tentativi falliti per email e 30 per IP
+ogni 15 minuti (risposta `429` con `Retry-After`; il blocco di un'email scade da solo
+e non invalida le sessioni già aperte). Ogni istruzione eseguita dalla console SQL
+admin viene registrata nella tabella `admin_audit_log` (utente, istruzione, esito,
+durata) **prima** dell'esecuzione: se la scrittura del log fallisce, l'istruzione non
+viene eseguita.
 
 ## Deploy su Vercel
 

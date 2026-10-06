@@ -192,3 +192,12 @@ export function sumSeries(series: (number[] | null | undefined)[]): number[] {
   }
   return out;
 }
+
+// How many months of calendar year `anno` have elapsed as of `now` (current month
+// included): 12 for a past year, 0 for a future one. Used for "revenue to date".
+export function monthsElapsed(anno: number, now: Date = new Date()): number {
+  const y = now.getFullYear();
+  if (anno < y) return 12;
+  if (anno > y) return 0;
+  return now.getMonth() + 1;
+}

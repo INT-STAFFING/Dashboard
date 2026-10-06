@@ -27,7 +27,10 @@ export type Intervento = {
   ref_aria: string | null;
   ref_fornitore: string | null;
   importo: number;
-  revenue_2026: number;
+  // Monthly profiles of ONE calendar year — the `anno` the data was loaded for
+  // (DashboardData.anno). They are not columns of the intervento: they live in
+  // intervento_mesi, one row per (IF, anno, mese), and are overlaid on read.
+  revenue_anno: number; // Σ rev_mesi (derived, never stored)
   rev_mesi: number[]; // length 12 (revenue per month, Gen..Dic)
   cons_mesi: number[]; // length 12 (consuntivazione/actuals per month, Gen..Dic)
   modalita_if: string | null;
@@ -289,8 +292,21 @@ export type ReportPdcRecord = {
   costo_subappalto: number | null;
 };
 
+// One month of one intervento in one calendar year (row of intervento_mesi).
+export type MonthFact = {
+  numero_if: string;
+  anno: number;
+  mese: number; // 1..12
+  revenue: number;
+  consuntivo: number;
+};
+
 // Aggregated payload returned by GET /api/data
 export type DashboardData = {
+  // Calendar year the per-intervento monthly profiles refer to, and the years
+  // that have data (ascending, always including `anno`).
+  anno: number;
+  anni: number[];
   meta: Meta;
   fornitori_filter: string[];
   interventi: Intervento[];
@@ -319,10 +335,13 @@ export type Kpi = {
 
 // Subset of fields editable via the UI (PUT / POST)
 export type InterventoInput = Partial<
-  Omit<Intervento, 'rev_mesi' | 'cons_mesi' | 'subappaltatore'> & {
+  Omit<Intervento, 'revenue_anno' | 'rev_mesi' | 'cons_mesi' | 'subappaltatore'> & {
     rev_mesi: number[];
     cons_mesi: number[];
     subappaltatore: string[];
+    // Calendar year `rev_mesi` / `cons_mesi` refer to (default: the portfolio's
+    // current year, see lib/mesiStore.ts#resolveAnno).
+    anno: number;
   }
 >;
 

@@ -23,9 +23,9 @@ solo se emerge un bisogno reale.
 
 | ID | Titolo | Categoria | Impatto | Effort | Priorità | Stato |
 |----|--------|-----------|---------|--------|----------|-------|
-| R-1 | Fallback insicuro per `AUTH_SECRET` in produzione | Security | Alto | S | P1 | ⬜ Aperto |
+| R-1 | Fallback insicuro per `AUTH_SECRET` in produzione | Security | Alto | S | P1 | ✅ Completato (2026-10-06, in forma più restrittiva: in produzione `UPLOAD_SECRET` non è più accettato come chiave di sessione — vedi `docs/improvement-plan.md` punto 5) |
 | R-2 | Scritture non atomiche (delete+insert) nelle store di snapshot | DB/Integrità | Alto | M | P1 | ✅ Completato |
-| R-3 | Console SQL admin senza audit trail | Security | Alto | S | P1 | ⬜ Aperto |
+| R-3 | Console SQL admin senza audit trail | Security | Alto | S | P1 | ✅ Completato (2026-10-06, tabella `admin_audit_log` — vedi `docs/improvement-plan.md` punto 5) |
 | R-4 | Doppia fonte di verità per lo schema DB (DDL bootstrap vs migration) | DB/Manutenibilità | Medio | M | P2 | ✅ Completato |
 | R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 | ✅ Completato (riduzione -120 righe, sotto l'obiettivo indicativo — vedi nota) |
 | R-6 | Cache assente sul payload SSR della dashboard | Rete/Performance | Medio | L | P2 | ✅ Completato |
@@ -112,6 +112,15 @@ una regressione reale (deduplica di righe che devono poter coesistere).
 statement SQL è atomico di per sé, senza bisogno di intervento. L'inclusione
 di questa tabella nella formulazione originale del problema era un errore
 dell'audit, corretto qui.
+
+> **Aggiornamento (2026-10-06):** l'affermazione "stesso file ricaricato più
+> volte → stesso risultato finale" non valeva per `verbali_sal` in modalità
+> database: ogni ricaricamento reinseriva tutte le righe (lo store in memoria,
+> invece, sostituiva le righe per BDO). L'append è ora idempotente — una riga
+> identica a una già salvata per lo stesso BDO non viene reinserita — senza
+> chiave naturale e senza cancellare righe di caricamenti precedenti, quindi
+> senza la regressione descritta sopra. Dettagli in
+> `docs/improvement-plan.md` (punto 3).
 
 **Implementazione:** un vero upsert `ON CONFLICT DO UPDATE` su chiave naturale
 composta, per ciascuna tabella:

@@ -53,7 +53,7 @@ export function parseIF(input: ArrayBuffer | Buffer | Workbook): Intervento[] {
       ref_aria: str(r['Ref. ARIA']),
       ref_fornitore: str(r['Ref. Fornitore']),
       importo,
-      revenue_2026: 0,
+      revenue_anno: 0,
       rev_mesi: Array(12).fill(0),
       cons_mesi: Array(12).fill(0),
       modalita_if: str(r['Modalità']),

@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState, useCallback, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { DashboardData, Intervento, InterventoInput, RtiConfig, SafeUser } from '@/lib/types';
 import { ROLE_LABEL } from '@/lib/auth/permissions';
 import { filterInterventi, type Filters } from '@/lib/queries';
@@ -30,6 +31,13 @@ export default function Dashboard({
   canEdit: boolean;
   isAdmin: boolean;
 }) {
+  const router = useRouter();
+  // Calendar year the monthly profiles (revenue / consuntivazione) refer to. Changing
+  // it re-renders the page on the server with ?anno=; mutations carry it along so the
+  // row the server sends back has the profiles of the year on screen.
+  const anno = initial.anno;
+  const [yearPending, startYearTransition] = useTransition();
+  const onYearChange = (y: number) => startYearTransition(() => router.push(`/dashboard?anno=${y}`));
   const [interventi, setInterventi] = useState<Intervento[]>(initial.interventi);
   const [rti, setRti] = useState<RtiConfig>(initial.rti);
   const [quotaVal, setQuotaVal] = useState<Record<string, number>>(initial.quota_val);
@@ -166,7 +174,7 @@ export default function Dashboard({
         const res = await fetch(`/api/interventi/${encodeURIComponent(numero_if)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(patch),
+          body: JSON.stringify({ ...patch, anno }),
         });
         if (!res.ok) {
           setInterventi(prev);
@@ -183,7 +191,7 @@ export default function Dashboard({
         setSaving(numero_if, false);
       }
     },
-    [interventi, flashRow, showToast, handledAuthError],
+    [interventi, flashRow, showToast, handledAuthError, anno],
   );
 
   const onSaveDrawer = useCallback(
@@ -193,7 +201,7 @@ export default function Dashboard({
           const res = await fetch('/api/interventi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(input),
+            body: JSON.stringify({ ...input, anno }),
           });
           if (!res.ok) {
             if (handledAuthError(res.status)) return false;
@@ -210,7 +218,7 @@ export default function Dashboard({
           const res = await fetch(`/api/interventi/${encodeURIComponent(id)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(input),
+            body: JSON.stringify({ ...input, anno }),
           });
           if (!res.ok) {
             if (!handledAuthError(res.status)) showToast('Salvataggio non riuscito', true);
@@ -227,7 +235,7 @@ export default function Dashboard({
         return false;
       }
     },
-    [flashRow, showToast, handledAuthError],
+    [flashRow, showToast, handledAuthError, anno],
   );
 
   const onDelete = useCallback(
@@ -331,6 +339,22 @@ export default function Dashboard({
                 </>
               )}
             </div>
+            <label className="yrsel" title="Anno a cui si riferiscono i profili mensili (revenue e consuntivazione)">
+              Anno
+              <select
+                className="tl-year"
+                value={anno}
+                onChange={(e) => onYearChange(Number(e.target.value))}
+                disabled={yearPending}
+                aria-label="Anno di riferimento"
+              >
+                {initial.anni.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div className="userchip">
               <span className="uname">{user.name || user.email}</span>
               <span className="rolepill" title={ROLE_LABEL[user.role]}>{user.role}</span>
@@ -424,7 +448,7 @@ export default function Dashboard({
         )}
         {interventi.length > 0 && (
           <>
-        {tab === 0 && <OverviewPanel IFs={IFs} rti={rti} quotaVal={quotaVal} filtersForn={singleForn} />}
+        {tab === 0 && <OverviewPanel IFs={IFs} rti={rti} quotaVal={quotaVal} filtersForn={singleForn} anno={anno} />}
         {tab === 1 && (
           <RTIPanel
             IFs={IFs}
@@ -465,6 +489,7 @@ export default function Dashboard({
             onDelete={onDelete}
             savingIds={savingIds}
             highlightIds={highlightIds}
+            anno={anno}
           />
         )}
         {tab === 7 && (

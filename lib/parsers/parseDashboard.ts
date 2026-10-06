@@ -1,4 +1,4 @@
-import type { Intervento, Seniority } from '../types';
+import type { Intervento, MonthFact, Seniority } from '../types';
 import {
   readWorkbook,
   sheetMatrix,
@@ -15,9 +15,10 @@ import { codeFor } from './parseAggregatore';
 export type DashboardResult = {
   seniority: Seniority[];
   interventi: Intervento[];
+  // Monthly revenue of EVERY year the TIMELINE_REVENUE sheet has columns for
+  // (only IFs found in DATI). The interventi themselves carry no months.
+  mesi: MonthFact[];
 };
-
-const YEAR = 2026;
 
 // Build a name -> column-index map from a header row.
 function headerIndex(header: unknown[]): Record<string, number> {
@@ -40,41 +41,42 @@ function findHeaderRow(matrix: unknown[][], key: string): number {
   return -1;
 }
 
-// Sum the per-IF monthly revenue for YEAR from the "TIMELINE_REVENUE" sheet.
-// Layout: header on row index 1 with "Numero IF" + one date column per month;
-// each data row is a single DATI line, so multiple rows share a Numero IF.
-function revenueByIf(wb: Workbook): Map<string, number[]> {
-  const out = new Map<string, number[]>();
+// Monthly revenue per IF from the "TIMELINE_REVENUE" sheet, for every year the
+// sheet covers. Layout: header on row index 1 with "Numero IF" + one date column
+// per month; each data row is a single DATI line, so multiple rows share a
+// Numero IF and are summed. Zero cells produce no fact (the store is sparse).
+function revenueFacts(wb: Workbook): MonthFact[] {
   const sheet = findSheet(wb, 'TIMELINE_REVENUE');
-  if (!sheet) return out;
+  if (!sheet) return [];
   const m = sheetMatrix(wb, sheet);
   const hr = findHeaderRow(m, 'Numero IF');
-  if (hr < 0) return out;
+  if (hr < 0) return [];
 
   const header = m[hr] as unknown[];
   const hi = headerIndex(header);
   const ifCol = hi['Numero IF'] ?? 0;
-  // Columns whose header is a Date in the target year -> month 0..11.
-  const monthCol: number[] = Array(12).fill(-1);
+  // Every column whose header is a Date is one month of one year.
+  const monthCols: { col: number; anno: number; mese: number }[] = [];
   header.forEach((h, i) => {
-    if (h instanceof Date && h.getFullYear() === YEAR) monthCol[h.getMonth()] = i;
+    if (h instanceof Date && !isNaN(h.getTime())) monthCols.push({ col: i, anno: h.getFullYear(), mese: h.getMonth() + 1 });
   });
 
+  const acc = new Map<string, MonthFact>();
   for (let r = hr + 1; r < m.length; r++) {
     const row = m[r] as unknown[];
     if (!row) continue;
     const id = strId(row[ifCol]);
     if (!id) continue;
-    const arr = out.get(id) ?? Array(12).fill(0);
-    for (let mi = 0; mi < 12; mi++) {
-      const c = monthCol[mi];
-      if (c < 0) continue;
-      const v = row[c];
-      if (typeof v === 'number' && Number.isFinite(v)) arr[mi] += v;
+    for (const { col, anno, mese } of monthCols) {
+      const v = row[col];
+      if (typeof v !== 'number' || !Number.isFinite(v) || v === 0) continue;
+      const key = `${id}|${anno}|${mese}`;
+      const f = acc.get(key) ?? { numero_if: id, anno, mese, revenue: 0, consuntivo: 0 };
+      f.revenue += v;
+      acc.set(key, f);
     }
-    out.set(id, arr);
   }
-  return out;
+  return [...acc.values()];
 }
 
 // Seniority distribution from the "GIORNI_UOMO" sheet (header on row index 2).
@@ -120,16 +122,16 @@ type Acc = {
 export function parseDashboard(input: ArrayBuffer | Buffer | Workbook): DashboardResult {
   const wb = isWorkbook(input) ? input : readWorkbook(input);
 
-  const rev = revenueByIf(wb);
+  const facts = revenueFacts(wb);
   const seniority = seniorityFromGdl(wb);
 
   const interventi: Intervento[] = [];
   const datiSheet = findSheet(wb, 'DATI');
-  if (!datiSheet) return { seniority, interventi };
+  if (!datiSheet) return { seniority, interventi, mesi: [] };
 
   const m = sheetMatrix(wb, datiSheet);
   const hr = findHeaderRow(m, 'Numero IF');
-  if (hr < 0) return { seniority, interventi };
+  if (hr < 0) return { seniority, interventi, mesi: [] };
   const hi = headerIndex(m[hr] as unknown[]);
   const col = (name: string) => hi[name];
 
@@ -187,8 +189,6 @@ export function parseDashboard(input: ArrayBuffer | Buffer | Workbook): Dashboar
   for (const numero_if of order) {
     const a = acc.get(numero_if)!;
     if (!a.titolo) continue;
-    const rev_mesi = rev.get(numero_if) ?? Array(12).fill(0);
-    const revenue_2026 = rev_mesi.reduce((s, v) => s + v, 0);
     const has_bo = a.bdo != null;
 
     interventi.push({
@@ -200,8 +200,8 @@ export function parseDashboard(input: ArrayBuffer | Buffer | Workbook): Dashboar
       ref_aria: null,
       ref_fornitore: null,
       importo: a.importo,
-      revenue_2026,
-      rev_mesi,
+      revenue_anno: 0,
+      rev_mesi: Array(12).fill(0),
       cons_mesi: Array(12).fill(0),
       modalita_if: a.modalita.size ? [...a.modalita].join(' + ') : null,
       attivazione: 'NO',
@@ -225,7 +225,8 @@ export function parseDashboard(input: ArrayBuffer | Buffer | Workbook): Dashboar
     });
   }
 
-  return { seniority, interventi };
+  const ids = new Set(interventi.map((i) => i.numero_if));
+  return { seniority, interventi, mesi: facts.filter((f) => ids.has(f.numero_if)) };
 }
 
 function isWorkbook(x: unknown): x is Workbook {

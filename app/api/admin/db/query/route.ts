@@ -4,6 +4,8 @@ import { revalidateTag } from 'next/cache';
 import { getSessionUser, isAdmin } from '@/lib/auth';
 import { getDb, hasDB } from '@/lib/db';
 import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
+import { beginAudit, finishAudit } from '@/lib/adminAudit';
+import { invalidateAllUsers } from '@/lib/auth/userCache';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,7 +19,8 @@ const FORBIDDEN = NextResponse.json(
 // Riservato agli amministratori: consente qualsiasi operazione (SELECT/INSERT/
 // UPDATE/DELETE/DDL), quindi va usata con cautela.
 export async function POST(req: Request) {
-  if (!isAdmin(await getSessionUser())) return FORBIDDEN;
+  const user = await getSessionUser();
+  if (!isAdmin(user)) return FORBIDDEN;
   if (!hasDB) return NextResponse.json({ ok: false, error: 'Database non configurato' }, { status: 503 });
 
   let body: { query?: string };
@@ -40,6 +43,18 @@ export async function POST(req: Request) {
     );
   }
 
+  // Audit first: the statement only runs if its audit row was written.
+  let auditId: number;
+  try {
+    auditId = await beginAudit({ id: user?.id ?? null, email: user?.email ?? null }, query);
+  } catch (e) {
+    console.error('[admin-audit] audit write failed, statement not executed', e);
+    return NextResponse.json(
+      { ok: false, error: 'Audit log non disponibile: istruzione non eseguita' },
+      { status: 500 },
+    );
+  }
+
   const db = getDb();
   try {
     const started = Date.now();
@@ -51,16 +66,15 @@ export async function POST(req: Request) {
     // cost of an occasional unnecessary cache miss is negligible next to the
     // risk of stale dashboard data after an admin edit made through here.
     revalidateTag(DASHBOARD_DATA_TAG);
-    return NextResponse.json({
-      ok: true,
-      rows: result.rows,
-      rowCount: result.rowCount ?? result.rows.length,
-      durationMs: Date.now() - started,
-    });
+    // The statement may have touched `users` (role, status, deletion).
+    invalidateAllUsers();
+    const rowCount = result.rowCount ?? result.rows.length;
+    const durationMs = Date.now() - started;
+    await finishAudit(auditId, { ok: true, rowCount, durationMs });
+    return NextResponse.json({ ok: true, rows: result.rows, rowCount, durationMs });
   } catch (e) {
-    return NextResponse.json(
-      { ok: false, error: e instanceof Error ? e.message : 'Errore esecuzione query' },
-      { status: 400 },
-    );
+    const message = e instanceof Error ? e.message : 'Errore esecuzione query';
+    await finishAudit(auditId, { ok: false, error: message });
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 }

@@ -9,6 +9,8 @@ import {
   integer,
   jsonb,
   uniqueIndex,
+  index,
+  primaryKey,
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -39,9 +41,12 @@ export const interventi = pgTable(
     ref_aria: text('ref_aria'),
     ref_fornitore: text('ref_fornitore'),
     importo: numeric('importo', { precision: 15, scale: 4 }),
+    // DEPRECATED, no longer read or written: the monthly profiles moved to
+    // `intervento_mesi` (one row per IF x year x month, so the model isn't tied
+    // to a single year). The columns are kept so a rollback of the app code still
+    // finds the data it expects, and because dropping them is irreversible.
     revenue_2026: numeric('revenue_2026', { precision: 15, scale: 4 }),
     rev_mesi: jsonb('rev_mesi').$type<number[]>(),
-    // Consuntivazione (actuals) per month, calendar order Gen..Dic (length 12).
     cons_mesi: jsonb('cons_mesi').$type<number[]>(),
     modalita_if: text('modalita_if'),
     attivazione: text('attivazione'), // 'SI' | 'NO'
@@ -219,8 +224,8 @@ export const verbali_apertura = pgTable(
 );
 
 // Snapshot of the "REPORT Sal" export (verbali SAL). Multiple rows per
-// num_bdo are expected (periodic SAL) so uploads always append — see
-// lib/verbaliSalStore.ts.
+// num_bdo are expected (periodic SAL) so uploads only append, skipping rows
+// already stored verbatim — see lib/verbaliSalStore.ts.
 export const verbali_sal = pgTable('verbali_sal', {
   id: serial('id').primaryKey(),
   num_bdo: text('num_bdo'),
@@ -373,3 +378,61 @@ export const config_rti = pgTable('config_rti', {
   contratto_ref: text('contratto_ref'),
   updated_at: timestamp('updated_at').defaultNow(),
 });
+
+// Failed login attempts, one row per (key, attempt): key is "e:<email>" or
+// "i:<ip>". Rows older than the throttle window are irrelevant and pruned on
+// every new failure — see lib/auth/loginThrottle.ts.
+export const login_attempts = pgTable(
+  'login_attempts',
+  {
+    id: serial('id').primaryKey(),
+    key: text('key').notNull(),
+    created_at: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    key_created_idx: index('login_attempts_key_created_idx').on(t.key, t.created_at),
+  }),
+);
+
+// Audit trail for the admin SQL console: a row is written *before* the
+// statement runs (status 'started') and completed afterwards — see
+// lib/adminAudit.ts.
+export const admin_audit_log = pgTable(
+  'admin_audit_log',
+  {
+    id: serial('id').primaryKey(),
+    user_id: integer('user_id'),
+    user_email: text('user_email'),
+    action: text('action').notNull().default('sql'),
+    statement: text('statement').notNull(),
+    status: text('status').notNull().default('started'), // 'started' | 'ok' | 'error'
+    row_count: integer('row_count'),
+    duration_ms: integer('duration_ms'),
+    error: text('error'),
+    created_at: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    created_idx: index('admin_audit_log_created_idx').on(t.created_at),
+  }),
+);
+
+// Monthly revenue and consuntivazione (actuals) of each intervento, one row per
+// (numero_if, anno, mese). Replaces the single-year jsonb arrays that used to
+// sit on `interventi`. Sparse: only months with a non-zero value are stored,
+// absence means 0. No FK to interventi (numero_if is the business key and
+// interventi are soft-deleted) — consistent with the rest of the schema.
+export const intervento_mesi = pgTable(
+  'intervento_mesi',
+  {
+    numero_if: text('numero_if').notNull(),
+    anno: integer('anno').notNull(),
+    mese: integer('mese').notNull(), // 1..12
+    revenue: numeric('revenue', { precision: 15, scale: 4 }).notNull().default('0'),
+    consuntivo: numeric('consuntivo', { precision: 15, scale: 4 }).notNull().default('0'),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.numero_if, t.anno, t.mese], name: 'intervento_mesi_pk' }),
+    anno_if_idx: index('intervento_mesi_anno_if_idx').on(t.anno, t.numero_if),
+    mese_check: check('intervento_mesi_mese_check', sql`${t.mese} BETWEEN 1 AND 12`),
+  }),
+);

@@ -202,12 +202,17 @@ export default function AdminGestione({
   multiYear: my0,
   seniority: sen0,
   interventi: ifs0,
+  anno: anno0,
+  anni: anni0,
 }: {
   meta: Meta;
   rti: RtiConfig;
   multiYear: MultiYearTimeline;
   seniority: Seniority[];
   interventi: Intervento[];
+  // Calendar year of the monthly profiles in `interventi`, and the years with data.
+  anno: number;
+  anni: number[];
 }) {
   const [section, setSection] = useState<Section>('Valori di gara');
   const { toast, show } = useToast();
@@ -246,7 +251,7 @@ export default function AdminGestione({
       <main className="wrap" style={{ paddingTop: 22, paddingBottom: 60 }}>
         {section === 'Valori di gara' && <GaraSection meta0={meta0} rti0={rti0} sen0={sen0} show={show} />}
         {section === 'Revenue & Consuntivazione' && <GlobalRevSection my0={my0} show={show} />}
-        {section === 'IF / BO' && <IfBoSection ifs0={ifs0} show={show} />}
+        {section === 'IF / BO' && <IfBoSection ifs0={ifs0} anno0={anno0} anni0={anni0} show={show} />}
         {section === 'Database' && <DbSection show={show} />}
         {section === 'Export' && <ExportSection show={show} />}
       </main>
@@ -590,12 +595,46 @@ function GlobalRevSection({
 // ---------------------------------------------------------------------------
 function IfBoSection({
   ifs0,
+  anno0,
+  anni0,
   show,
 }: {
   ifs0: Intervento[];
+  anno0: number;
+  anni0: number[];
   show: (m: string, bad?: boolean) => void;
 }) {
   const [ifs, setIfs] = useState<Intervento[]>(ifs0);
+  // Monthly profiles belong to a calendar year: pick it, and the list (and the
+  // editor below) reload with that year's revenue and consuntivazione.
+  const [anno, setAnno] = useState(anno0);
+  const [anni, setAnni] = useState<number[]>(anni0);
+  const [newYear, setNewYear] = useState('');
+  const [loadingYear, setLoadingYear] = useState(false);
+  const changeYear = async (y: number) => {
+    setLoadingYear(true);
+    try {
+      const res = await fetch(`/api/interventi?anno=${y}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setIfs(data.interventi as Intervento[]);
+      setAnno(y);
+      setAnni((list) => (list.includes(y) ? list : [...list, y].sort((a, b) => a - b)));
+    } catch {
+      show('Caricamento dell\'anno non riuscito', true);
+    } finally {
+      setLoadingYear(false);
+    }
+  };
+  const addYear = () => {
+    const y = Number(newYear);
+    if (!Number.isInteger(y) || y < 2000 || y > 2100) {
+      show('Anno non valido (2000–2100)', true);
+      return;
+    }
+    setNewYear('');
+    void changeYear(y);
+  };
   const [selId, setSelId] = useState<string | null>(ifs0[0]?.numero_if ?? null);
   const [cal, setCal] = useState<Calendar>('solare');
 
@@ -613,6 +652,25 @@ function IfBoSection({
       <div className="card">
         <h3>Revenue e consuntivazione per IF / BO</h3>
         <div className="cap">Totali annuali per intervento. Seleziona un IF per modificarne il dettaglio.</div>
+        <div className="seg2 small" style={{ marginBottom: 12, marginLeft: 0, display: 'inline-flex' }} aria-label="Anno dei profili mensili">
+          {anni.map((y) => (
+            <button key={y} className={y === anno ? 'on' : ''} disabled={loadingYear} onClick={() => void changeYear(y)}>
+              {y}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'inline-flex', gap: 6, marginLeft: 12, marginBottom: 12, alignItems: 'center' }}>
+          <input
+            type="number"
+            placeholder="Nuovo anno"
+            value={newYear}
+            onChange={(e) => setNewYear(e.target.value)}
+            style={{ width: 110, fontFamily: 'inherit', fontSize: 13, border: '1px solid var(--line)', borderRadius: 7, padding: '6px 8px' }}
+          />
+          <button className="ubtn" onClick={addYear} disabled={loadingYear}>
+            Aggiungi anno
+          </button>
+        </div>
         <div className="seg2 small" style={{ marginBottom: 12 }}>
           <button className={cal === 'solare' ? 'on' : ''} onClick={() => setCal('solare')}>Anno solare</button>
           <button className={cal === 'fiscale' ? 'on' : ''} onClick={() => setCal('fiscale')}>Anno fiscale (Set–Ago)</button>
@@ -651,17 +709,19 @@ function IfBoSection({
         </TableBlock>
       </div>
 
-      {sel && <IfDetail key={sel.numero_if} iv={sel} onUpdated={onUpdated} show={show} />}
+      {sel && <IfDetail key={`${sel.numero_if}-${anno}`} iv={sel} anno={anno} onUpdated={onUpdated} show={show} />}
     </>
   );
 }
 
 function IfDetail({
   iv,
+  anno,
   onUpdated,
   show,
 }: {
   iv: Intervento;
+  anno: number;
   onUpdated: (u: Intervento) => void;
   show: (m: string, bad?: boolean) => void;
 }) {
@@ -685,7 +745,7 @@ function IfDetail({
       const res = await fetch(`/api/interventi/${encodeURIComponent(iv.numero_if)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...core, rev_mesi: rev, cons_mesi: cons }),
+        body: JSON.stringify({ ...core, rev_mesi: rev, cons_mesi: cons, anno }),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -745,13 +805,13 @@ function IfDetail({
       </div>
 
       <div className="card">
-        <h3>Revenue mensile · IF {iv.numero_if}</h3>
+        <h3>Revenue mensile {anno} · IF {iv.numero_if}</h3>
         <MonthGrid values={rev} onChange={setRev} />
         <Rollups values={rev} />
       </div>
 
       <div className="card">
-        <h3>Consuntivazione mensile · IF {iv.numero_if}</h3>
+        <h3>Consuntivazione mensile {anno} · IF {iv.numero_if}</h3>
         <MonthGrid values={cons} onChange={setCons} />
         <Rollups values={cons} />
       </div>

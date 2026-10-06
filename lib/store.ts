@@ -1,8 +1,22 @@
 import { eq, inArray, isNull } from 'drizzle-orm';
+import type { RunnableQuery } from 'drizzle-orm/runnable-query';
 import { getDb, hasDB, ensureSchema } from './db';
 import { interventi as interventiTable } from './schema';
 import { SEED_INTERVENTI } from './seed';
+import {
+  getIfMesi,
+  listMesiByAnno,
+  overlayMesi,
+  replaceStatements,
+  resolveAnno,
+  seedMesi,
+  setIfYear,
+  sum12,
+  v12,
+} from './mesiStore';
 import type { DocStatus, Intervento, InterventoInput } from './types';
+
+type BatchItem = RunnableQuery<unknown, 'pg'>;
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v) || 0);
 
@@ -18,9 +32,11 @@ function rowToIntervento(r: Row): Intervento {
     ref_aria: r.ref_aria,
     ref_fornitore: r.ref_fornitore,
     importo: num(r.importo),
-    revenue_2026: num(r.revenue_2026),
-    rev_mesi: Array.isArray(r.rev_mesi) && r.rev_mesi.length === 12 ? r.rev_mesi : Array(12).fill(0),
-    cons_mesi: Array.isArray(r.cons_mesi) && r.cons_mesi.length === 12 ? r.cons_mesi : Array(12).fill(0),
+    // Monthly profiles live in intervento_mesi and are overlaid by the caller
+    // (see withMesi); a bare row carries zeros.
+    revenue_anno: 0,
+    rev_mesi: Array(12).fill(0),
+    cons_mesi: Array(12).fill(0),
     modalita_if: r.modalita_if,
     attivazione: r.attivazione,
     stato: r.stato ?? 'non elaborato',
@@ -53,9 +69,6 @@ function interventoToRow(i: Intervento): typeof interventiTable.$inferInsert {
     ref_aria: i.ref_aria,
     ref_fornitore: i.ref_fornitore,
     importo: String(i.importo),
-    revenue_2026: String(i.revenue_2026),
-    rev_mesi: i.rev_mesi,
-    cons_mesi: i.cons_mesi,
     modalita_if: i.modalita_if,
     attivazione: i.attivazione,
     stato: i.stato,
@@ -86,9 +99,14 @@ type MemRecord = Intervento & { deleted_at: string | null };
 const g = globalThis as unknown as { __ARIA_MEM__?: MemRecord[] };
 function mem(): MemRecord[] {
   if (!g.__ARIA_MEM__) {
-    g.__ARIA_MEM__ = SEED_INTERVENTI.map((i) => ({ ...i, deleted_at: null }));
+    g.__ARIA_MEM__ = SEED_INTERVENTI.map((i) => ({ ...bare(i), deleted_at: null }));
   }
   return g.__ARIA_MEM__;
+}
+
+// An intervento without its monthly profiles (they are stored apart, per year).
+function bare<T extends Intervento>(i: T): T {
+  return { ...i, revenue_anno: 0, rev_mesi: Array(12).fill(0), cons_mesi: Array(12).fill(0) };
 }
 
 // Apply a partial input onto an existing intervento, returning a new object.
@@ -130,7 +148,7 @@ const DEFAULTS: Omit<Intervento, 'numero_if' | 'titolo'> = {
   ref_aria: null,
   ref_fornitore: null,
   importo: 0,
-  revenue_2026: 0,
+  revenue_anno: 0,
   rev_mesi: Array(12).fill(0),
   cons_mesi: Array(12).fill(0),
   modalita_if: null,
@@ -169,6 +187,7 @@ async function ensureDbReady(): Promise<void> {
         for (const i of SEED_INTERVENTI) {
           await getDb().insert(interventiTable).values(interventoToRow(i)).onConflictDoNothing();
         }
+        await seedMesi();
       }
     })().catch((e) => {
       dbReadyPromise = null; // allow retry on next call
@@ -181,7 +200,9 @@ async function ensureDbReady(): Promise<void> {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
-export async function listInterventi(): Promise<Intervento[]> {
+// The portfolio WITHOUT monthly profiles (rev_mesi / cons_mesi are zeros): enough
+// for callers that only need the anagrafica, like the BDO -> IF lookup of an upload.
+export async function listInterventiBase(): Promise<Intervento[]> {
   if (hasDB) {
     await ensureDbReady();
     const rows = await getDb()
@@ -195,7 +216,16 @@ export async function listInterventi(): Promise<Intervento[]> {
     .map(({ deleted_at, ...rest }) => rest);
 }
 
-export async function getIntervento(numeroIf: string): Promise<Intervento | null> {
+// The portfolio with the monthly profiles of one calendar year (`anno`, default:
+// the current year if it has data, else the closest year that does — see
+// mesiStore#pickDefaultAnno).
+export async function listInterventi(anno?: number | null): Promise<Intervento[]> {
+  const y = await resolveAnno(anno);
+  const [base, byIf] = await Promise.all([listInterventiBase(), listMesiByAnno(y)]);
+  return overlayMesi(base, byIf);
+}
+
+async function getInterventoBase(numeroIf: string): Promise<Intervento | null> {
   if (hasDB) {
     const rows = await getDb()
       .select()
@@ -210,6 +240,12 @@ export async function getIntervento(numeroIf: string): Promise<Intervento | null
   return rest;
 }
 
+export async function getIntervento(numeroIf: string, anno?: number | null): Promise<Intervento | null> {
+  const [base, y] = await Promise.all([getInterventoBase(numeroIf), resolveAnno(anno)]);
+  if (!base) return null;
+  return overlayMesi([base], new Map([[numeroIf, await getIfMesi(numeroIf, y)]]))[0];
+}
+
 export async function createIntervento(
   input: InterventoInput,
   by?: string,
@@ -217,26 +253,37 @@ export async function createIntervento(
   if (!input.numero_if) throw new Error('numero_if obbligatorio');
   if (!input.titolo) throw new Error('titolo obbligatorio');
   const nowIso = new Date().toISOString();
+  const { anno: annoIn, ...fields } = input;
+  const anno = await resolveAnno(annoIn);
+  const hasMesi = fields.rev_mesi !== undefined || fields.cons_mesi !== undefined;
   const record: Intervento = {
     ...DEFAULTS,
-    ...input,
+    ...fields,
     numero_if: input.numero_if,
     titolo: input.titolo,
+    rev_mesi: v12(fields.rev_mesi),
+    cons_mesi: v12(fields.cons_mesi),
     edited_manually: true,
     last_edited_at: nowIso,
     last_edited_by: by ?? 'ui',
   } as Intervento;
+  record.revenue_anno = sum12(record.rev_mesi);
   validateIntervento(record);
 
   if (hasDB) {
-    await getDb().insert(interventiTable).values(interventoToRow(record));
+    // One batch = one transaction: the intervento and its months land together.
+    const db = getDb();
+    const stmts: BatchItem[] = [db.insert(interventiTable).values(interventoToRow(record))];
+    if (hasMesi) stmts.push(...replaceStatements(db, record.numero_if, anno, record.rev_mesi, record.cons_mesi));
+    await db.batch(stmts as [BatchItem, ...BatchItem[]]);
     return record;
   }
   const list = mem();
   if (list.some((x) => x.numero_if === record.numero_if && !x.deleted_at)) {
     throw new Error('Intervento già esistente');
   }
-  list.unshift({ ...record, deleted_at: null });
+  list.unshift({ ...bare(record), deleted_at: null });
+  if (hasMesi) await setIfYear(record.numero_if, anno, record.rev_mesi, record.cons_mesi);
   return record;
 }
 
@@ -245,27 +292,40 @@ export async function updateIntervento(
   input: InterventoInput,
   by?: string,
 ): Promise<Intervento | null> {
-  const existing = await getIntervento(numeroIf);
+  const { anno: annoIn, ...fields } = input;
+  const anno = await resolveAnno(annoIn);
+  const existing = await getIntervento(numeroIf, anno);
   if (!existing) return null;
   const nowIso = new Date().toISOString();
-  const updated = applyInput(existing, input);
+  const updated = applyInput(existing, fields);
   updated.edited_manually = true;
   updated.last_edited_at = nowIso;
   updated.last_edited_by = by ?? 'ui';
-  syncStatoBo(input, updated);
+  syncStatoBo(fields, updated);
   validateIntervento(updated);
+  // Sending only one of the two profiles keeps the other one as it is.
+  const touchesMesi = fields.rev_mesi !== undefined || fields.cons_mesi !== undefined;
+  updated.rev_mesi = v12(updated.rev_mesi);
+  updated.cons_mesi = v12(updated.cons_mesi);
+  updated.revenue_anno = sum12(updated.rev_mesi);
 
   if (hasDB) {
-    await getDb()
-      .update(interventiTable)
-      .set({ ...interventoToRow(updated), updated_at: new Date() })
-      .where(eq(interventiTable.numero_if, numeroIf));
+    const db = getDb();
+    const stmts: BatchItem[] = [
+      db
+        .update(interventiTable)
+        .set({ ...interventoToRow(updated), updated_at: new Date() })
+        .where(eq(interventiTable.numero_if, numeroIf)),
+    ];
+    if (touchesMesi) stmts.push(...replaceStatements(db, numeroIf, anno, updated.rev_mesi, updated.cons_mesi));
+    await db.batch(stmts as [BatchItem, ...BatchItem[]]);
     return updated;
   }
   const list = mem();
   const idx = list.findIndex((x) => x.numero_if === numeroIf && !x.deleted_at);
   if (idx < 0) return null;
-  list[idx] = { ...updated, deleted_at: null };
+  list[idx] = { ...bare(updated), deleted_at: null };
+  if (touchesMesi) await setIfYear(numeroIf, anno, updated.rev_mesi, updated.cons_mesi);
   return updated;
 }
 
@@ -305,8 +365,6 @@ export type UploadResult = {
 function mergeUpload(existing: Intervento, inc: Intervento, force: boolean): Intervento {
   const keep = <T>(v: T | null | undefined, fallback: T): T =>
     v == null || v === '' ? fallback : v;
-  const incHasRevenue =
-    inc.revenue_2026 > 0 || (Array.isArray(inc.rev_mesi) && inc.rev_mesi.some((v) => v > 0));
   const keepDoc = (a: DocStatus, b: DocStatus): DocStatus => (a !== 'nd' ? a : b);
 
   return {
@@ -317,14 +375,10 @@ function mergeUpload(existing: Intervento, inc: Intervento, force: boolean): Int
     ref_fornitore: keep(inc.ref_fornitore, existing.ref_fornitore),
     modalita_if: keep(inc.modalita_if, existing.modalita_if),
     attivazione: inc.attivazione === 'SI' ? 'SI' : existing.attivazione,
-    // Revenue lives only in the Dashboard workbook; don't let other files wipe it.
-    revenue_2026: incHasRevenue ? inc.revenue_2026 : existing.revenue_2026,
-    rev_mesi: incHasRevenue ? inc.rev_mesi : existing.rev_mesi,
-    // Consuntivazione is managed from the admin page, not the Excel uploads.
-    cons_mesi:
-      Array.isArray(inc.cons_mesi) && inc.cons_mesi.some((v) => v > 0)
-        ? inc.cons_mesi
-        : existing.cons_mesi,
+    // Revenue and consuntivazione are not part of this merge: they are monthly
+    // facts merged by mesiStore#persistMesiFromUpload (revenue lives only in the
+    // Dashboard workbook and must not be wiped by other files; consuntivazione is
+    // managed from the admin page).
     // Never clear an already-emitted BO just because this source lacks it.
     has_bo: inc.has_bo || existing.has_bo,
     stato: inc.has_bo ? inc.stato : existing.stato,

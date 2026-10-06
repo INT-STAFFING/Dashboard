@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { parseFile, type FileKind, type ParseOutput } from '@/lib/parsers';
 import { normalizeFornitore } from '@/lib/parsers/util';
-import { upsertInterventiFromUpload, listInterventi } from '@/lib/store';
+import { upsertInterventiFromUpload, listInterventiBase } from '@/lib/store';
 import { persistBefFromUpload } from '@/lib/befStore';
 import { persistReportBdoFromUpload } from '@/lib/reportBdoStore';
 import { persistReportRdiFromUpload } from '@/lib/reportRdiStore';
@@ -12,6 +12,9 @@ import { persistReportPdcFromUpload } from '@/lib/reportPdcStore';
 import { setSeniority } from '@/lib/portfolio';
 import { updateMeta } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
+import { isUploadAuthorized } from '@/lib/auth/uploadSecret';
+import { timed } from '@/lib/perf';
+import { normalizeFacts, parseAnno, persistMesiFromUpload, profileFacts, resolveAnno } from '@/lib/mesiStore';
 import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type {
   BefRecord,
@@ -26,15 +29,6 @@ import type {
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-function authorized(req: Request): boolean {
-  const secret = process.env.UPLOAD_SECRET;
-  if (!secret) return true; // no secret configured -> rely on edit permission
-  const header = req.headers.get('x-upload-secret') || '';
-  const url = new URL(req.url);
-  const token = url.searchParams.get('token') || header;
-  return token === secret;
-}
 
 const num = (v: unknown): number => {
   const n = typeof v === 'number' ? v : Number(v);
@@ -165,10 +159,6 @@ function normalizeIntervento(raw: unknown): Intervento | null {
   const numero_if = sval(r.numero_if);
   const titolo = sval(r.titolo);
   if (!numero_if || !titolo) return null;
-  const mesi = Array.isArray(r.rev_mesi) ? r.rev_mesi.map(num) : [];
-  const rev_mesi = Array.from({ length: 12 }, (_, i) => mesi[i] ?? 0);
-  const consMesi = Array.isArray(r.cons_mesi) ? r.cons_mesi.map(num) : [];
-  const cons_mesi = Array.from({ length: 12 }, (_, i) => consMesi[i] ?? 0);
   return {
     numero_if,
     bdo: sval(r.bdo),
@@ -178,9 +168,10 @@ function normalizeIntervento(raw: unknown): Intervento | null {
     ref_aria: sval(r.ref_aria),
     ref_fornitore: sval(r.ref_fornitore),
     importo: num(r.importo),
-    revenue_2026: num(r.revenue_2026),
-    rev_mesi,
-    cons_mesi,
+    // Monthly profiles are not part of an intervento: they travel as facts (`mesi`).
+    revenue_anno: 0,
+    rev_mesi: Array(12).fill(0),
+    cons_mesi: Array(12).fill(0),
     modalita_if: sval(r.modalita_if),
     attivazione: r.attivazione === 'SI' ? 'SI' : 'NO',
     stato: sval(r.stato) ?? 'non elaborato',
@@ -208,6 +199,16 @@ function normalizeIntervento(raw: unknown): Intervento | null {
 // Apply a parsed payload (from either the server-side parser or a client-side
 // parse) to the store and return the upload summary.
 async function applyParsed(parsed: ParseOutput, force: boolean) {
+  return timed('upload', () => applyParsedUntimed(parsed, force), (r) => ({
+    kind: parsed.kind,
+    inserted: r.inserted,
+    updated: r.updated,
+    skipped: r.skipped,
+    errors: r.errors.length,
+  }));
+}
+
+async function applyParsedUntimed(parsed: ParseOutput, force: boolean) {
   const errors: string[] = [];
   let inserted = 0;
   let updated = 0;
@@ -225,6 +226,14 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     updatedIfs = res.updatedIfs;
     skippedIfs = res.skippedIfs;
   }
+  // Monthly revenue: only for the IFs this upload actually wrote (inserted or
+  // updated) — manually edited records it skipped keep their months too.
+  let mesiSaved = 0;
+  if (parsed.mesi && parsed.mesi.length) {
+    const written = new Set([...insertedIfs, ...updatedIfs]);
+    const res = await persistMesiFromUpload(parsed.mesi.filter((f) => written.has(f.numero_if)));
+    mesiSaved = res.rows;
+  }
   if (parsed.seniority && parsed.seniority.length) {
     await setSeniority(parsed.seniority);
   }
@@ -239,7 +248,7 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     (parsed.reportPdc && parsed.reportPdc.length)
   ) {
     bdoToIf = new Map<string, string>();
-    for (const i of await listInterventi()) {
+    for (const i of await listInterventiBase()) {
       if (i.bdo) bdoToIf.set(i.bdo, i.numero_if);
     }
   }
@@ -319,6 +328,7 @@ async function applyParsed(parsed: ParseOutput, force: boolean) {
     verbali_sal_saved: verbaliSalSaved,
     report_pdc_saved: reportPdcSaved,
     report_pdc_ignored: reportPdcIgnored,
+    mesi_saved: mesiSaved,
     seniority_rows: parsed.seniority?.length ?? 0,
     errors,
   };
@@ -332,7 +342,7 @@ export async function POST(req: Request) {
       { status: 403 },
     );
   }
-  if (!authorized(req)) {
+  if (!isUploadAuthorized(req.headers)) {
     return NextResponse.json({ ok: false, error: 'Non autorizzato' }, { status: 401 });
   }
 
@@ -354,6 +364,8 @@ export async function POST(req: Request) {
       verbaliSal?: unknown[];
       reportPdc?: unknown[];
       seniority?: ParseOutput['seniority'];
+      mesi?: unknown;
+      anno?: unknown;
       filename?: string;
     };
     try {
@@ -375,6 +387,18 @@ export async function POST(req: Request) {
     const interventi = (body.interventi ?? [])
       .map(normalizeIntervento)
       .filter((i): i is Intervento => i !== null);
+    // Months arrive as facts. A client that predates them (a tab left open across
+    // a deploy) still sends 12-value profiles on each intervento: read those as
+    // the year of the upload (`anno`, else the portfolio's default year).
+    let mesi = normalizeFacts(body.mesi);
+    if (body.mesi === undefined) {
+      const anno = parseAnno(body.anno) ?? (await resolveAnno());
+      mesi = (body.interventi ?? []).flatMap((raw) => {
+        const r = (raw ?? {}) as Record<string, unknown>;
+        const id = sval(r.numero_if) ?? (typeof r.numero_if === 'number' ? String(r.numero_if) : null);
+        return id ? profileFacts(id, anno, Array.isArray(r.rev_mesi) ? r.rev_mesi.map(num) : [], Array.isArray(r.cons_mesi) ? r.cons_mesi.map(num) : []) : [];
+      });
+    }
     const bef = (body.bef ?? [])
       .map(normalizeBef)
       .filter((b): b is BefRecord => b !== null);
@@ -403,6 +427,7 @@ export async function POST(req: Request) {
       verbaliSal,
       reportPdc,
       seniority: body.seniority,
+      mesi,
     };
     const summary = await applyParsed(parsed, force);
     return NextResponse.json({ ok: true, kind, filename: body.filename ?? null, force, ...summary });

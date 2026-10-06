@@ -12,6 +12,7 @@ import { sql } from 'drizzle-orm';
 import { getDb, hasDB } from './db';
 import { listInterventi } from './store';
 import { listAllBef } from './befStore';
+import { listFacts } from './mesiStore';
 import { listAllRisorse } from './risorse';
 import { listTimelineMonths } from './timelineStore';
 import { getSeniority, getModalita, getTimeline } from './portfolio';
@@ -97,6 +98,7 @@ async function collectFromMemory(): Promise<TableDump[]> {
     reportPdc,
     verbaliApertura,
     verbaliSal,
+    mesi,
   ] = await Promise.all([
     listInterventi(),
     listAllBef(),
@@ -113,6 +115,7 @@ async function collectFromMemory(): Promise<TableDump[]> {
     listAllPdc(),
     listAllVerbaliApertura(),
     listAllVerbaliSal(),
+    listFacts(),
   ]);
 
   // app_config è una tabella chiave/valore: ricomponiamo le righe come le
@@ -136,6 +139,7 @@ async function collectFromMemory(): Promise<TableDump[]> {
     dump('report_pdc', reportPdc as unknown as Record<string, unknown>[]),
     dump('verbali_apertura', verbaliApertura as unknown as Record<string, unknown>[]),
     dump('verbali_sal', verbaliSal as unknown as Record<string, unknown>[]),
+    dump('intervento_mesi', mesi as unknown as Record<string, unknown>[], ['numero_if', 'anno', 'mese', 'revenue', 'consuntivo']),
     dump('users', users as unknown as Record<string, unknown>[]),
     dump('app_config', appConfig, ['key', 'value']),
   ];

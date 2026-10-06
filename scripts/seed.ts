@@ -9,7 +9,8 @@
  */
 import { hasDB } from '../lib/db';
 import { upsertInterventiFromUpload } from '../lib/store';
-import { SEED_INTERVENTI } from '../lib/seed';
+import { SEED_INTERVENTI, SEED_MESI } from '../lib/seed';
+import { persistMesiFromUpload } from '../lib/mesiStore';
 
 async function main() {
   if (!hasDB) {
@@ -17,7 +18,8 @@ async function main() {
     process.exit(1);
   }
   const res = await upsertInterventiFromUpload(SEED_INTERVENTI, true);
-  console.log(`Seed completato: ${res.inserted} inseriti, ${res.updated} aggiornati.`);
+  const mesi = await persistMesiFromUpload(SEED_MESI);
+  console.log(`Seed completato: ${res.inserted} inseriti, ${res.updated} aggiornati, ${mesi.rows} mesi di revenue/consuntivazione.`);
   process.exit(0);
 }
 

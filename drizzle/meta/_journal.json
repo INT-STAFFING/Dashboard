@@ -92,6 +92,13 @@
       "when": 1788364800000,
       "tag": "0012_login_attempts_admin_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788451200000,
+      "tag": "0013_intervento_mesi",
+      "breakpoints": true
     }
   ]
 }

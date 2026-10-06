@@ -5,6 +5,7 @@ import {
   annual,
   availableYears,
   monthly,
+  monthsElapsed,
   quarterly,
   sumSeries,
   todayIndex,
@@ -133,5 +134,20 @@ describe('sumSeries', () => {
   it('adds series element-wise and tolerates null/short ones', () => {
     expect(sumSeries([SEQ, SEQ, null, [1]])).toEqual(SEQ.map((n, i) => n * 2 + (i === 0 ? 1 : 0)));
     expect(sumSeries([])).toEqual(Array(12).fill(0));
+  });
+});
+
+describe('monthsElapsed', () => {
+  const at = (y: number, m: number) => new Date(y, m - 1, 15);
+
+  it('counts the current month in the current year', () => {
+    expect(monthsElapsed(2026, at(2026, 1))).toBe(1);
+    expect(monthsElapsed(2026, at(2026, 10))).toBe(10);
+    expect(monthsElapsed(2026, at(2026, 12))).toBe(12);
+  });
+
+  it('is a full year for a past year and zero for a future one', () => {
+    expect(monthsElapsed(2025, at(2026, 3))).toBe(12);
+    expect(monthsElapsed(2027, at(2026, 12))).toBe(0);
   });
 });

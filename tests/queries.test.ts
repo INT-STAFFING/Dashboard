@@ -5,6 +5,7 @@ import {
   distribuzioneAmbito,
   filterInterventi,
   fornitoreTimeline,
+  fornitoreTimelineMulti,
   impegnatoPerPartner,
   isIntellera,
   matchesMod,
@@ -107,10 +108,17 @@ describe('revenueMensile', () => {
   const jan = (n: number) => [n, ...Array(11).fill(0)];
 
   it('returns 12 months labelled Gen..Dic keyed 2026-01..2026-12', () => {
-    const r = revenueMensile([]);
+    const r = revenueMensile([], 2026);
     expect(r).toHaveLength(12);
     expect(r[0]).toEqual({ mese: '2026-01', label: 'Gen', intellera: 0, deloitte: 0 });
     expect(r[11]).toMatchObject({ mese: '2026-12', label: 'Dic' });
+  });
+
+  it('REGRESSION: the month key follows the requested year instead of a hardcoded 2026', () => {
+    const r = revenueMensile([], 2027);
+    expect(r[0].mese).toBe('2027-01');
+    expect(r[11].mese).toBe('2027-12');
+    expect(revenueMensile([], 2019)[5].mese).toBe('2019-06');
   });
 
   it('sums per partner and ignores every other fornitore', () => {
@@ -119,12 +127,12 @@ describe('revenueMensile', () => {
       makeIf({ fornitore: 'Intellera', rev_mesi: jan(5) }),
       makeIf({ fornitore: 'Deloitte', rev_mesi: jan(7) }),
       makeIf({ fornitore: 'Accenture', rev_mesi: jan(1000) }),
-    ]);
+    ], 2026);
     expect(r[0]).toMatchObject({ intellera: 15, deloitte: 7 });
   });
 
   it('tolerates a missing or short profile', () => {
-    const r = revenueMensile([makeIf({ rev_mesi: null as unknown as number[] }), makeIf({ rev_mesi: [4] })]);
+    const r = revenueMensile([makeIf({ rev_mesi: null as unknown as number[] }), makeIf({ rev_mesi: [4] })], 2026);
     expect(r[0].intellera).toBe(4);
     expect(r[1].intellera).toBe(0);
   });
@@ -162,6 +170,43 @@ describe('impegnatoPerPartner / rtiSummary', () => {
 
   it('a zero ceiling gives 0% instead of Infinity/NaN', () => {
     expect(rtiSummary(list, rti(0, ['Intellera'])).erosione_pct).toBe(0);
+  });
+});
+
+describe('fornitoreTimelineMulti', () => {
+  const f = (numero_if: string, anno: number, mese: number, revenue: number, consuntivo = 0) => ({ numero_if, anno, mese, revenue, consuntivo });
+  const ifs = [
+    { numero_if: 'A', fornitore: 'Intellera' },
+    { numero_if: 'B', fornitore: 'Intellera Consulting' },
+    { numero_if: 'D', fornitore: 'Deloitte' },
+  ];
+
+  it('builds a complete 12-month series for every year that has data, ascending', () => {
+    const t = fornitoreTimelineMulti([f('A', 2027, 3, 5), f('A', 2025, 1, 10, 4), f('B', 2025, 1, 2)], ifs);
+    expect(t.years).toEqual([2025, 2027]);
+    expect(t.months).toHaveLength(24);
+    expect(t.months[0]).toEqual({ anno: 2025, mese: 1, revenue: 12, consuntivato: 4 });
+    expect(t.months[12 + 2]).toEqual({ anno: 2027, mese: 3, revenue: 5, consuntivato: 0 });
+    expect(t.months.filter((m) => m.anno === 2025)).toHaveLength(12);
+  });
+
+  it('only counts the matching supplier and IFs that are still in the portfolio', () => {
+    const t = fornitoreTimelineMulti([f('A', 2026, 1, 1), f('D', 2026, 1, 999), f('GONE', 2026, 1, 999)], ifs);
+    expect(t.months[0].revenue).toBe(1);
+  });
+
+  it('a year only the other suppliers have data for does not appear at all', () => {
+    expect(fornitoreTimelineMulti([f('D', 2030, 1, 5)], ifs)).toEqual({ months: [], years: [] });
+  });
+
+  it('accepts a custom matcher and ignores out-of-range months', () => {
+    const t = fornitoreTimelineMulti([f('D', 2026, 2, 8), f('D', 2026, 13, 100)], ifs, (n) => n === 'Deloitte');
+    expect(t.months[1].revenue).toBe(8);
+    expect(t.months.reduce((s, m) => s + m.revenue, 0)).toBe(8);
+  });
+
+  it('is empty with no facts', () => {
+    expect(fornitoreTimelineMulti([], ifs)).toEqual({ months: [], years: [] });
   });
 });
 

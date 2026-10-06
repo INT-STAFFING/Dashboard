@@ -6,6 +6,7 @@ import type {
   RtiConfig,
   Timeline,
   Meta,
+  MonthFact,
 } from './types';
 
 type RawIntervento = {
@@ -53,6 +54,9 @@ function norm(v: string): Intervento['pdc'] {
   return 'nd';
 }
 
+const profile = (a: number[] | undefined): number[] => (a && a.length === 12 ? a : Array(12).fill(0));
+const sum12 = (a: number[]): number => a.reduce((s, v) => s + v, 0);
+
 export const SEED_INTERVENTI: Intervento[] = raw.interventi.map((i) => ({
   numero_if: i.numero_if,
   bdo: i.bdo,
@@ -62,9 +66,9 @@ export const SEED_INTERVENTI: Intervento[] = raw.interventi.map((i) => ({
   ref_aria: i.ref_aria,
   ref_fornitore: i.ref_fornitore,
   importo: i.importo,
-  revenue_2026: i.revenue_2026,
-  rev_mesi: i.rev_mesi && i.rev_mesi.length === 12 ? i.rev_mesi : Array(12).fill(0),
-  cons_mesi: i.cons_mesi && i.cons_mesi.length === 12 ? i.cons_mesi : Array(12).fill(0),
+  revenue_anno: sum12(profile(i.rev_mesi)),
+  rev_mesi: profile(i.rev_mesi),
+  cons_mesi: profile(i.cons_mesi),
   modalita_if: i.modalita_if,
   attivazione: i.attivazione,
   stato: i.stato,
@@ -93,3 +97,16 @@ export const SEED_QUOTA_VAL: Record<string, number> = raw.quota_val;
 export const SEED_TIMELINE: Timeline = raw.timeline;
 export const SEED_SENIORITY: Seniority[] = raw.seniority;
 export const SEED_MODALITA: ModalitaAgg[] = raw.modalita;
+
+// The baseline portfolio's monthly profiles as per-year facts: the seed data is
+// anchored to the year of its timeline (2026). Sparse, like intervento_mesi.
+export const SEED_ANNO: number = raw.timeline.anno;
+export const SEED_MESI: MonthFact[] = SEED_INTERVENTI.flatMap((i) =>
+  Array.from({ length: 12 }, (_, m) => ({
+    numero_if: i.numero_if,
+    anno: SEED_ANNO,
+    mese: m + 1,
+    revenue: i.rev_mesi[m] || 0,
+    consuntivo: i.cons_mesi[m] || 0,
+  })).filter((f) => f.revenue !== 0 || f.consuntivo !== 0),
+);

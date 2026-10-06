@@ -8,6 +8,7 @@ import type {
   VerbaleAperturaRecord,
   VerbaleSalRecord,
   ReportPdcRecord,
+  MonthFact,
 } from '../types';
 import { parseIF } from './parseIF';
 import { parseBEF } from './parseBEF';
@@ -56,6 +57,8 @@ export type ParseOutput = {
   verbaliApertura?: VerbaleAperturaRecord[];
   verbaliSal?: VerbaleSalRecord[];
   reportPdc?: ReportPdcRecord[];
+  // Monthly revenue per IF and year (Dashboard workbook only).
+  mesi?: MonthFact[];
 };
 
 export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOutput {
@@ -72,8 +75,8 @@ export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOut
       return { kind, seniority, interventi };
     }
     case 'dashboard': {
-      const { seniority, interventi } = parseDashboard(buf);
-      return { kind, seniority, interventi };
+      const { seniority, interventi, mesi } = parseDashboard(buf);
+      return { kind, seniority, interventi, mesi };
     }
     default: {
       // Fall back to content sniffing: some exports (master Dashboard
@@ -84,8 +87,8 @@ export function parseFile(filename: string, buf: ArrayBuffer | Buffer): ParseOut
         const wb = readWorkbook(buf);
         const has = (name: string) => wb.SheetNames.some((s) => s === name);
         if (has('TIMELINE_REVENUE') && has('DATI')) {
-          const { seniority, interventi } = parseDashboard(wb);
-          return { kind: 'dashboard', seniority, interventi };
+          const { seniority, interventi, mesi } = parseDashboard(wb);
+          return { kind: 'dashboard', seniority, interventi, mesi };
         }
         if (findReportBdoSheet(wb)) {
           return { kind: 'report_bdo', reportBdo: parseReportBdo(wb) };

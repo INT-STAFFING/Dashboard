@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { SCHEMA_VERSION } from './db';
-import { listInterventi } from './store';
+import { listInterventiBase } from './store';
+import { factsToMap, listFacts, overlayMesi, parseAnno, pickDefaultAnno, yearsOf } from './mesiStore';
 import { quotaValFromRti } from './config';
 import { listAllBef, computeBefMonthlyTotals, computeBefAggregates } from './befStore';
 import { getSettingsBulk } from './settings';
@@ -11,7 +12,7 @@ import {
   revenueMensile,
   distribuzioneAmbito,
   rtiSummary,
-  fornitoreTimeline,
+  fornitoreTimelineMulti,
   isIntellera,
 } from './queries';
 import type { DashboardData, RtiConfig, Meta, Seniority, ModalitaAgg, Timeline } from './types';
@@ -28,14 +29,22 @@ export const DASHBOARD_DATA_TAG = 'dashboard-data';
 
 // Server-side assembly of the full dashboard payload (used by SSR). With the
 // neon-http driver every query is an HTTP round-trip, so the payload is
-// assembled from 4 parallel fetches instead of 10: the five app_config keys
-// travel in one batched select, quota_val is derived from the rti config
-// already in hand, and both BEF aggregates share a single bef_records read.
-async function assembleDashboardData(): Promise<DashboardData & {
-  revenue_mensile: ReturnType<typeof revenueMensile>;
-}> {
-  const [all, settings, befRows] = await Promise.all([
-    listInterventi(),
+// assembled from 4 parallel fetches: the five app_config keys travel in one
+// batched select, quota_val is derived from the rti config already in hand, both
+// BEF aggregates share a single bef_records read, and the monthly facts of every
+// year come in one query (the selected year's profiles and the multi-year
+// timeline are both derived from them).
+//
+// `requestedAnno` is the calendar year the per-intervento monthly profiles refer
+// to; null means "the default": the current year if it has data, else the
+// closest year that does. `currentYear` is only part of the cache key, so the
+// default flips by itself on 1 January instead of waiting for a mutation.
+async function assembleDashboardData(
+  requestedAnno: number | null,
+  currentYear: number,
+): Promise<DashboardData & { revenue_mensile: ReturnType<typeof revenueMensile> }> {
+  const [base, settings, befRows, facts] = await Promise.all([
+    listInterventiBase(),
     getSettingsBulk({
       rti: SEED_RTI,
       meta: SEED_META,
@@ -44,19 +53,25 @@ async function assembleDashboardData(): Promise<DashboardData & {
       timeline: SEED_TIMELINE,
     }),
     listAllBef(),
+    listFacts(),
   ]);
+  const anni = yearsOf(facts);
+  const anno = requestedAnno ?? pickDefaultAnno(anni, new Date(currentYear, 5, 15));
+  const all = overlayMesi(base, factsToMap(facts, anno));
   const rti = settings.rti as RtiConfig;
   const timeline = settings.timeline as Timeline;
   // Timeline tab is scoped to a single supplier (Intellera Consulting): the
-  // revenue/consuntivato series is rebuilt from the per-IF rev_mesi/cons_mesi
-  // profiles of the Intellera interventi instead of the portfolio-wide
-  // timeline_mensile table (which stores no fornitore breakdown), and the BEF
-  // rows are filtered to fornitore_reale = Intellera before aggregation. Every
-  // number shown in the tab therefore excludes the other RTI partners.
-  const anno = timeline.anno || new Date().getFullYear();
-  const timeline_my = fornitoreTimeline(all, anno);
+  // revenue/consuntivato series is rebuilt from the per-IF monthly facts of the
+  // Intellera interventi — for every year that has data, so the tab can offer
+  // them all — instead of the portfolio-wide timeline_mensile table (which
+  // stores no fornitore breakdown), and the BEF rows are filtered to
+  // fornitore_reale = Intellera before aggregation. Every number shown in the
+  // tab therefore excludes the other RTI partners.
+  const timeline_my = fornitoreTimelineMulti(facts, all);
   const intelleraBef = befRows.filter((r) => isIntellera(r.fornitore_reale));
   return {
+    anno,
+    anni: anni.includes(anno) ? anni : [...anni, anno].sort((a, b) => a - b),
     meta: settings.meta as Meta,
     fornitori_filter: SEED_FORNITORI,
     interventi: all,
@@ -69,15 +84,16 @@ async function assembleDashboardData(): Promise<DashboardData & {
     bef_monthly: computeBefMonthlyTotals(intelleraBef),
     bef_aggregates: computeBefAggregates(intelleraBef),
     kpi: computeKpi(all),
-    revenue_mensile: revenueMensile(all),
+    revenue_mensile: revenueMensile(all, anno),
     distribuzione_ambito: distribuzioneAmbito(all),
   };
 }
 
-// `unstable_cache` persists the payload until `revalidateTag(DASHBOARD_DATA_TAG)`
+// `unstable_cache` persists each payload until `revalidateTag(DASHBOARD_DATA_TAG)`
 // is called, instead of re-running the 4 parallel DB fetches above on every
-// `/dashboard` render. No time-based `revalidate` is set — see the tag comment
-// above for why.
+// `/dashboard` render. The arguments are part of the cache key, so every year
+// (and the "default" one) has its own entry; one revalidateTag drops them all.
+// No time-based `revalidate` is set — see the tag comment above for why.
 //
 // The schema version is part of the cache key because the tag alone doesn't
 // cover every way this payload can go stale. On Vercel the Data Cache is durable
@@ -91,12 +107,19 @@ async function assembleDashboardData(): Promise<DashboardData & {
 // The timing below therefore measures only cache MISSES — the real cost of
 // rebuilding the payload — and `payload_kb` is what gets serialized into the
 // SSR HTML of /dashboard.
-export const getDashboardData = unstable_cache(
-  () =>
-    timed('dashboard_data', assembleDashboardData, (d) => ({
+const cachedDashboardData = unstable_cache(
+  (requestedAnno: number | null, currentYear: number) =>
+    timed('dashboard_data', () => assembleDashboardData(requestedAnno, currentYear), (d) => ({
+      anno: d.anno,
       interventi: d.interventi.length,
       payload_kb: Math.round(JSON.stringify(d).length / 1024),
     })),
   ['dashboard-data', `schema-v${SCHEMA_VERSION}`],
   { tags: [DASHBOARD_DATA_TAG] },
 );
+
+// `anno`: a valid calendar year, or anything else for "the default year". Invalid
+// values are folded into the default, which also bounds the number of cache keys.
+export function getDashboardData(anno?: unknown) {
+  return cachedDashboardData(parseAnno(anno), new Date().getFullYear());
+}

@@ -14,8 +14,6 @@ beforeEach(() => {
   (globalThis as Record<string, unknown>).__ARIA_MEM__ = [];
 });
 
-const monthly = (...v: number[]) => [...v, ...Array(12 - v.length).fill(0)];
-
 describe('createIntervento', () => {
   it('requires numero_if and titolo', async () => {
     await expect(createIntervento({ titolo: 'x' } as never)).rejects.toThrow(/numero_if/);
@@ -103,7 +101,7 @@ describe('upsertInterventiFromUpload', () => {
   describe('merging onto an existing record (an upload file only knows part of an intervento)', () => {
     const seed = (over: Parameters<typeof makeIf>[0] = {}) =>
       upsertInterventiFromUpload([
-        makeIf({ numero_if: 'A', bdo: '3300000001', ambito: 'Sviluppo', ref_aria: 'Rossi', modalita_if: 'A corpo', importo: 100, revenue_2026: 50, rev_mesi: monthly(50), cons_mesi: monthly(0, 30), pdc: 'ok', v_apertura: 'ok', has_bo: true, stato: 'approvato', attivazione: 'SI', note_operative: 'nota', ...over }),
+        makeIf({ numero_if: 'A', bdo: '3300000001', ambito: 'Sviluppo', ref_aria: 'Rossi', modalita_if: 'A corpo', importo: 100, pdc: 'ok', v_apertura: 'ok', has_bo: true, stato: 'approvato', attivazione: 'SI', note_operative: 'nota', ...over }),
       ]);
 
     it('descriptive fields are only overwritten by a value that is actually present', async () => {
@@ -114,21 +112,9 @@ describe('upsertInterventiFromUpload', () => {
       expect((await getIntervento('A'))?.ambito).toBe('Governance');
     });
 
-    it('revenue survives an upload that carries none, and is replaced by one that does', async () => {
-      await seed();
-      await upsertInterventiFromUpload([makeIf({ numero_if: 'A', titolo: 'IF_ARIA' })]);
-      expect(await getIntervento('A')).toMatchObject({ revenue_2026: 50, rev_mesi: monthly(50) });
-      await upsertInterventiFromUpload([makeIf({ numero_if: 'A', revenue_2026: 80, rev_mesi: monthly(80) })]);
-      expect(await getIntervento('A')).toMatchObject({ revenue_2026: 80, rev_mesi: monthly(80) });
-    });
-
-    it('consuntivazione is kept unless the upload brings actual values', async () => {
-      await seed();
-      await upsertInterventiFromUpload([makeIf({ numero_if: 'A' })]);
-      expect((await getIntervento('A'))?.cons_mesi).toEqual(monthly(0, 30));
-      await upsertInterventiFromUpload([makeIf({ numero_if: 'A', cons_mesi: monthly(5) })]);
-      expect((await getIntervento('A'))?.cons_mesi).toEqual(monthly(5));
-    });
+    // Revenue and consuntivazione are no longer part of an interventi merge: they are monthly
+    // facts per year. Their merge rules (revenue survives an upload that carries none, is replaced
+    // by one that does, consuntivazione is kept) are covered in tests/mesiStore.test.ts.
 
     it('a recognised document status is never downgraded to "nd"; a new known one replaces it', async () => {
       await seed({ pdc: 'ok', v_apertura: 'ok', v_sal: 'nd' });

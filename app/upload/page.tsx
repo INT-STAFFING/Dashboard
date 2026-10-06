@@ -114,6 +114,7 @@ export default function UploadPage() {
         body: JSON.stringify({
           kind: parsed.kind,
           interventi: parsed.interventi,
+          mesi: parsed.mesi,
           bef: parsed.bef,
           reportBdo: parsed.reportBdo,
           reportRdi: parsed.reportRdi,

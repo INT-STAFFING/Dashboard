@@ -19,11 +19,12 @@ const FORBIDDEN = NextResponse.json(
   { status: 403 },
 );
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
   if (!canView(await getSessionUser())) {
     return NextResponse.json({ ok: false, error: 'Non autorizzato' }, { status: 403 });
   }
-  const found = await getIntervento(params.num_if);
+  const anno = new URL(req.url).searchParams.get('anno');
+  const found = await getIntervento(params.num_if, anno ? Number(anno) : undefined);
   if (!found) {
     return NextResponse.json({ ok: false, error: 'Non trovato' }, { status: 404 });
   }

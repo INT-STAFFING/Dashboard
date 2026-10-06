@@ -3,6 +3,7 @@ import React from 'react';
 import type { Intervento, RtiConfig } from '@/lib/types';
 import { EUR, EUR0, EURM, PCT, MESI, C, erosionRisk } from '@/lib/format';
 import { chartMonthly, legchips } from '@/lib/charts';
+import { monthsElapsed } from '@/lib/fiscal';
 import { Html } from '../Html';
 import { ChartCard, CopyTableButton } from '../export/ExportControls';
 
@@ -11,11 +12,14 @@ function OverviewPanel({
   rti,
   quotaVal,
   filtersForn,
+  anno,
 }: {
   IFs: Intervento[];
   rti: RtiConfig;
   quotaVal: Record<string, number>;
   filtersForn?: string;
+  // Calendar year of the monthly profiles in IFs.
+  anno: number;
 }) {
   const conBo = IFs.filter((i) => i.has_bo);
   const senzaBo = IFs.filter((i) => !i.has_bo);
@@ -37,12 +41,12 @@ function OverviewPanel({
   // Months elapsed so far this calendar year (Gen..mese corrente incluso) —
   // previously hardcoded to a fixed Gen-Giu slice regardless of the actual
   // current month.
-  const revToDate = sum(revM, 0, now.getMonth() + 1);
+  const revToDate = sum(revM, 0, monthsElapsed(anno, now));
 
   const stats: [string, string, string][] = [
     ['Valore IF attive', EURM(tot), IFs.length + ' IF'],
-    [`Revenue ${refYear} (totale anno)`, EUR(revTot), 'competenza'],
-    ['Revenue da gennaio ad oggi', EUR(revToDate), 'avanzamento ' + PCT(revTot ? (revToDate / revTot) * 100 : 0)],
+    [`Revenue ${anno} (totale anno)`, EUR(revTot), 'competenza'],
+    [anno === refYear ? 'Revenue da gennaio ad oggi' : anno < refYear ? `Revenue maturata ${anno} (anno concluso)` : `Revenue maturata ${anno} (anno non iniziato)`, EUR(revToDate), 'avanzamento ' + PCT(revTot ? (revToDate / revTot) * 100 : 0)],
     ['BO emessi', conBo.length + ' / ' + IFs.length, PCT(pct)],
     ['Quota RTI impegnata', PCT(eroPct), EURM(tot) + ' / ' + EURM(quota)],
   ];

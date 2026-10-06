@@ -1,4 +1,4 @@
-import type { Intervento, Kpi, RtiConfig, MultiYearTimeline } from './types';
+import type { Intervento, Kpi, MonthFact, RtiConfig, MultiYearTimeline } from './types';
 import { MESI } from './format';
 
 // Fornitore matcher tolerant to free-text variants ("Intellera", "Intellera
@@ -34,6 +34,39 @@ export function fornitoreTimeline(
     consuntivato: cons[m],
   }));
   return { months, years: [anno] };
+}
+
+// Multi-year version of the above, built from the monthly facts of every year:
+// each year that has data for a matching supplier contributes its 12 months
+// (zeros included, so a year is always complete). `interventi` provides the
+// fornitore of each IF and — being the live, non-deleted portfolio — keeps the
+// facts of deleted IFs out of the totals.
+export function fornitoreTimelineMulti(
+  facts: MonthFact[],
+  interventi: Pick<Intervento, 'numero_if' | 'fornitore'>[],
+  match: (fornitore: string) => boolean = isIntellera,
+): MultiYearTimeline {
+  const wanted = new Set(interventi.filter((i) => match(i.fornitore)).map((i) => i.numero_if));
+  const byYear = new Map<number, { rev: number[]; cons: number[] }>();
+  for (const f of facts) {
+    if (!wanted.has(f.numero_if) || f.mese < 1 || f.mese > 12) continue;
+    let y = byYear.get(f.anno);
+    if (!y) byYear.set(f.anno, (y = { rev: Array(12).fill(0), cons: Array(12).fill(0) }));
+    y.rev[f.mese - 1] += f.revenue || 0;
+    y.cons[f.mese - 1] += f.consuntivo || 0;
+  }
+  const years = [...byYear.keys()].sort((a, b) => a - b);
+  return {
+    months: years.flatMap((anno) =>
+      Array.from({ length: 12 }, (_, m) => ({
+        anno,
+        mese: m + 1,
+        revenue: byYear.get(anno)!.rev[m],
+        consuntivato: byYear.get(anno)!.cons[m],
+      })),
+    ),
+    years,
+  };
 }
 
 // Multi-select dimensions use string[] (OR semantics within a dimension, AND
@@ -98,8 +131,9 @@ export function computeKpi(IFs: Intervento[]): Kpi {
   };
 }
 
-// Revenue per month split by partner, from each intervento's rev_mesi profile.
-export function revenueMensile(IFs: Intervento[]) {
+// Revenue per month of `anno` split by partner, from each intervento's rev_mesi
+// profile (which already is the profile of that year).
+export function revenueMensile(IFs: Intervento[], anno: number) {
   return MESI.map((mese, mi) => {
     let intellera = 0;
     let deloitte = 0;
@@ -108,7 +142,7 @@ export function revenueMensile(IFs: Intervento[]) {
       if (i.fornitore === 'Intellera') intellera += v;
       else if (i.fornitore === 'Deloitte') deloitte += v;
     }
-    return { mese: `2026-${String(mi + 1).padStart(2, '0')}`, label: mese, intellera, deloitte };
+    return { mese: `${anno}-${String(mi + 1).padStart(2, '0')}`, label: mese, intellera, deloitte };
   });
 }
 

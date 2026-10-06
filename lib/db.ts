@@ -89,6 +89,37 @@ const DATE_ID_REPAIRS: string[] = [
     WHERE a."num_fattura" ~ '${DATE_ID_RE}'`,
 ];
 
+// One-off copy of the legacy single-year profiles (interventi.rev_mesi /
+// cons_mesi) into intervento_mesi. The year they belong to is the one the legacy
+// `timeline` setting was anchored to (the same year the dashboard used to read
+// them under), falling back to 2026. Sparse: only non-zero months are copied.
+//
+// Idempotent and safe to re-run on later schema bumps: it only fires while
+// intervento_mesi is completely empty, and ON CONFLICT DO NOTHING absorbs two
+// instances bootstrapping at the same time. It runs after DATE_ID_REPAIRS so the
+// copied numero_if values are already the repaired ones. It must never abort the
+// bootstrap (that would 500 every request): only JSON *numbers* are copied, so a
+// profile that is NULL, not an array, or holds strings is simply skipped, and the
+// year is read from the timeline setting only if it is a plausible year.
+export const INTERVENTO_MESI_BACKFILL = `INSERT INTO "intervento_mesi" ("numero_if","anno","mese","revenue","consuntivo")
+  SELECT i."numero_if", y."anno", m."n", COALESCE(v."rev", 0), COALESCE(v."cons", 0)
+    FROM "interventi" i
+   CROSS JOIN generate_series(1, 12) AS m("n")
+   CROSS JOIN (
+     SELECT COALESCE((
+       SELECT CASE WHEN jsonb_typeof("value"->'anno') = 'number' AND ("value"->>'anno') ~ '^(20[0-9]{2}|2100)$'
+                   THEN ("value"->>'anno')::int END
+         FROM "app_config" WHERE "key" = 'timeline'
+     ), 2026) AS "anno"
+   ) y
+   CROSS JOIN LATERAL (
+     SELECT CASE WHEN jsonb_typeof(i."rev_mesi" -> (m."n" - 1)) = 'number' THEN (i."rev_mesi" ->> (m."n" - 1))::numeric END AS "rev",
+            CASE WHEN jsonb_typeof(i."cons_mesi" -> (m."n" - 1)) = 'number' THEN (i."cons_mesi" ->> (m."n" - 1))::numeric END AS "cons"
+   ) v
+   WHERE NOT EXISTS (SELECT 1 FROM "intervento_mesi")
+     AND (COALESCE(v."rev", 0) <> 0 OR COALESCE(v."cons", 0) <> 0)
+  ON CONFLICT DO NOTHING`;
+
 // ---------------------------------------------------------------------------
 // Self-provisioning schema
 // ---------------------------------------------------------------------------
@@ -97,7 +128,7 @@ const DATE_ID_REPAIRS: string[] = [
 // `db:push` / migration step — essential on serverless, where any missing
 // table would otherwise make every request (login included) throw a 500.
 // Keep these in sync with lib/schema.ts and the SQL in drizzle/*.sql.
-const DDL: string[] = [
+export const DDL: string[] = [
   `CREATE TABLE IF NOT EXISTS "users" (
     "id" serial PRIMARY KEY NOT NULL,
     "email" text NOT NULL,
@@ -363,6 +394,18 @@ const DDL: string[] = [
     "created_at" timestamp DEFAULT now() NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS "admin_audit_log_created_idx" ON "admin_audit_log" ("created_at")`,
+  // Monthly revenue/consuntivazione per IF and per year (replaces the
+  // single-year jsonb arrays on interventi). Filled by the backfill at the end.
+  `CREATE TABLE IF NOT EXISTS "intervento_mesi" (
+    "numero_if" text NOT NULL,
+    "anno" integer NOT NULL,
+    "mese" integer NOT NULL,
+    "revenue" numeric(15, 4) DEFAULT 0 NOT NULL,
+    "consuntivo" numeric(15, 4) DEFAULT 0 NOT NULL,
+    CONSTRAINT "intervento_mesi_pk" PRIMARY KEY ("numero_if","anno","mese"),
+    CONSTRAINT "intervento_mesi_mese_check" CHECK ("mese" BETWEEN 1 AND 12)
+  )`,
+  `CREATE INDEX IF NOT EXISTS "intervento_mesi_anno_if_idx" ON "intervento_mesi" ("anno","numero_if")`,
   // Idempotent column additions for databases created before these fields
   // existed (CREATE TABLE IF NOT EXISTS won't add columns to an existing table).
   `ALTER TABLE "interventi" ADD COLUMN IF NOT EXISTS "cons_mesi" jsonb`,
@@ -487,6 +530,8 @@ const DDL: string[] = [
   END $$`,
   // Repair IF/BO identifiers persisted as a JS Date string (DATE_ID_REPAIRS above).
   ...DATE_ID_REPAIRS,
+  // Must come after the repairs: it copies numero_if.
+  INTERVENTO_MESI_BACKFILL,
 ];
 
 // Bump this whenever the DDL array above changes (new table, new column, new
@@ -521,19 +566,26 @@ const DDL: string[] = [
 //       import precedenti: richiede un nuovo caricamento dei file BEF sorgente.
 //   8 — nuove tabelle login_attempts (rate limit del login) e admin_audit_log
 //       (audit della console SQL admin)
+//   9 — nuova tabella intervento_mesi (revenue/consuntivazione per IF, anno e
+//       mese) al posto degli array a 12 valori di un solo anno su interventi;
+//       backfill una tantum dai vecchi rev_mesi/cons_mesi (le colonne restano)
 // Exported so cached payloads assembled from these tables can key off it: a
 // bootstrap that rewrites existing rows (the DATE_ID_REPAIRS above) changes what
 // a read returns without going through any app write path, so nothing calls
 // `revalidateTag`. Cache keys that include this version rebuild on the bump
 // instead of serving data assembled before the repair — see lib/getDashboardData.ts.
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 const SCHEMA_VERSION_KEY = 'schema_version';
+
+// Anything that can run a raw SQL statement: the neon-http drizzle client in
+// production, an in-process Postgres in tests.
+export type SchemaDb = { execute(query: SQL): PromiseLike<unknown> };
 
 // Reads the current schema_version from app_config with a single round-trip.
 // Returns null when the sentinel can't be read yet — either app_config
 // doesn't exist yet (fresh DB) or the key was never written — so the caller
 // knows it must run the full DDL bootstrap.
-async function readSchemaVersion(db: ReturnType<typeof getDb>): Promise<number | null> {
+async function readSchemaVersion(db: SchemaDb): Promise<number | null> {
   try {
     const result = (await db.execute(
       sql`select value from app_config where key = ${SCHEMA_VERSION_KEY} limit 1`,
@@ -548,13 +600,23 @@ async function readSchemaVersion(db: ReturnType<typeof getDb>): Promise<number |
   }
 }
 
-async function writeSchemaVersion(db: ReturnType<typeof getDb>): Promise<void> {
+async function writeSchemaVersion(db: SchemaDb): Promise<void> {
   const json = JSON.stringify(SCHEMA_VERSION);
   await db.execute(
     sql`insert into app_config (key, value, updated_at)
         values (${SCHEMA_VERSION_KEY}, ${json}::jsonb, now())
         on conflict (key) do update set value = ${json}::jsonb, updated_at = now()`,
   );
+}
+
+// Runs the whole idempotent DDL and stamps the schema version. Exported so the
+// exact production bootstrap can be exercised against a real Postgres in tests.
+export async function applySchema(db: SchemaDb): Promise<void> {
+  // neon-http executes a single statement per round-trip, so run them in order.
+  for (const stmt of DDL) {
+    await db.execute(sql.raw(stmt));
+  }
+  await writeSchemaVersion(db);
 }
 
 // Cache the successful bootstrap once per instance. A failed attempt is NOT
@@ -567,12 +629,7 @@ async function bootstrap(): Promise<void> {
   // just this one round-trip instead of the full DDL array below.
   const current = await readSchemaVersion(db);
   if (current !== null && current >= SCHEMA_VERSION) return;
-
-  // neon-http executes a single statement per round-trip, so run them in order.
-  for (const stmt of DDL) {
-    await db.execute(sql.raw(stmt));
-  }
-  await writeSchemaVersion(db);
+  await applySchema(db);
 }
 
 export async function ensureSchema(): Promise<void> {

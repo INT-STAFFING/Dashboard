@@ -11,17 +11,17 @@ const ST_TXT: Record<DocStatus, string> = { ok: 'OK', ko: 'Mancante', prog: 'In 
 
 // Intestazioni e righe condivise fra l'export CSV e la copia per Excel: una
 // sola definizione delle colonne, così i due export non divergono.
-const EXPORT_HEAD = [
+const exportHead = (anno: number) => [
   'Numero IF', 'BDO', 'Titolo', 'Ambito', 'Fornitore', 'Referente ARIA', 'Referente Intellera',
   'Modalità', 'Attivazione immediata', 'Stato', 'Data assegnazione', 'Data inizio', 'Data fine',
-  'PDC', 'V. Apertura', 'V. SAL', 'BEF', 'Importo', 'Revenue 2026', 'Subappalto',
+  'PDC', 'V. Apertura', 'V. SAL', 'BEF', 'Importo', `Revenue ${anno}`, 'Subappalto',
 ];
 
 function exportRow(x: Intervento, eur: (n: number) => string): (string | number)[] {
   return [
     x.numero_if, x.bdo || '', x.titolo, x.ambito || '', x.fornitore, x.ref_aria || '', x.ref_fornitore || '',
     x.modalita_if || '', x.attivazione || '', x.stato, x.data_assegnazione || '', x.data_inizio || '', x.data_fine || '',
-    ST_TXT[x.pdc], ST_TXT[x.v_apertura], ST_TXT[x.v_sal], ST_TXT[x.bef], eur(x.importo), eur(x.revenue_2026),
+    ST_TXT[x.pdc], ST_TXT[x.v_apertura], ST_TXT[x.v_sal], ST_TXT[x.bef], eur(x.importo), eur(x.revenue_anno),
     x.subappalto ? 'Sì' : 'No',
   ];
 }
@@ -30,12 +30,13 @@ function exportRow(x: Intervento, eur: (n: number) => string): (string | number)
 // separatore di migliaia, altrimenti la cella resta testo.
 const eurPlain = (n: number) => Number(n || 0).toFixed(2).replace('.', ',');
 
-function exportMatrix(IFs: Intervento[]): Matrix {
-  return [EXPORT_HEAD, ...IFs.map((x) => exportRow(x, eurPlain))];
+// Exported for tests: the matrix behind "Copia per Excel" (header + one row per IF).
+export function exportMatrix(IFs: Intervento[], anno: number): Matrix {
+  return [exportHead(anno), ...IFs.map((x) => exportRow(x, eurPlain))];
 }
 
-function exportCSV(IFs: Intervento[]) {
-  const head = EXPORT_HEAD;
+function exportCSV(IFs: Intervento[], anno: number) {
+  const head = exportHead(anno);
   // IFs arrives already filtered/sorted exactly as shown on screen — export it
   // as-is instead of re-sorting, so the CSV matches what the user is looking at.
   const rows = IFs.map((x) => exportRow(x, eurPlain));
@@ -66,6 +67,7 @@ function RegistroPanel({
   onDelete,
   savingIds,
   highlightIds,
+  anno,
 }: {
   IFs: Intervento[];
   canEdit?: boolean;
@@ -75,6 +77,8 @@ function RegistroPanel({
   onDelete: (numero_if: string) => void;
   savingIds: Set<string>;
   highlightIds: Set<string>;
+  // Calendar year of the revenue column.
+  anno: number;
 }) {
   const [q, setQ] = useState('');
   // The input echoes keystrokes instantly; re-filtering/sorting the table runs
@@ -85,7 +89,7 @@ function RegistroPanel({
 
   const rows = useMemo(() => {
     const query = deferredQ.toLowerCase().trim();
-    const num = sortK === 'importo' || sortK === 'revenue_2026';
+    const num = sortK === 'importo' || sortK === 'revenue_anno';
     return IFs.filter(
       (x) =>
         !query ||
@@ -111,7 +115,7 @@ function RegistroPanel({
     if (sortK === k) setSortDir((d) => d * -1);
     else {
       setSortK(k);
-      setSortDir(k === 'importo' || k === 'revenue_2026' ? -1 : 1);
+      setSortDir(k === 'importo' || k === 'revenue_anno' ? -1 : 1);
     }
   };
 
@@ -148,10 +152,10 @@ function RegistroPanel({
           )}
           <input className="search" placeholder="Cerca IF, titolo, referente, ambito…" value={q} onChange={(e) => setQ(e.target.value)} />
           <CopyTableButton
-            getMatrix={() => exportMatrix(rows)}
+            getMatrix={() => exportMatrix(rows, anno)}
             title="Copia tutte le righe mostrate (tutte le colonne): incollale in un foglio Excel"
           />
-          <button className="freset" onClick={() => exportCSV(rows)} style={{ borderColor: 'var(--petrol)', color: 'var(--petrol-d)' }}>
+          <button className="freset" onClick={() => exportCSV(rows, anno)} style={{ borderColor: 'var(--petrol)', color: 'var(--petrol-d)' }}>
             ⤓ Esporta CSV
           </button>
           <div className="tot">

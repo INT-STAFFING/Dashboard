@@ -11,7 +11,7 @@ export function makeIf(over: Partial<Intervento> = {}): Intervento {
     ref_aria: null,
     ref_fornitore: null,
     importo: 0,
-    revenue_2026: 0,
+    revenue_anno: 0,
     rev_mesi: Array(12).fill(0),
     cons_mesi: Array(12).fill(0),
     modalita_if: null,

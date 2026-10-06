@@ -10,6 +10,7 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  primaryKey,
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -40,9 +41,12 @@ export const interventi = pgTable(
     ref_aria: text('ref_aria'),
     ref_fornitore: text('ref_fornitore'),
     importo: numeric('importo', { precision: 15, scale: 4 }),
+    // DEPRECATED, no longer read or written: the monthly profiles moved to
+    // `intervento_mesi` (one row per IF x year x month, so the model isn't tied
+    // to a single year). The columns are kept so a rollback of the app code still
+    // finds the data it expects, and because dropping them is irreversible.
     revenue_2026: numeric('revenue_2026', { precision: 15, scale: 4 }),
     rev_mesi: jsonb('rev_mesi').$type<number[]>(),
-    // Consuntivazione (actuals) per month, calendar order Gen..Dic (length 12).
     cons_mesi: jsonb('cons_mesi').$type<number[]>(),
     modalita_if: text('modalita_if'),
     attivazione: text('attivazione'), // 'SI' | 'NO'
@@ -409,5 +413,26 @@ export const admin_audit_log = pgTable(
   },
   (t) => ({
     created_idx: index('admin_audit_log_created_idx').on(t.created_at),
+  }),
+);
+
+// Monthly revenue and consuntivazione (actuals) of each intervento, one row per
+// (numero_if, anno, mese). Replaces the single-year jsonb arrays that used to
+// sit on `interventi`. Sparse: only months with a non-zero value are stored,
+// absence means 0. No FK to interventi (numero_if is the business key and
+// interventi are soft-deleted) — consistent with the rest of the schema.
+export const intervento_mesi = pgTable(
+  'intervento_mesi',
+  {
+    numero_if: text('numero_if').notNull(),
+    anno: integer('anno').notNull(),
+    mese: integer('mese').notNull(), // 1..12
+    revenue: numeric('revenue', { precision: 15, scale: 4 }).notNull().default('0'),
+    consuntivo: numeric('consuntivo', { precision: 15, scale: 4 }).notNull().default('0'),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.numero_if, t.anno, t.mese], name: 'intervento_mesi_pk' }),
+    anno_if_idx: index('intervento_mesi_anno_if_idx').on(t.anno, t.numero_if),
+    mese_check: check('intervento_mesi_mese_check', sql`${t.mese} BETWEEN 1 AND 12`),
   }),
 );

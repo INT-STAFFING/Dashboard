@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { listInterventi } from '@/lib/store';
+import { resolveAnno } from '@/lib/mesiStore';
 import { getSessionUser, canView } from '@/lib/auth';
 import { getRtiConfig, getQuotaVal, getMeta } from '@/lib/config';
 import { getSeniority, getModalita, getTimeline } from '@/lib/portfolio';
@@ -36,8 +37,10 @@ export async function GET(req: Request) {
     mod: searchParams.get('modalita') || undefined,
   };
 
+  // Calendar year of the monthly profiles (?anno=, default: the portfolio's current year).
+  const anno = await resolveAnno(searchParams.get('anno'));
   const [all, rti, meta, quota_val, seniority, modalita, timeline] = await Promise.all([
-    listInterventi(),
+    listInterventi(anno),
     getRtiConfig(),
     getMeta(),
     getQuotaVal(),
@@ -54,7 +57,8 @@ export async function GET(req: Request) {
     interventi: all,
     view_count: view.length,
     kpi: computeKpi(view),
-    revenue_mensile: revenueMensile(view),
+    anno,
+    revenue_mensile: revenueMensile(view, anno),
     distribuzione_ambito: distribuzioneAmbito(view),
     rti: { ...rti, ...rtiSummary(view, rti) },
     quota_val,

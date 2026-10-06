@@ -4,25 +4,28 @@ import { getMeta, getRtiConfig } from '@/lib/config';
 import { getSeniority } from '@/lib/portfolio';
 import { getMultiYearTimeline } from '@/lib/timelineStore';
 import { listInterventi } from '@/lib/store';
+import { listAnni, resolveAnno } from '@/lib/mesiStore';
 import AdminGestione from '@/components/AdminGestione';
 
 export const dynamic = 'force-dynamic';
 
 export default async function GestionePage() {
-  // Data fetch races the session lookup; awaited only after the admin gate.
+  // Data fetch races the session lookup; awaited only after the admin gate. The
+  // per-IF monthly profiles are shown for the portfolio's default year; the page
+  // lets the admin switch year.
   const dataPromise = Promise.all([
     getMeta(),
     getRtiConfig(),
     getMultiYearTimeline(),
     getSeniority(),
-    listInterventi(),
+    resolveAnno().then(async (anno) => ({ anno, interventi: await listInterventi(anno), anni: await listAnni() })),
   ]);
   dataPromise.catch(() => {});
   const me = await getSessionUser();
   if (!me) redirect('/login');
   if (!isAdmin(me)) redirect('/dashboard');
 
-  const [meta, rti, multiYear, seniority, interventi] = await dataPromise;
+  const [meta, rti, multiYear, seniority, { anno, anni, interventi }] = await dataPromise;
 
   return (
     <AdminGestione
@@ -31,6 +34,8 @@ export default async function GestionePage() {
       multiYear={multiYear}
       seniority={seniority}
       interventi={interventi}
+      anno={anno}
+      anni={anni.includes(anno) ? anni : [...anni, anno].sort((a, b) => a - b)}
     />
   );
 }

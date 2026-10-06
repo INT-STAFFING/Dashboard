@@ -21,8 +21,9 @@ export type FormulaRow = {
 // delle IF/BO dopo l'applicazione dei filtri della FilterBar (fornitore,
 // referente, ambito, stato, modalità, ecc.). I record con deleted_at
 // valorizzato (soft-delete) sono sempre esclusi. `importo` è il valore
-// contrattuale della IF; `rev_mesi`/`cons_mesi` sono profili di 12 valori in
-// ordine solare (indice 0 = Gennaio … 11 = Dicembre).
+// contrattuale della IF; `rev_mesi`/`cons_mesi` sono i profili di 12 valori
+// dell'ANNO SELEZIONATO (selettore "Anno" in intestazione), in ordine solare
+// (indice 0 = Gennaio … 11 = Dicembre), letti dalla tabella intervento_mesi.
 
 export const FORMULA_CATALOG: FormulaRow[] = [
   // =========================================================================
@@ -78,7 +79,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     formula: 'revM[m] = Σ rev_mesi[m] (su tutte le IF della vista)',
     spiegazione:
       'Revenue di competenza del mese m: somma, su tutte le IF, del valore del mese m nel profilo rev_mesi.',
-    sorgenti: 'interventi.rev_mesi[]',
+    sorgenti: 'intervento_mesi.revenue (anno selezionato)',
   },
   {
     pagina: '1 Overview',
@@ -86,7 +87,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     elemento: 'Revenue anno (totale)',
     formula: 'revTot = Σ(m=Gen..Dic) revM[m]',
     spiegazione: "Revenue di competenza dell'intero anno: somma dei 12 valori mensili.",
-    sorgenti: 'interventi.rev_mesi[]',
+    sorgenti: 'intervento_mesi.revenue (anno selezionato)',
   },
   {
     pagina: '1 Overview',
@@ -94,7 +95,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     elemento: 'Cumulato al mese m',
     formula: 'cumV[m] = Σ(k=Gen..m) revM[k]',
     spiegazione: 'Curva cumulata: somma progressiva della revenue mensile da gennaio al mese m.',
-    sorgenti: 'interventi.rev_mesi[]',
+    sorgenti: 'intervento_mesi.revenue (anno selezionato)',
   },
   {
     pagina: '1 Overview',
@@ -103,7 +104,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     formula: 'revToDate = Σ(m=Gen..mese_corrente) revM[m]',
     spiegazione:
       'Revenue maturata dai mesi già trascorsi nell’anno solare, incluso il mese corrente (il taglio segue la data odierna).',
-    sorgenti: 'interventi.rev_mesi[], data odierna',
+    sorgenti: 'intervento_mesi.revenue (anno selezionato), data odierna',
   },
   {
     pagina: '1 Overview',
@@ -111,7 +112,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     elemento: 'Avanzamento revenue',
     formula: 'avanzamento% = revToDate / revTot × 100',
     spiegazione: 'Quota della revenue annua già maturata ad oggi.',
-    sorgenti: 'interventi.rev_mesi[]',
+    sorgenti: 'intervento_mesi.revenue (anno selezionato)',
   },
   {
     pagina: '1 Overview',
@@ -283,7 +284,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     formula: 'revenue[m] = Σ rev_mesi[m] delle IF con fornitore = Intellera',
     spiegazione:
       'Serie di revenue ricostruita mese per mese dai profili rev_mesi delle sole IF Intellera (la tabella timeline_mensile non ha il dettaglio per fornitore).',
-    sorgenti: 'interventi.rev_mesi[] (Intellera)',
+    sorgenti: 'intervento_mesi.revenue (Intellera, tutti gli anni)',
   },
   {
     pagina: '3 Timeline',
@@ -291,7 +292,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     elemento: 'Fatturazione (consuntivato) mensile',
     formula: 'consuntivato[m] = Σ cons_mesi[m] delle IF con fornitore = Intellera',
     spiegazione: 'Serie di consuntivazione/fatturazione ricostruita dai profili cons_mesi delle IF Intellera.',
-    sorgenti: 'interventi.cons_mesi[] (Intellera)',
+    sorgenti: 'intervento_mesi.consuntivo (Intellera, tutti gli anni)',
   },
   {
     pagina: '3 Timeline',
@@ -327,7 +328,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     elemento: 'Revenue totale',
     formula: 'totR = Σ revenue[periodo] (anno/vista selezionati)',
     spiegazione: 'Revenue di competenza totale del periodo e calendario selezionati.',
-    sorgenti: 'interventi.rev_mesi[] (Intellera)',
+    sorgenti: 'intervento_mesi.revenue (Intellera, tutti gli anni)',
   },
   {
     pagina: '3 Timeline',
@@ -335,7 +336,7 @@ export const FORMULA_CATALOG: FormulaRow[] = [
     elemento: 'Valore IF Attivate (fatturazione totale)',
     formula: 'totF = Σ consuntivato[periodo]',
     spiegazione: 'Totale consuntivato/fatturabile del periodo selezionato.',
-    sorgenti: 'interventi.cons_mesi[] (Intellera)',
+    sorgenti: 'intervento_mesi.consuntivo (Intellera, tutti gli anni)',
   },
   {
     pagina: '3 Timeline',
@@ -524,7 +525,7 @@ export function buildFormulaCsv(rows: FormulaRow[] = FORMULA_CATALOG): string {
     ['Dashboard ARIA SISS L2 — Formule dei valori calcolati'],
     [`Esportazione del ${new Date().toLocaleString('it-IT')}`],
     [
-      'Nota: "vista corrente" = insieme delle IF/BO dopo i filtri della barra (fornitore, referente, ambito, stato, modalità…). I record soft-deleted sono sempre esclusi. rev_mesi/cons_mesi sono profili di 12 valori in ordine solare (Gen..Dic).',
+      'Nota: "vista corrente" = insieme delle IF/BO dopo i filtri della barra (fornitore, referente, ambito, stato, modalità…). I record soft-deleted sono sempre esclusi. rev_mesi/cons_mesi sono i profili di 12 valori dell’anno selezionato (selettore “Anno”), in ordine solare (Gen..Dic).',
     ],
     [],
   ];

@@ -113,6 +113,15 @@ statement SQL è atomico di per sé, senza bisogno di intervento. L'inclusione
 di questa tabella nella formulazione originale del problema era un errore
 dell'audit, corretto qui.
 
+> **Aggiornamento (2026-10-06):** l'affermazione "stesso file ricaricato più
+> volte → stesso risultato finale" non valeva per `verbali_sal` in modalità
+> database: ogni ricaricamento reinseriva tutte le righe (lo store in memoria,
+> invece, sostituiva le righe per BDO). L'append è ora idempotente — una riga
+> identica a una già salvata per lo stesso BDO non viene reinserita — senza
+> chiave naturale e senza cancellare righe di caricamenti precedenti, quindi
+> senza la regressione descritta sopra. Dettagli in
+> `docs/improvement-plan.md` (punto 3).
+
 **Implementazione:** un vero upsert `ON CONFLICT DO UPDATE` su chiave naturale
 composta, per ciascuna tabella:
 - `bef_records`: `(numero_if, num_fattura)` — mirror della regola di business

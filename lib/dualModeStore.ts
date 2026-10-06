@@ -1,9 +1,27 @@
-import { and, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, getTableColumns, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import type { RunnableQuery } from 'drizzle-orm/runnable-query';
 import { getDb, hasDB, ensureSchema, excludedSet } from './db';
 
 type BatchItem = RunnableQuery<unknown, 'pg'>;
+
+// Rows per INSERT statement on the append-only path. Postgres caps a single
+// statement at 65,535 bind parameters, so a wide table (verbali_sal binds ~23
+// columns per row) breaks past ~2,800 rows in one INSERT.
+const INSERT_CHUNK = 500;
+
+// Columns that never take part in "is this the same row?": the surrogate id and
+// the write timestamp differ between an existing row and its re-uploaded twin.
+const IDENTITY_IGNORED = new Set(['id', 'updated_at']);
+
+// Stable fingerprint of a row's content, shared by rows read back from the
+// database and rows about to be inserted (both carry the table's column keys;
+// date/text values are plain strings on both sides). Anything that doesn't
+// compare equal just falls back to being inserted, i.e. the pre-existing
+// append behaviour — a miss can never lose data.
+function contentKey(row: Record<string, unknown>, keys: string[]): string {
+  return JSON.stringify(keys.map((k) => (row[k] === undefined ? null : row[k])));
+}
 
 // Shared implementation behind befStore/reportPdcStore/verbaliAperturaStore/
 // verbaliSalStore-style tables: a DB-backed snapshot of an Excel export, with
@@ -15,9 +33,12 @@ type BatchItem = RunnableQuery<unknown, 'pg'>;
 //    lib/schema.ts. Rows missing any extra key column aren't deduplicable
 //    and are always fully replaced for their scope value instead of being
 //    matched by key (mirrors the pre-R-5 per-table implementations).
-//  - Append-only (verbali_sal): no natural key at all, every upload is a
-//    plain insert — multiple rows per scope value are expected and never
-//    deduplicated (e.g. periodic SAL reports).
+//  - Append-only (verbali_sal): no natural key at all. Multiple rows per scope
+//    value are expected and rows of earlier uploads are never deleted or
+//    overwritten (e.g. periodic SAL reports). The append is idempotent though:
+//    a row byte-identical to one already stored for the same scope value is not
+//    inserted again, so re-uploading a file leaves the table unchanged. See
+//    `insertMissing` below.
 export type SnapshotStoreConfig<TTable extends PgTable, TRecord extends Record<string, unknown>> = {
   table: TTable;
   // globalThis property name for the in-memory fallback array (mirrors the
@@ -82,6 +103,36 @@ export function createSnapshotStore<TTable extends PgTable, TRecord extends Reco
     return g[memGlobalKey]!;
   }
 
+  // Multiset difference between the incoming rows and what is already stored
+  // for the scopes they belong to: each stored row cancels out at most one
+  // identical incoming row, so duplicates *inside* one upload are kept (they are
+  // distinct rows) while a repeated upload adds nothing. Rows without a scope
+  // value can't be matched against the table and are always inserted. The read
+  // and the later insert aren't one transaction: two simultaneous uploads of the
+  // same file could both insert — acceptable for an admin-driven upload flow.
+  async function insertMissing(
+    db: ReturnType<typeof getDb>,
+    incoming: Record<string, unknown>[],
+    scopeList: string[],
+  ): Promise<Record<string, unknown>[]> {
+    if (!scopeList.length) return incoming;
+    const keys = Object.keys(getTableColumns(table)).filter((k) => !IDENTITY_IGNORED.has(k));
+    const stored = (await db.select().from(table).where(inArray(scopeColumn, scopeList))) as Record<string, unknown>[];
+    const remaining = new Map<string, number>();
+    for (const row of stored) {
+      const k = contentKey(row, keys);
+      remaining.set(k, (remaining.get(k) ?? 0) + 1);
+    }
+    const fresh: Record<string, unknown>[] = [];
+    for (const row of incoming) {
+      const k = contentKey(row, keys);
+      const left = remaining.get(k) ?? 0;
+      if (left > 0) remaining.set(k, left - 1);
+      else fresh.push(row);
+    }
+    return fresh;
+  }
+
   async function persistFromUpload(rows: TRecord[]): Promise<{ saved: number }> {
     if (!rows.length) return { saved: 0 };
     const scopeList = [...new Set(rows.map(getScopeValue).filter((v): v is string => !!v))];
@@ -91,8 +142,21 @@ export function createSnapshotStore<TTable extends PgTable, TRecord extends Reco
       const db = getDb();
 
       if (!extraKeyColumns || !extraKeyColumns.length) {
-        // Append-only: no natural key beyond the scope column.
-        await db.insert(table).values(rows.map(toRow) as (typeof table)['$inferInsert'][]);
+        // Append-only: no natural key beyond the scope column, so earlier rows
+        // are never touched. Rows already stored (identical content, same
+        // scope) are skipped so a re-upload doesn't duplicate them.
+        const incoming = rows.map(toRow) as Record<string, unknown>[];
+        const fresh = await insertMissing(db, incoming, scopeList);
+        if (fresh.length) {
+          // One batch = one transaction: either every chunk lands or none does.
+          const inserts: BatchItem[] = [];
+          for (let i = 0; i < fresh.length; i += INSERT_CHUNK) {
+            inserts.push(
+              db.insert(table).values(fresh.slice(i, i + INSERT_CHUNK) as (typeof table)['$inferInsert'][]),
+            );
+          }
+          await db.batch(inserts as [BatchItem, ...BatchItem[]]);
+        }
         return { saved: rows.length };
       }
 

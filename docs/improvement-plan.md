@@ -10,7 +10,7 @@ Questo piano riguarda ciò che **manca** rispetto a `docs/performance-audit.md` 
 |---|---|---|---|---|---|
 | 1 | Funzioni Vercel nella stessa regione di Neon | Velocità | Molto alto | XS | 1 |
 | 2 | Eliminare la query utente a ogni richiesta | Velocità / risorse | Alto | S | 1 |
-| 3 | Idempotenza dell'import `verbali_sal` (oggi duplica le righe) | Scalabilità / dati | Alto | S | 1 |
+| 3 | Idempotenza dell'import `verbali_sal` (duplicava le righe) | Scalabilità / dati | Alto | S | 1 |
 | 4 | Upsert, DDL e seed in un'unica richiesta HTTP | Risorse | Medio | S | 1 |
 | 5 | Blocchi di sicurezza che sono anche spreco di risorse | Sicurezza | Alto | S | 1 |
 | 6 | Test, CI e misurazioni | Fondamenta | Alto | M | 2 |
@@ -38,7 +38,37 @@ In entrambi i casi si risparmia un round-trip per richiesta e la revoca dei perm
 
 ### 3. Duplicazione di `verbali_sal`
 
-`lib/verbaliSalStore.ts` configura lo store in sola aggiunta: `lib/dualModeStore.ts:93-95` esegue un semplice `insert` a ogni caricamento. Ricaricare lo stesso REPORT Sal raddoppia quindi le righe: la tabella cresce senza limite e il drill-down Dettaglio IF mostra mesi duplicati. Serve una chiave naturale (ad esempio `(num_bdo, codifica_documento)` oppure `(num_bdo, periodo_competenza, codifica_documento)`) con un indice unique e una pulizia preliminare dei duplicati, riusando lo schema già applicato a `report_pdc` nel DDL versione 2 di `lib/db.ts`. Il cambio comporta un bump di `SCHEMA_VERSION` e una nuova migrazione Drizzle.
+`lib/verbaliSalStore.ts` configura lo store in sola aggiunta: `lib/dualModeStore.ts` eseguiva un semplice `insert` a ogni caricamento. Ricaricare lo stesso REPORT Sal raddoppiava quindi le righe: la tabella cresceva senza limite e il drill-down Dettaglio IF mostrava mesi duplicati. Lo store in memoria, invece, sostituiva già le righe per BDO: le due modalità erano incoerenti.
+
+**Scelta implementativa (diversa dalla bozza iniziale del piano).** La bozza proponeva una chiave naturale con indice unique. È stata scartata: l'audit R-2 aveva già escluso questa tabella proprio perché una chiave collasserebbe righe che devono poter coesistere, e non c'è modo di verificare dai dati del repository che `codifica_documento` sia unica per riga. È stato invece reso idempotente l'append (`insertMissing` in `lib/dualModeStore.ts`):
+
+- una riga identica in tutte le colonne a una già salvata per lo stesso BDO non viene inserita di nuovo; il confronto è per molteplicità, quindi righe identiche ripetute nello stesso file restano distinte;
+- le righe dei caricamenti precedenti non vengono mai modificate né cancellate: un file con nuovi periodi aggiunge righe, come prima;
+- una riga con contenuto diverso (ad esempio uno stato aggiornato) viene aggiunta accanto alla precedente: la versione vecchia non viene sovrascritta;
+- gli INSERT sono divisi in blocchi da 500 righe dentro un unico `db.batch` (una transazione), per non superare il limite di 65.535 parametri di Postgres;
+- nessuna migrazione e nessun bump di `SCHEMA_VERSION`: lo schema non cambia.
+
+**Duplicati già presenti.** Le righe duplicate create dai caricamenti precedenti non vengono rimosse in automatico, perché non si può distinguere con certezza un duplicato da due righe legittime identiche. Se serve ripulirle, questa query (da eseguire dalla console SQL admin dopo un backup) tiene la riga con `id` più basso per ogni gruppo di righe identiche in tutte le colonne:
+
+<!-- sal-dedup-sql -->
+```sql
+DELETE FROM verbali_sal WHERE id IN (
+  SELECT id FROM (
+    SELECT id, row_number() OVER (
+      PARTITION BY num_bdo, descrizione, nome_file, codifica_documento, stato_verbale,
+        periodo_competenza, conforme, motivo_conformita, criticita, motivazione_criticita,
+        livelli_servizio_rispettati, divisione, centro_costo, fornitore,
+        utente_caricamento_fornitore, data_firma_fornitore, roi,
+        data_inserimento_verbale_non_sottomesso, data_sottomissione_verbale_fornitore,
+        data_firma_roi, data_rifiuto_roi, data_invio_roi
+      ORDER BY id
+    ) AS rn
+    FROM verbali_sal
+  ) t WHERE rn > 1
+)
+```
+
+**Limite noto.** Se il REPORT Sal è uno snapshot completo e uno stato cambia tra due esportazioni, la versione vecchia della riga resta accanto alla nuova. È il comportamento che l'applicazione aveva già; sostituire le righe per BDO sarebbe corretto solo se ogni esportazione contenesse l'intera storia di quel BDO, cosa non verificabile dal codice. Test: `tests/verbaliSalStore.test.ts`.
 
 ### 4. Un solo round-trip per scrittura
 
@@ -108,7 +138,7 @@ Per evitare ottimizzazioni non dimostrate, ogni intervento si considera chiuso s
 
 - punto 1: TTFB di `/dashboard` con cache fredda e latenza di `POST /api/auth/login`, prima e dopo, dalla stessa rete;
 - punto 2: numero di query per richiesta autenticata (da 1 a 0 sul percorso caldo);
-- punto 3: numero di righe di `verbali_sal` dopo due caricamenti consecutivi dello stesso file (deve restare invariato);
+- punto 3: numero di righe di `verbali_sal` dopo due caricamenti consecutivi dello stesso file (deve restare invariato; coperto da `tests/verbaliSalStore.test.ts`);
 - punto 4: numero di richieste HTTP verso Neon durante un upload da 200 righe e durante un bootstrap DDL;
 - punti 7 e 8: JS di primo caricamento di `/dashboard` (riferimento attuale in `docs/performance-audit.md`: circa 118 kB) e durata del blocco del thread principale durante il parsing di un file di prova;
 - punto 9: test di migrazione che confrontano i totali di revenue e consuntivo prima e dopo, per ogni intervento.

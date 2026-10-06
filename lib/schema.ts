@@ -219,8 +219,8 @@ export const verbali_apertura = pgTable(
 );
 
 // Snapshot of the "REPORT Sal" export (verbali SAL). Multiple rows per
-// num_bdo are expected (periodic SAL) so uploads always append — see
-// lib/verbaliSalStore.ts.
+// num_bdo are expected (periodic SAL) so uploads only append, skipping rows
+// already stored verbatim — see lib/verbaliSalStore.ts.
 export const verbali_sal = pgTable('verbali_sal', {
   id: serial('id').primaryKey(),
   num_bdo: text('num_bdo'),

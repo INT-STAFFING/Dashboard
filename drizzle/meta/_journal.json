@@ -85,6 +85,13 @@
       "when": 1788278400000,
       "tag": "0011_bef_numero_linea_ordine",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788364800000,
+      "tag": "0012_login_attempts_admin_audit",
+      "breakpoints": true
     }
   ]
 }

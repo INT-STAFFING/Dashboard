@@ -9,6 +9,7 @@ import {
   integer,
   jsonb,
   uniqueIndex,
+  index,
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -373,3 +374,40 @@ export const config_rti = pgTable('config_rti', {
   contratto_ref: text('contratto_ref'),
   updated_at: timestamp('updated_at').defaultNow(),
 });
+
+// Failed login attempts, one row per (key, attempt): key is "e:<email>" or
+// "i:<ip>". Rows older than the throttle window are irrelevant and pruned on
+// every new failure — see lib/auth/loginThrottle.ts.
+export const login_attempts = pgTable(
+  'login_attempts',
+  {
+    id: serial('id').primaryKey(),
+    key: text('key').notNull(),
+    created_at: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    key_created_idx: index('login_attempts_key_created_idx').on(t.key, t.created_at),
+  }),
+);
+
+// Audit trail for the admin SQL console: a row is written *before* the
+// statement runs (status 'started') and completed afterwards — see
+// lib/adminAudit.ts.
+export const admin_audit_log = pgTable(
+  'admin_audit_log',
+  {
+    id: serial('id').primaryKey(),
+    user_id: integer('user_id'),
+    user_email: text('user_email'),
+    action: text('action').notNull().default('sql'),
+    statement: text('statement').notNull(),
+    status: text('status').notNull().default('started'), // 'started' | 'ok' | 'error'
+    row_count: integer('row_count'),
+    duration_ms: integer('duration_ms'),
+    error: text('error'),
+    created_at: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    created_idx: index('admin_audit_log_created_idx').on(t.created_at),
+  }),
+);

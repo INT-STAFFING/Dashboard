@@ -12,6 +12,7 @@ import { persistReportPdcFromUpload } from '@/lib/reportPdcStore';
 import { setSeniority } from '@/lib/portfolio';
 import { updateMeta } from '@/lib/config';
 import { getSessionUser, canEdit } from '@/lib/auth';
+import { isUploadAuthorized } from '@/lib/auth/uploadSecret';
 import { DASHBOARD_DATA_TAG } from '@/lib/getDashboardData';
 import type {
   BefRecord,
@@ -26,15 +27,6 @@ import type {
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-function authorized(req: Request): boolean {
-  const secret = process.env.UPLOAD_SECRET;
-  if (!secret) return true; // no secret configured -> rely on edit permission
-  const header = req.headers.get('x-upload-secret') || '';
-  const url = new URL(req.url);
-  const token = url.searchParams.get('token') || header;
-  return token === secret;
-}
 
 const num = (v: unknown): number => {
   const n = typeof v === 'number' ? v : Number(v);
@@ -332,7 +324,7 @@ export async function POST(req: Request) {
       { status: 403 },
     );
   }
-  if (!authorized(req)) {
+  if (!isUploadAuthorized(req.headers)) {
     return NextResponse.json({ ok: false, error: 'Non autorizzato' }, { status: 401 });
   }
 

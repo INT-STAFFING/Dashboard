@@ -7,6 +7,13 @@
 // fresh from the store server-side, so an admin's approval/role changes take
 // effect on the user's next request (no need to wait for re-login).
 
+import {
+  allowsInsecureConfig,
+  isInsecureAuthSecret,
+  isProductionRuntime,
+  resolveAuthSecret,
+} from '../security/config';
+
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
@@ -16,11 +23,13 @@ export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days, in seconds
 export type SessionPayload = { uid: number; exp: number };
 
 export function getAuthSecret(): string {
-  return (
-    process.env.AUTH_SECRET ||
-    process.env.UPLOAD_SECRET ||
-    'aria-siss-dev-insecure-secret-change-me'
-  );
+  const secret = resolveAuthSecret();
+  // A forgeable session key lets anyone mint an ADMIN cookie, so a real
+  // production runtime refuses to sign or verify with a missing/default one.
+  if (isProductionRuntime() && !allowsInsecureConfig() && isInsecureAuthSecret(secret)) {
+    throw new Error('AUTH_SECRET mancante o di default: impostalo prima di usare l\'app in produzione');
+  }
+  return secret;
 }
 
 function toB64Url(bytes: Uint8Array): string {

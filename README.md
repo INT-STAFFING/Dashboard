@@ -144,7 +144,34 @@ dall'immagine sia dalla copia testuale (es. i suggerimenti "clic per…").
 mensile (fogli `DATI` + `TIMELINE_REVENUE`); l'upsert è *merge-aware*, quindi un
 file aggiorna solo i campi che effettivamente contiene senza azzerare gli altri
 (es. la revenue non viene persa caricando un IF_ARIA). Protetto da
-`UPLOAD_SECRET` (header `x-upload-secret` o `?token=`). Pagina UI: `/upload`.
+`UPLOAD_SECRET`, da inviare **solo** nell'header `x-upload-secret` (il parametro `?token=` non è più accettato: le query string finiscono nei log di accesso). Pagina UI: `/upload`.
+
+## Sicurezza e configurazione di produzione
+
+In un runtime di **produzione** (Vercel `production`, oppure `next start` fuori da Vercel)
+l'app rifiuta di avviarsi con una configurazione non sicura: `instrumentation.ts`
+controlla le variabili all'avvio e risponde 500 con l'elenco di ciò che manca.
+
+- `AUTH_SECRET` obbligatorio, casuale e diverso da `UPLOAD_SECRET` e dai valori di
+  default del repository. In produzione **non** ricade più su `UPLOAD_SECRET`: chi
+  carica file conosce quel segreto e potrebbe altrimenti falsificare sessioni ADMIN.
+- Un database (`DATABASE_URL` o uno degli alias supportati) è obbligatorio: senza,
+  i dati finirebbero in memoria, separati per istanza e persi a ogni riavvio.
+- `ADMIN_PASSWORD` non può essere vuota né `admin` nel momento in cui l'account
+  amministratore viene **creato** (primo avvio su database vuoto). Un amministratore
+  già presente non viene toccato: per cambiargli la password, dopo un backup,
+  eliminare la sua riga da `users` e rideployare con una nuova `ADMIN_PASSWORD`
+  (viene ricreato con quella).
+- Preview di Vercel e `next dev` non sono produzione: stampano solo un avviso.
+- Per provare in locale una build di produzione senza segreti reali esiste
+  `ALLOW_INSECURE_CONFIG=true`. Non impostarla su un deploy reale.
+
+Altre protezioni: il login è limitato a 10 tentativi falliti per email e 30 per IP
+ogni 15 minuti (risposta `429` con `Retry-After`; il blocco di un'email scade da solo
+e non invalida le sessioni già aperte). Ogni istruzione eseguita dalla console SQL
+admin viene registrata nella tabella `admin_audit_log` (utente, istruzione, esito,
+durata) **prima** dell'esecuzione: se la scrittura del log fallisce, l'istruzione non
+viene eseguita.
 
 ## Deploy su Vercel
 

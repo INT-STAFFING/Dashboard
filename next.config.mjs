@@ -3,6 +3,8 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: {
+    // Loads instrumentation.ts (production config checks at server start).
+    instrumentationHook: true,
     // xlsx is only used inside server-side route handlers
     serverComponentsExternalPackages: ['xlsx'],
   },

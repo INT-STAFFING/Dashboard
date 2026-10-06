@@ -23,9 +23,9 @@ solo se emerge un bisogno reale.
 
 | ID | Titolo | Categoria | Impatto | Effort | Priorità | Stato |
 |----|--------|-----------|---------|--------|----------|-------|
-| R-1 | Fallback insicuro per `AUTH_SECRET` in produzione | Security | Alto | S | P1 | ⬜ Aperto |
+| R-1 | Fallback insicuro per `AUTH_SECRET` in produzione | Security | Alto | S | P1 | ✅ Completato (2026-10-06, in forma più restrittiva: in produzione `UPLOAD_SECRET` non è più accettato come chiave di sessione — vedi `docs/improvement-plan.md` punto 5) |
 | R-2 | Scritture non atomiche (delete+insert) nelle store di snapshot | DB/Integrità | Alto | M | P1 | ✅ Completato |
-| R-3 | Console SQL admin senza audit trail | Security | Alto | S | P1 | ⬜ Aperto |
+| R-3 | Console SQL admin senza audit trail | Security | Alto | S | P1 | ✅ Completato (2026-10-06, tabella `admin_audit_log` — vedi `docs/improvement-plan.md` punto 5) |
 | R-4 | Doppia fonte di verità per lo schema DB (DDL bootstrap vs migration) | DB/Manutenibilità | Medio | M | P2 | ✅ Completato |
 | R-5 | Duplicazione strutturale negli store di upload | App/Manutenibilità | Medio | M | P2 | ✅ Completato (riduzione -120 righe, sotto l'obiettivo indicativo — vedi nota) |
 | R-6 | Cache assente sul payload SSR della dashboard | Rete/Performance | Medio | L | P2 | ✅ Completato |

@@ -105,11 +105,12 @@ export default function UploadPage() {
       }
       setProgress(55);
       const qs = new URLSearchParams();
-      if (token) qs.set('token', token);
       if (force) qs.set('force', 'true');
       const res = await fetch('/api/upload?' + qs.toString(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: token
+          ? { 'Content-Type': 'application/json', 'x-upload-secret': token }
+          : { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           kind: parsed.kind,
           interventi: parsed.interventi,

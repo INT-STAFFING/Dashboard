@@ -3,6 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import { getTableColumns, sql, type SQL } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import * as schema from './schema';
+import { resolveConnectionString } from './security/config';
 
 // Neon serverless Postgres connection string. The Vercel ⇄ Neon integration
 // exposes it as DATABASE_URL / POSTGRES_URL — but when a custom prefix is set
@@ -10,16 +11,7 @@ import * as schema from './schema';
 // (DASH_DATABASE_URL, DASH_POSTGRES_URL, …). We accept both so the app connects
 // regardless of how the integration was configured. Pooled endpoints are
 // preferred for the neon-http (serverless) driver.
-export const connectionString =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.DASH_DATABASE_URL ||
-  process.env.DASH_POSTGRES_URL ||
-  process.env.DATABASE_URL_UNPOOLED ||
-  process.env.POSTGRES_URL_NON_POOLING ||
-  process.env.DASH_DATABASE_URL_UNPOOLED ||
-  process.env.DASH_POSTGRES_URL_NON_POOLING ||
-  '';
+export const connectionString = resolveConnectionString();
 
 // Two modes:
 //  - With a Neon connection string -> Drizzle / neon-http (persistent)
@@ -350,6 +342,27 @@ const DDL: string[] = [
   `CREATE INDEX IF NOT EXISTS "report_pdc_num_bdo_idx" ON "report_pdc" ("num_bdo")`,
   `CREATE INDEX IF NOT EXISTS "verbali_sal_num_bdo_idx" ON "verbali_sal" ("num_bdo")`,
   `CREATE INDEX IF NOT EXISTS "bef_records_num_bdo_idx" ON "bef_records" ("num_bdo")`,
+  // Login throttling and the admin SQL console audit trail (see
+  // lib/auth/loginThrottle.ts, lib/adminAudit.ts).
+  `CREATE TABLE IF NOT EXISTS "login_attempts" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "key" text NOT NULL,
+    "created_at" timestamp DEFAULT now() NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS "login_attempts_key_created_idx" ON "login_attempts" ("key","created_at")`,
+  `CREATE TABLE IF NOT EXISTS "admin_audit_log" (
+    "id" serial PRIMARY KEY NOT NULL,
+    "user_id" integer,
+    "user_email" text,
+    "action" text DEFAULT 'sql' NOT NULL,
+    "statement" text NOT NULL,
+    "status" text DEFAULT 'started' NOT NULL,
+    "row_count" integer,
+    "duration_ms" integer,
+    "error" text,
+    "created_at" timestamp DEFAULT now() NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS "admin_audit_log_created_idx" ON "admin_audit_log" ("created_at")`,
   // Idempotent column additions for databases created before these fields
   // existed (CREATE TABLE IF NOT EXISTS won't add columns to an existing table).
   `ALTER TABLE "interventi" ADD COLUMN IF NOT EXISTS "cons_mesi" jsonb`,
@@ -506,12 +519,14 @@ const DDL: string[] = [
 //       stessa chiave sottostimando "Fatturabile ad oggi", "Fatturato
 //       emesso" e "Fatturato incassato". Non recupera righe già perse da
 //       import precedenti: richiede un nuovo caricamento dei file BEF sorgente.
+//   8 — nuove tabelle login_attempts (rate limit del login) e admin_audit_log
+//       (audit della console SQL admin)
 // Exported so cached payloads assembled from these tables can key off it: a
 // bootstrap that rewrites existing rows (the DATE_ID_REPAIRS above) changes what
 // a read returns without going through any app write path, so nothing calls
 // `revalidateTag`. Cache keys that include this version rebuild on the bump
 // instead of serving data assembled before the repair — see lib/getDashboardData.ts.
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 const SCHEMA_VERSION_KEY = 'schema_version';
 
 // Reads the current schema_version from app_config with a single round-trip.

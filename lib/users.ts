@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { getDb, hasDB, ensureSchema } from './db';
 import { users as usersTable } from './schema';
 import { hashPassword } from './auth/password';
+import { assertAdminPasswordSecure } from './security/config';
 import type { Role, SafeUser, UserStatus } from './types';
 
 export type UserRecord = {
@@ -19,7 +20,12 @@ export type UserRecord = {
 // Seed admin (always present, never deletable)
 // ---------------------------------------------------------------------------
 export const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@dashboard.local').toLowerCase();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
+// Read lazily and checked right before the account is created: a production
+// deployment must not seed the admin with the "admin" default.
+const adminPassword = (): string => {
+  assertAdminPasswordSecure();
+  return process.env.ADMIN_PASSWORD || 'admin';
+};
 const ADMIN_NAME = process.env.ADMIN_NAME || 'Amministratore';
 
 // The seed admin is fully protected: cannot be deleted, demoted or rejected.
@@ -93,7 +99,7 @@ async function doSeed(): Promise<void> {
       await getDb().insert(usersTable).values({
         email: ADMIN_EMAIL,
         name: ADMIN_NAME,
-        password_hash: hashPassword(ADMIN_PASSWORD),
+        password_hash: await hashPassword(adminPassword()),
         role: 'ADMIN',
         status: 'approved',
         approved_at: new Date(),
@@ -106,7 +112,7 @@ async function doSeed(): Promise<void> {
       id: nextId(),
       email: ADMIN_EMAIL,
       name: ADMIN_NAME,
-      password_hash: hashPassword(ADMIN_PASSWORD),
+      password_hash: await hashPassword(adminPassword()),
       role: 'ADMIN',
       status: 'approved',
       created_at: nowIso,
@@ -173,7 +179,7 @@ export async function createUser(input: {
   }
   // Self-registration may only request USER or USERPLUS; ADMIN is never granted here.
   const role: Role = input.role === 'USERPLUS' ? 'USERPLUS' : 'USER';
-  const password_hash = hashPassword(input.password);
+  const password_hash = await hashPassword(input.password);
   const nowIso = new Date().toISOString();
 
   if (hasDB) {

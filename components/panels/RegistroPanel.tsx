@@ -7,6 +7,10 @@ import StatusSelect from '../editing/StatusSelect';
 import { CopyTableButton } from '../export/ExportControls';
 import type { Matrix } from '@/lib/exportTable';
 
+// Righe renderizzate per volta: con migliaia di IF il DOM completo rallenta
+// ordinamento e digitazione. Export e totali usano sempre tutte le righe.
+export const REGISTRO_PAGE = 200;
+
 const ST_TXT: Record<DocStatus, string> = { ok: 'OK', ko: 'Mancante', prog: 'In corso', nd: 'N/D' };
 
 // Intestazioni e righe condivise fra l'export CSV e la copia per Excel: una
@@ -111,6 +115,12 @@ function RegistroPanel({
     });
   }, [IFs, deferredQ, sortK, sortDir]);
 
+  // Il limite si azzera da solo quando cambiano ricerca, ordinamento o dati.
+  const viewKey = `${deferredQ}|${sortK}|${sortDir}|${IFs.length}`;
+  const [shown, setShown] = useState({ key: viewKey, n: REGISTRO_PAGE });
+  const visibleN = shown.key === viewKey ? shown.n : REGISTRO_PAGE;
+  const visibleRows = rows.length > visibleN ? rows.slice(0, visibleN) : rows;
+
   const sort = (k: SortKey) => {
     if (sortK === k) setSortDir((d) => d * -1);
     else {
@@ -182,7 +192,7 @@ function RegistroPanel({
               </tr>
             </thead>
             <tbody>
-              {rows.map((x) => {
+              {visibleRows.map((x) => {
                 const saving = savingIds.has(x.numero_if);
                 const hl = highlightIds.has(x.numero_if);
                 return (
@@ -303,6 +313,18 @@ function RegistroPanel({
             </tbody>
           </table>
         </div>
+        {rows.length > visibleRows.length && (
+          <div className="foot" style={{ marginTop: 8, textAlign: 'center' }}>
+            Visualizzate {visibleRows.length} righe su {rows.length} ·{' '}
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setShown({ key: viewKey, n: visibleN + REGISTRO_PAGE })}
+            >
+              Mostra altre {Math.min(REGISTRO_PAGE, rows.length - visibleRows.length)}
+            </button>
+          </div>
+        )}
       </div>
       <div className="foot" style={{ marginTop: 10 }}>
         {canEdit ? (

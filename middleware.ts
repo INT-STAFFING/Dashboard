@@ -28,5 +28,10 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   // Run on everything except Next internals and static assets.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt).*)'],
+  // PWA files (manifest, service worker, offline page, icons) must be fetchable
+  // without a session: browsers request them without credentials and the
+  // service worker must install from the login page too.
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sw\\.js|manifest\\.webmanifest|offline\\.html|icon\\.svg|apple-touch-icon\\.png|icons/).*)',
+  ],
 };

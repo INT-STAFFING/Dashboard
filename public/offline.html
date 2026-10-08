@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E6E63">
+<title>Offline · Monitor IF/BO</title>
+<style>
+  *{box-sizing:border-box;margin:0}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+    background:#EDF0EF;color:#0F1E1B;font-family:Inter,'Helvetica Neue',Arial,sans-serif;line-height:1.5}
+  main{max-width:420px;background:#fff;border:1px solid #D7DEDC;border-radius:16px;padding:28px;text-align:center}
+  img{width:64px;height:64px;border-radius:14px;margin-bottom:16px}
+  h1{font-size:20px;margin-bottom:8px}
+  p{color:#5E706C;font-size:14px;margin-bottom:20px}
+  button{font:inherit;font-weight:600;font-size:14px;color:#fff;background:#0E6E63;border:0;border-radius:10px;padding:11px 22px;cursor:pointer}
+  button:focus-visible{outline:3px solid #F2C218;outline-offset:2px}
+</style>
+</head>
+<body>
+<main role="alert">
+  <img src="/icons/icon-192.png" alt="" width="64" height="64">
+  <h1>Sei offline</h1>
+  <p>La dashboard mostra dati riservati aggiornati in tempo reale e richiede una connessione. Controlla la rete e riprova.</p>
+  <button type="button" onclick="location.reload()">Riprova</button>
+</main>
+</body>
+</html>

@@ -1,0 +1,13 @@
+/* Install banner + update toast (components/PwaClient.tsx). Sits below the
+   edit drawer (9000) and the regular .toast (10000). */
+.pwa-stack{position:fixed;z-index:8500;left:0;right:0;bottom:calc(12px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 max(12px,env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left));pointer-events:none}
+.pwa-card{pointer-events:auto;display:flex;align-items:center;gap:12px;width:100%;max-width:460px;
+  background:var(--petrol-d);color:#fff;border-radius:12px;padding:10px 10px 10px 12px;font-size:13px;line-height:1.35;
+  box-shadow:0 10px 30px -8px rgba(0,0,0,.45)}
+.pwa-icon{border-radius:8px;flex:none}
+.pwa-text{flex:1;min-width:0}
+.pwa-btn{flex:none;font:inherit;font-weight:700;color:var(--petrol-d);background:var(--gold);border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+.pwa-x{flex:none;font:inherit;font-size:20px;line-height:1;color:#fff;background:transparent;border:0;border-radius:8px;width:32px;height:32px;cursor:pointer}
+.pwa-btn:focus-visible,.pwa-x:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.pwa-x:hover{background:rgba(255,255,255,.14)}

@@ -207,3 +207,13 @@ viene eseguita.
 Zero-config (`vercel.json` → framework `nextjs`). Per la persistenza aggiungere
 un database **Neon** (Vercel Marketplace) e impostare `UPLOAD_SECRET`
 (`DATABASE_URL` viene iniettata dall'integrazione Neon).
+
+## PWA (installabile)
+
+Il sito resta pienamente utilizzabile da browser; l'installazione è solo un potenziamento.
+
+- `public/manifest.webmanifest`, icone in `public/icons/` e `public/apple-touch-icon.png` (rigenerabili con `node scripts/generate-icons.mjs`).
+- `app/sw.js/route.ts` serve il service worker con la versione di deploy (`SW_VERSION`, altrimenti `VERCEL_GIT_COMMIT_SHA`): ogni deploy cambia i byte del file e fa comparire il toast «Aggiornamento disponibile – Ricarica».
+- Strategia di cache: pagine, payload RSC, `/api/*` e richieste non-GET **non vengono mai intercettati** (dati per utente e in tempo reale). Solo `/_next/static/*` e `/icons/*` sono cache-first; se la rete manca, le navigazioni mostrano `/offline.html` (nessun dato utente).
+- `components/PwaClient.tsx`: registrazione del worker (solo in produzione), banner di installazione (Android: `beforeinstallprompt`; iOS Safari: istruzioni «Condividi → Aggiungi a Home»; mai in standalone né su desktop) e toast di aggiornamento. Il rifiuto del banner è ricordato con un cookie.
+- `middleware.ts` esclude dal controllo di sessione manifest, `sw.js`, `offline.html` e icone.
